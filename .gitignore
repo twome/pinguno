@@ -1,0 +1,40 @@
+# Windows
+## Image thumbnail cache
+Thumbs.db
+## Folder config file
+Desktop.ini
+
+# Mac
+## Image thumbnail cache
+.DS_Store
+
+# Sublime Text 2
+## User-specific editor settings
+*.sublime-project
+*.sublime-workspace
+
+# Bower
+## Resource repository
+bower_components/
+test/bower_components
+
+# Node.js
+## Package manager content and logs
+node_modules/
+npm-debug.log
+
+# grunt
+## Temporary files
+.tmp/
+## Processed/minified output files, which change depending upon dev/prod settings
+dist/
+
+# A folder specifically for ignored scrap
+ignored/
+
+
+# Node server files
+## Ping logs
+logs/
+## Sandbox file for writing quick scrappy tests
+sandbox.js
