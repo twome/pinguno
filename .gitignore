@@ -18,6 +18,10 @@ Desktop.ini
 bower_components/
 test/bower_components
 
+# Yarn
+## Error log
+yarn-error.log
+
 # Node.js
 ## Package manager content and logs
 node_modules/
