@@ -111,7 +111,7 @@ class Pingu {
 		// Turn ISO string into filesystem-compatible string (also strip milliseconds)
 		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' pingu log.json'
 
-		fs.mkdir(this.logsDir)
+		fs.mkdirSync(this.logsDir)
 		const fileUri = this.logsDir + '/' + filename 
 
 		// Keep track of this session's log so we can come back and update it
@@ -194,6 +194,11 @@ class Pingu {
 	}
 
 	tellArchiveSize(){
+
+		if (! fs.existsSync(this.logsDir)){
+			console.log('No pre-existing archive folder.')
+			return false
+		}
 		getFolderSize(this.logsDir, (err, size)=>{
 		  if (err) { throw err }
 		 
