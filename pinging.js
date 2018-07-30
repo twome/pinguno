@@ -50,14 +50,19 @@ class Pingu {
 				pingErrorList: []
 			}
 		]
+		this.logStandardFilename = 'pingu log'
 		this.logsDir = './logs'
+		this.summariesDir = './logs/human-readable' // Human-readable summary .txt files
 		this.archiveDir = this.logsDir + '/compressed'
 		this.activeLogUri = null // URI string
+		this.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
 
-		this.sessionStartTime = new Date()
+		this.sessionStartTime = new Date() //TODO: set this Date when running the "start pinging" method
 
+		this.lastFailure = null
 		this.lastDateConnected = null
 		this.internetConnected = null
+		this.firstPingSent = false
 		this.outages = []
 	}
 
@@ -67,6 +72,7 @@ class Pingu {
 		// If at least one target responds, we assume we have a working general internet connection
 		for (let target of this.pingTargets){
 			if (target.connected === connectionState.CONNECTED){
+				this.lastDateConnected = new Date()
 				return this.internetConnected = connectionState.CONNECTED
 			}
 		}
@@ -87,11 +93,12 @@ class Pingu {
 			let responseWithinThreshold = latestPing && (latestPing.roundTripTimeMs <= this.badLatencyThresholdMs)
 
 			if (anyResponse && responseWithinThreshold){
-				this.lastDateConnected = Date.now()
+				this.lastDateConnected = new Date()
 				return target.connected = connectionState.CONNECTED
 			} else if ( latestPing && !latestPing.timeout ){
 				return target.connected = connectionState.PENDING_RESPONSE
 			} else {
+				this.lastFailure = new Date()
 				return target.connected = connectionState.DISCONNECTED
 			}
 			
@@ -109,18 +116,23 @@ class Pingu {
 		const fileCreationDate = new Date()
 		
 		// Turn ISO string into filesystem-compatible string (also strip milliseconds)
-		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' pingu log.json'
+		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + this.logStandardFilename + '.json'
 
-		fs.mkdirSync(this.logsDir)
-		const fileUri = this.logsDir + '/' + filename 
+		fs.mkdir(this.logsDir, undefined, (err)=>{
+			if (err){
+				// We just want to make sure the folder exists so this doesn't matter
+			}
 
-		// Keep track of this session's log so we can come back and update it
-		this.activeLogUri = fileUri
+			const fileUri = this.logsDir + '/' + filename
 
-		return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
-			console.log('Wrote log to ' + fileUri)
-		}, (error)=>{
-			console.error(error)
+			// Keep track of this session's log so we can come back and update it
+			this.activeLogUri = fileUri
+
+			return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
+				console.log('Wrote log to ' + fileUri)
+			}, (error)=>{
+				console.error(error)
+			})
 		})
 	}
 
@@ -209,67 +221,99 @@ class Pingu {
 
 	exportSessionToTextSummary(){
 		// This will overwrite any file with the same session start time
-		let summaryUri = this.logsDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
+		let summaryUri = this.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
 
-		let template = `${this.appHumanName} - ${this.appHumanSubtitle}` + 
-		`\n ${this.appHomepageUrl}` +
-		`\n\nSession Log` +
-		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY HH:MM:SS')}` +
+		let template = `Pingu internet connectivity log` +
+		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY HH:MM:SS ZZ')}` +
 		`\nPing interval time (in milliseconds): ${this.pingIntervalMs}` +
-		`\nMaximum round-trip time before considering a connection bad (in milliseconds): ${this.badLatencyThresholdMs}` +
+		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.badLatencyThresholdMs}` +
 		`\nPing targets:`
 		
 		for (let target of this.pingTargets){
 			template = template + '\n    - ' + target.userFacingName + ' (IP: ' + target.IPV4 + ')'
 		}
 
-		template = template + '\n\nTotal internet connection outages (when all target IP addresses took too long to respond):'
+		template = template + '\n\nFull internet connection outages (when all target IP addresses took too long to respond):'
 
 		if (this.outages.length >= 1){
 			for (let outage of this.outages){
-				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY HH:MM:SS') + ', duration: ' + outage.durationSec + ' seconds'
+				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY HH:MM:SS ZZ') + ', duration: ' + outage.durationSec + ' seconds'
 			}
 		} else {
 			template = template + '\n    [No outages]'
 		}
 
-		template = template + '\n\n All pings:'
+		template = template + '\n\nAll pings:'
 
 		for (let ping of this.combineTargetsForExport().combinedPingList){
-			template = template + '\n    - [' + moment(ping.timeResponseReceived).format('MMMM Do YYYY HH:MM:SS') + '] '
-			template = template + 'IP ' + ping.targetIPV4 + ', '
+			template = template + '\n    - [' + moment(ping.timeResponseReceived).format('MMMM Do YYYY HH:MM:SS ZZ') + '] '
+			template = template + 'IP ' + ping.targetIPV4 + ' | '
 			if (!ping.timeout){
 				template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
 				template = template + 'Response size: ' + ping.responseSize + ' bytes, '	
 				template = template + 'ICMP: ' + ping.icmpSeq + ', '
 			} else {
-				template = template + 'Responsed timed out, ICMP: ' + 'ICMP: ' + ping.timeoutIcmp
+				template = template + 'Response timed out, ICMP: ' + ping.timeoutIcmp
 			}
 		}
 
-		return fsWriteFilePromise(summaryUri, template, 'utf8').then((file)=>{
-			console.log('Wrote human-readable text summary to ' + summaryUri)
-			return summaryUri
-		}, (error)=>{
-			throw new Error(error)
-		})
+		template = template + `\n\n ${this.appHumanName} - ${this.appHumanSubtitle}` +
+		`\n${this.appHomepageUrl}`
+
+		fs.mkdir(this.summariesDir, undefined, (err)=>{
+			if (err) {
+				// Ignore; just wanted to ensure folder exists here.
+			}
+
+			return fsWriteFilePromise(summaryUri, template, 'utf8').then((file)=>{
+				console.log('Wrote human-readable text summary to ' + summaryUri)
+				return summaryUri
+			}, (error)=>{
+				throw new Error(error)
+			})
+		}
 	}
 
 	compressLogToArchive(filename){
 		
-		fs.mkdirSync(this.archiveDir)
-		const gzip = zlib.createGzip()
-		const input = fs.createReadStream(this.logsDir + '/' + filename)
-		const output = fs.createWriteStream(this.archiveDir + '/' + filename + '.gz')
+		fs.mkdir(this.archiveDir, undefined, (err)=>{
+			if (err) {
+				// Ignore; just wanted to ensure folder exists here.
+			}
 
-		input.pipe(gzip).pipe(output)
+			const gzip = zlib.createGzip()
+			const input = fs.createReadStream(this.logsDir + '/' + filename)
+			const output = fs.createWriteStream(this.archiveDir + '/' + filename + '.gz')
+
+			input.pipe(gzip).pipe(output)
+
+			console.log('Compressed "' + filename + '" to gzipped archive.')
+		})
+
+	}
+
+	compressAllLogsToArchive(){
+		fs.readdir(this.logsDir + '/', 'utf8', (err, files)=>{
+			if (err){
+				throw new Error(err)
+			}
+
+			for (let filename of files){
+				// Only compress our JSON log files unless user specifies looser approach
+				if ( filename.match(this.logStandardFilename + '\.json$') || ( this.compressAnyJsonLogs && filename.match('\.json$') ) ){
+					console.log('MATCH: ' + filename)
+					// this.compressLogToArchive(this.logsDir + '/' + filename)
+				}
+			}
+		})
+
 	}
 
 }
 
 let app = new Pingu()
 
-
+// TODO: probably incorporate this into Pingu.prototype.startPinging()
 const regPingHandlers = (pingTarget)=>{
 	console.log(`Registering ping handler for target: ${pingTarget.userFacingName} (${pingTarget.IPV4})`)
 
@@ -278,6 +322,8 @@ const regPingHandlers = (pingTarget)=>{
 		app.pingIntervalMs / 1000, 
 		pingTarget.IPV4
 	]);
+
+	app.firstPingSent = true
 
 	pingProcess.stdout.on('data', (data)=>{
 	  	// TEMP - TODO check if this is a junk message and if so discard or store differently
@@ -331,3 +377,7 @@ let exportSessionToTextSummaryTick = setInterval(()=>{
 let compressLogToArchiveTick = setInterval(()=>{
 	app.compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri))
 }, 20 * 1000)
+
+let compressAllLogsToArchiveTick = setInterval(()=>{
+	app.compressAllLogsToArchive()
+}, 5 * 1000)

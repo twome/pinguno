@@ -1,7 +1,13 @@
 ## To do:
 
+- addOutage()
+
 - find cross-platform binaries of ping to bundle with app, or an npm one (w dependency management builtin)
 	- add instructions in-app if must be done by user
+
+- run as service / auto-run on boot
+
+- how to make mac menubar icon / windows tray icon?
 
 - BUG: getting duplicates in saved ping list
 
@@ -13,7 +19,7 @@
 
 - possible to make low-signature Webkit GUI that only consumes resources when visible (changing options etc), separated from Node server logging?
 
-- run as service / auto-run on boot
+
 
 
 - write to some kind of DB
@@ -51,3 +57,4 @@
 
 	- give options to restrict to size (10MB) and time-interval (30 days)
 
+- POSSIBLE BUG: if mkdir/file writes fail because they lack write privileges or files are busy
