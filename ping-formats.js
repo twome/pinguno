@@ -51,10 +51,9 @@ class PingError {
 }
 
 class Outage {
-	constructor(startDate, endDate, targetIP){
+	constructor(startDate, endDate){
 		this.startDate = startDate
 		this.endDate = endDate
-		this.targetIP = targetIP
 	}
 
 	get durationSec(){

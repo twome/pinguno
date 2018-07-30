@@ -1,12 +1,12 @@
 console.log('running pinging.js')
 
-// Inbuilt modules
+// Built-in modules
 const { spawn } = require('child_process')
 const fs = require('fs')
 const util = require('util')
 const zlib = require('zlib')
 
-// 3rd party dependencies
+// 3rd-party dependencies
 const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
 const prettyJson = require('prettyjson')
@@ -80,9 +80,30 @@ class Pingu {
 		return this.internetConnected = connectionState.DISCONNECTED
 	}
 
-	// updateOutages(){
-	// 	this.outages.push(new Outage(latestPing.timeResponseReceived, this.lastDateConnected, target.IPV4))
-	// }
+	// BROKEN
+	updateOutages(){
+		
+		if (this.internetConnected){
+			if (this.lastFailure){
+				this.outages.push(new Outage(this.lastFailure, this.lastDateConnected))	
+			} 
+		} else {
+			if (this.lastDateConnected){
+				this.outages.push(new Outage(this.lastDateConnected, new Date()))		    	
+			} else {
+				if (this.firstPingSent && (new Date() - this.sessionStartTime) <= this.badLatencyThresholdMs){
+					// We have not yet been connected this session, and we have waited for long enough that one ping should have returned
+					this.outages.push(new Outage(this.sessionStartTime, new Date()))
+				}
+			}	
+		}
+
+		// todo: 'ongoing' flag for outages?
+
+		// POSSIBLE BUG: this depends on UpdateOutages running frequently
+		// TODO: what this method should actually do is go through the entire ping history and look for holes >this.badLatency across all targets	
+		// 
+	}
 
 	updateTargetsConnectionStatus(){
 
@@ -107,7 +128,12 @@ class Pingu {
 	}
 
 	latestPing(target){
-		return target.pingList[target.pingList.length - 1]
+		if (target){
+			return target.pingList[target.pingList.length - 1]	
+		} else {
+			// ~ return the latest ping from all targets
+		}
+		
 	}
 
 	writeSessionLog(){
@@ -119,11 +145,11 @@ class Pingu {
 		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + this.logStandardFilename + '.json'
 
 		fs.mkdir(this.logsDir, undefined, (err)=>{
-			if (err){
+			if (err){ 
 				// We just want to make sure the folder exists so this doesn't matter
 			}
 
-			const fileUri = this.logsDir + '/' + filename
+			const fileUri = this.logsDir + '/' + filename 
 
 			// Keep track of this session's log so we can come back and update it
 			this.activeLogUri = fileUri
@@ -257,21 +283,20 @@ class Pingu {
 			}
 		}
 
-		template = template + `\n\n ${this.appHumanName} - ${this.appHumanSubtitle}` +
-		`\n${this.appHomepageUrl}`
+		template = template + `\n\n${this.appHumanName} - ${this.appHumanSubtitle}` + `\n${this.appHomepageUrl}`
 
 		fs.mkdir(this.summariesDir, undefined, (err)=>{
 			if (err) {
 				// Ignore; just wanted to ensure folder exists here.
 			}
-
+			
 			return fsWriteFilePromise(summaryUri, template, 'utf8').then((file)=>{
 				console.log('Wrote human-readable text summary to ' + summaryUri)
 				return summaryUri
 			}, (error)=>{
 				throw new Error(error)
 			})
-		}
+		})
 	}
 
 	compressLogToArchive(filename){
@@ -289,7 +314,7 @@ class Pingu {
 
 			console.log('Compressed "' + filename + '" to gzipped archive.')
 		})
-
+		
 	}
 
 	compressAllLogsToArchive(){
@@ -298,15 +323,15 @@ class Pingu {
 				throw new Error(err)
 			}
 
-			for (let filename of files){
+			for (let uri of files){
 				// Only compress our JSON log files unless user specifies looser approach
-				if ( filename.match(this.logStandardFilename + '\.json$') || ( this.compressAnyJsonLogs && filename.match('\.json$') ) ){
-					console.log('MATCH: ' + filename)
-					// this.compressLogToArchive(this.logsDir + '/' + filename)
-				}
+				if ( uri.match(this.logStandardFilename + '\.json$') || ( this.compressAnyJsonLogs && uri.match('\.json$') ) ){
+					// console.log('MATCH: ' + uri)
+					this.compressLogToArchive(uri)
+				} 
 			}
 		})
-
+		
 	}
 
 }
