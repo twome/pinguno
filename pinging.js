@@ -1,4 +1,6 @@
-console.log('running pinging.js')
+console.log('RUNNING: pinging.js')
+
+// TODO: distinguish between UI info messages and temporary/dev console logs within the code (for code-searching and eventually clear rendering of UI messages)
 
 // Built-in modules
 const { spawn } = require('child_process')
@@ -15,8 +17,7 @@ const moment = require('moment')
 // In-house modules
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
-const { PingData, PingError, Outage } = require('./ping-formats.js')
-
+const { PingData, PingError, Outage, TargetOutage } = require('./ping-formats.js')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
@@ -31,19 +32,20 @@ class Pingu {
 
 		this.pingIntervalMs = 5000
 		this.badLatencyThresholdMs = 250
+		
 		this.connectionStatusIntervalMs = 5000
 		this.writeToFileIntervalMs = 2 * 1000
 
 		this.pingTargets = [
 			{
-				userFacingName: 'Google',
+				humanName: 'Google',
 				IPV4: '8.8.8.8',
 				connected: null,
 				pingList: [],
 				pingErrorList: []
 			},
 			{
-				userFacingName: 'Level3',
+				humanName: 'Level3',
 				IPV4: '4.2.2.2',
 				connected: null,
 				pingList: [],
@@ -80,29 +82,172 @@ class Pingu {
 		return this.internetConnected = connectionState.DISCONNECTED
 	}
 
-	// BROKEN
 	updateOutages(){
-		
-		if (this.internetConnected){
-			if (this.lastFailure){
-				this.outages.push(new Outage(this.lastFailure, this.lastDateConnected))	
-			} 
-		} else {
-			if (this.lastDateConnected){
-				this.outages.push(new Outage(this.lastDateConnected, new Date()))		    	
-			} else {
-				if (this.firstPingSent && (new Date() - this.sessionStartTime) <= this.badLatencyThresholdMs){
-					// We have not yet been connected this session, and we have waited for long enough that one ping should have returned
-					this.outages.push(new Outage(this.sessionStartTime, new Date()))
+		let isBadResponse = ping => ping.timeout || ping.roundTripTimeMs > this.badLatencyThresholdMs  
+
+		let isRoughlyWithinTimeframe = (dateToTest, timeframeStart, timeframeEnd)=>{
+			console.debug('=== isRoughlyWithinTimeframe')
+
+			for (let param of [dateToTest, timeframeStart, timeframeEnd]){
+				if ( (! param instanceof Date) || (! typeof param.getTime === 'function') ){
+					throw Error('isRoughlyWithinTimeframe - param ' + param + 'is not a Date object')
 				}
-			}	
+			}
+
+			dateToTest = dateToTest.getTime() // convert to total UTC ms since epoch for comparison
+			timeframeStart = timeframeStart.getTime()
+			timeframeEnd = timeframeEnd.getTime()
+
+			console.debug('   --- dateToTest, timeframeStart, timeframeEnd')
+			console.debug(dateToTest % 10000, timeframeStart % 10000, timeframeEnd % 10000)
+
+			let isAfterStart = dateToTest >= ( timeframeStart - this.badLatencyThresholdMs )
+			let isBeforeEnd = dateToTest <= ( timeframeEnd + this.badLatencyThresholdMs )
+			console.debug('   --- isAfterStart: ', isAfterStart)
+			console.debug('   --- isBeforeEnd: ', isBeforeEnd)
+			return isAfterStart && isBeforeEnd
 		}
 
-		// todo: 'ongoing' flag for outages?
+		let onReadFile = (fileData)=>{
 
-		// POSSIBLE BUG: this depends on UpdateOutages running frequently
-		// TODO: what this method should actually do is go through the entire ping history and look for holes >this.badLatency across all targets	
-		// 
+			let pingLogTargets = this.separatePingListIntoTargets(fileData.combinedPingList, fileData.targetList)
+
+			// Add TargetOutages (streaks of bad-response pings) to each target
+			for (let target of pingLogTargets){
+
+				target.targetOutages = []
+				
+				let currentStreak = []
+				// Assumes list is chronological
+				for (let ping of target.pingList){
+					if (isBadResponse(ping)){
+						currentStreak.push(ping)
+					} else {
+						if ( currentStreak.length >= 1){
+							target.targetOutages.push(new TargetOutage(currentStreak))	
+						}
+						currentStreak = []
+					}
+				}
+
+				console.log('target.humanName', target.humanName)
+			}
+
+
+			let getFullOutagesFromTargetList = (targetList)=>{
+				let fullOutages = []
+				let baseTarget = targetList[0]
+				let checkingTarget
+
+				if (targetList.length === 1){
+					// There are no other targets that need to have concurrent outages, so every target outage is a full outage
+					return baseTarget.targetOutages
+				}
+				
+				for (let baseTargetOutage of baseTarget.targetOutages){
+
+					// Min/max times this current outage could be (bound by current single-target outage)
+					let thisOutageExtremes = {
+						start: baseTargetOutage.startDate,
+						end: baseTargetOutage.endDate
+					}
+
+					let checkOutageListWithinExtremes = function(targetOutageList, extremes){
+
+						let targetOutagesThatIntersectExtremes = []
+
+						for (let targetOutage of targetOutageList){
+
+							console.log('--- current targetOutage start/end', targetOutage.startDate, targetOutage.endDate)
+
+							let pingsWithinExtremes = []
+							
+							for (let ping of targetOutage.pingList){
+
+								console.debug('=== HERE')
+								console.debug(ping.timeResponseReceived.getTime())
+								console.debug(extremes.start.getTime())
+								console.debug(extremes.end.getTime())
+								if (isRoughlyWithinTimeframe(ping.timeResponseReceived, extremes.start, extremes.end)){
+									console.log('ping within timeframe:', ping)
+
+									// If we haven't already pushed this TO to list of extremes, then do so
+									if (targetOutagesThatIntersectExtremes.indexOf(targetOutage) <= -1){ 
+										targetOutagesThatIntersectExtremes.push(targetOutage) 
+									}
+									pingsWithinExtremes.push(ping)
+								}
+							}
+
+							console.debug('--- pingsWithinExtremes')
+							console.debug(pingsWithinExtremes)
+
+							if (pingsWithinExtremes.length === 0 ){
+								console.debug('no pings within extremes for this TO')
+								// This TargetOutage doesn't intersect with the current full-outage's time boundaries; try the next one.  
+								continue
+							}
+
+							// FRAGILE: this assumes pings are already in chron order
+							thisOutageExtremes.start = pingsWithinExtremes[0].timeResponseReceived
+							thisOutageExtremes.end = _.last(pingsWithinExtremes).timeResponseReceived
+
+							// Within this TargetOutage, if there's an intersection with the current extremes, dive one level deeper
+							if (pingsWithinExtremes.length >= 1){
+								if (checkingTarget === _.last(targetList)){
+									// We're at the last target within this time-span
+									fullOutages.push(new Outage(thisOutageExtremes.start, thisOutageExtremes.end))
+								} else {
+									checkingTarget = targetList[targetList.indexOf(checkingTarget) + 1]
+									checkOutageListWithinExtremes(checkingTarget.targetOutages, thisOutageExtremes)
+								}
+							}
+						}		
+					}
+
+					// Initiate checking each subsequent target for this outage
+					checkingTarget = targetList[targetList.indexOf(baseTarget) + 1]
+					checkOutageListWithinExtremes(checkingTarget.targetOutages, thisOutageExtremes)
+				}	
+
+				return fullOutages
+			}
+
+			console.debug('--- gettingFullOutages:')
+			let fullOutagesForPingLogTargets = getFullOutagesFromTargetList(pingLogTargets)
+			// TODO: test for safe
+			// this.outages = checkAllTargetsForOverlap(pingLogTargets)
+
+			console.debug('--- fullOutagesForPingLogTargets:')
+			console.debug(fullOutagesForPingLogTargets)
+
+			// for (let fullOutage of getFullOutagesFromTargetList){
+			// 	console.log('start', fullOutage.startDate)
+			// 	console.log('end', fullOutage.endDate)
+			// }
+		}
+
+
+		// TEMP just using test data
+		fs.readFile('./logs/test-data_frequent-disconnects.json', (err, fileData)=>{
+			if (err) throw err
+
+			// NB: parseJsonAndReconstitute doesn't do anything at the moment! The saved JSON data is not in a normal class format
+			// so the function has no accurate targets to operate on.
+			fileData = MyUtil.parseJsonAndReconstitute(fileData, [PingData, PingError, TargetOutage, Outage])
+
+			// TEMP: Cast stringified dates to Date instances
+			fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
+			fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
+			fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
+			for (let pingIndex in fileData.combinedPingList){
+				let dateAsString = fileData.combinedPingList[pingIndex].timeResponseReceived
+				fileData.combinedPingList[pingIndex].timeResponseReceived = MyUtil.utcIsoStringToDateObj(dateAsString)
+			}
+			
+			onReadFile(fileData)
+		})
+
 	}
 
 	updateTargetsConnectionStatus(){
@@ -123,7 +268,7 @@ class Pingu {
 				return target.connected = connectionState.DISCONNECTED
 			}
 			
-			// console.log(target.userFacingName + ' connected?: ' + target.connected.humanName)
+			// console.log(target.humanName + ' connected?: ' + target.connected.humanName)
 		}
 	}
 
@@ -204,6 +349,30 @@ class Pingu {
 		})
 	}
 
+	separatePingListIntoTargets(pingList, targetList){
+		let fullTargets = []
+		for (let ping of pingList){
+			if (fullTargets[ping.targetIPV4]){
+				fullTargets[ping.targetIPV4].pingList.push(ping)
+			} else {
+				fullTargets[ping.targetIPV4] = {
+					IPV4: ping.targetIPV4,
+					pingList: [ping]
+				}
+			}
+		}
+
+		if (targetList){
+			for (let target of targetList){
+				target.pingList = fullTargets[target.IPV4].pingList
+				fullTargets.push(target)
+				delete fullTargets[target.IPV4]
+			}
+		}
+
+		return fullTargets
+	}
+
 	combineTargetsForExport(){
 		let exporter = {
 			dateLogCreated: new Date(),
@@ -256,7 +425,7 @@ class Pingu {
 		`\nPing targets:`
 		
 		for (let target of this.pingTargets){
-			template = template + '\n    - ' + target.userFacingName + ' (IP: ' + target.IPV4 + ')'
+			template = template + '\n    - ' + target.humanName + ' (IP: ' + target.IPV4 + ')'
 		}
 
 		template = template + '\n\nFull internet connection outages (when all target IP addresses took too long to respond):'
@@ -340,7 +509,7 @@ let app = new Pingu()
 
 // TODO: probably incorporate this into Pingu.prototype.startPinging()
 const regPingHandlers = (pingTarget)=>{
-	console.log(`Registering ping handler for target: ${pingTarget.userFacingName} (${pingTarget.IPV4})`)
+	console.log(`Registering ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
 
 	const pingProcess = spawn('ping', [
 		'-i', 
@@ -395,14 +564,28 @@ let writeToFileTick = setInterval(()=>{
 }, app.writeToFileIntervalMs)
 
 
-let exportSessionToTextSummaryTick = setInterval(()=>{
-	app.exportSessionToTextSummary()
-}, 10 * 1000)
+// let exportSessionToTextSummaryTick = setInterval(()=>{
+// 	app.exportSessionToTextSummary()
+// }, 20 * 1000)
 
-let compressLogToArchiveTick = setInterval(()=>{
-	app.compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri))
-}, 20 * 1000)
+// let compressLogToArchiveTick = setInterv`al(()=>{
+// 	app.compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri))
+// }, 20 * 1000)
 
-let compressAllLogsToArchiveTick = setInterval(()=>{
-	app.compressAllLogsToArchive()
-}, 5 * 1000)
+// let compressAllLogsToArchiveTick = setInterval(()=>{
+// 	app.compressAllLogsToArchive()
+// }, 5 * 1000)
+
+let updateOutagesTick = setInterval(()=>{
+	app.updateOutages()
+}, 1 * 2000)
+
+// setInterval(()=>{
+// 	fs.readFile('./logs/test-data_frequent-disconnects.json', (err, fileData)=>{
+// 		if (err) throw err
+// 		fileData = JSON.parse(fileData)
+
+// 		app.separatePingListIntoTargets(fileData.combinedPingList, fileData.targetList)
+// 	})
+	
+// }, 2 * 1000)
