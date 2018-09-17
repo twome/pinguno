@@ -40,5 +40,5 @@ ignored/
 # Node server files
 ## Ping logs
 logs/
-## Sandbox file for writing quick scrappy tests
-sandbox.js
+## Sandbox files for writing quick scrappy tests
+sandbox*.js
