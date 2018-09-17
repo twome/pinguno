@@ -85,8 +85,8 @@ class Pingu {
 	updateOutages(){
 		let isBadResponse = ping => ping.timeout || ping.roundTripTimeMs > this.badLatencyThresholdMs  
 
-		let isRoughlyWithinTimeframe = (dateToTest, timeframeStart, timeframeEnd)=>{
-			console.debug('=== isRoughlyWithinTimeframe')
+		let isRoughlyWithinTimeframe = (dateToTest, timeframeStart, timeframeEnd, leniencyMs)=>{
+			// console.debug('=== isRoughlyWithinTimeframe')
 
 			for (let param of [dateToTest, timeframeStart, timeframeEnd]){
 				if ( (! param instanceof Date) || (! typeof param.getTime === 'function') ){
@@ -98,15 +98,17 @@ class Pingu {
 			timeframeStart = timeframeStart.getTime()
 			timeframeEnd = timeframeEnd.getTime()
 
-			console.debug('   --- dateToTest, timeframeStart, timeframeEnd')
-			console.debug(dateToTest % 10000, timeframeStart % 10000, timeframeEnd % 10000)
+			// console.debug('   --- dateToTest, timeframeStart, timeframeEnd, leniencyMs')
+			// console.debug(dateToTest % 1000000, timeframeStart % 1000000, timeframeEnd % 1000000, leniencyMs)
 
-			let isAfterStart = dateToTest >= ( timeframeStart - this.badLatencyThresholdMs )
-			let isBeforeEnd = dateToTest <= ( timeframeEnd + this.badLatencyThresholdMs )
-			console.debug('   --- isAfterStart: ', isAfterStart)
-			console.debug('   --- isBeforeEnd: ', isBeforeEnd)
+			let isAfterStart = dateToTest >= ( timeframeStart - leniencyMs )
+			let isBeforeEnd = dateToTest <= ( timeframeEnd + leniencyMs )
+			// console.debug('   --- isAfterStart: ', isAfterStart)
+			// console.debug('   --- isBeforeEnd: ', isBeforeEnd)
 			return isAfterStart && isBeforeEnd
 		}
+
+		let instance = this
 
 		let onReadFile = (fileData)=>{
 
@@ -129,8 +131,6 @@ class Pingu {
 						currentStreak = []
 					}
 				}
-
-				console.log('target.humanName', target.humanName)
 			}
 
 
@@ -153,24 +153,15 @@ class Pingu {
 					}
 
 					let checkOutageListWithinExtremes = function(targetOutageList, extremes){
-
 						let targetOutagesThatIntersectExtremes = []
 
 						for (let targetOutage of targetOutageList){
-
-							console.log('--- current targetOutage start/end', targetOutage.startDate, targetOutage.endDate)
-
+							// console.log('--- current targetOutage start/end', targetOutage.startDate, targetOutage.endDate)
 							let pingsWithinExtremes = []
-							
+
 							for (let ping of targetOutage.pingList){
 
-								console.debug('=== HERE')
-								console.debug(ping.timeResponseReceived.getTime())
-								console.debug(extremes.start.getTime())
-								console.debug(extremes.end.getTime())
-								if (isRoughlyWithinTimeframe(ping.timeResponseReceived, extremes.start, extremes.end)){
-									console.log('ping within timeframe:', ping)
-
+								if (isRoughlyWithinTimeframe(ping.timeResponseReceived, extremes.start, extremes.end, instance.badLatencyThresholdMs)){
 									// If we haven't already pushed this TO to list of extremes, then do so
 									if (targetOutagesThatIntersectExtremes.indexOf(targetOutage) <= -1){ 
 										targetOutagesThatIntersectExtremes.push(targetOutage) 
@@ -178,12 +169,10 @@ class Pingu {
 									pingsWithinExtremes.push(ping)
 								}
 							}
-
-							console.debug('--- pingsWithinExtremes')
-							console.debug(pingsWithinExtremes)
-
+							// console.debug('--- pingsWithinExtremes.length')
+							// console.debug(pingsWithinExtremes.length)
 							if (pingsWithinExtremes.length === 0 ){
-								console.debug('no pings within extremes for this TO')
+								// console.debug('no pings within extremes for this TO')
 								// This TargetOutage doesn't intersect with the current full-outage's time boundaries; try the next one.  
 								continue
 							}
@@ -212,19 +201,13 @@ class Pingu {
 
 				return fullOutages
 			}
-
-			console.debug('--- gettingFullOutages:')
+			// console.debug('--- gettingFullOutages:')
 			let fullOutagesForPingLogTargets = getFullOutagesFromTargetList(pingLogTargets)
-			// TODO: test for safe
-			// this.outages = checkAllTargetsForOverlap(pingLogTargets)
 
-			console.debug('--- fullOutagesForPingLogTargets:')
-			console.debug(fullOutagesForPingLogTargets)
-
-			// for (let fullOutage of getFullOutagesFromTargetList){
-			// 	console.log('start', fullOutage.startDate)
-			// 	console.log('end', fullOutage.endDate)
-			// }
+			// console.debug('--- fullOutagesForPingLogTargets:')
+			// console.debug(fullOutagesForPingLogTargets)
+			this.outages = fullOutagesForPingLogTargets
+			return this.outages
 		}
 
 
