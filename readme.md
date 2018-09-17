@@ -27,7 +27,8 @@
 
 
 
-
+- add PingLogger-style traceroute latency graph (total latency over time and per-IP latency over IP)
+	- keep a hold of ICMP_seqs to pair up latency of each IP
 
 
 - format logs into readable plain-text digest and export to plain text file

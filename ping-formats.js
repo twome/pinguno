@@ -1,14 +1,16 @@
 class PingData {
 	constructor(data){
-		this.ttlMs = data.ttlMs
-		this.roundTripTimeMs = data.roundTripTimeMs
-		this.responseSize = data.responseSize
-		this.icmpSeq = data.icmpSeq
+		this._class = 'PingData'
+
+		this.ttlMs = data.ttlMs // num
+		this.roundTripTimeMs = data.roundTripTimeMs // num
+		this.responseSize = data.responseSize // num
+		this.icmpSeq = data.icmpSeq // num
 
 		this.timeout = data.timeout // bool
 		this.timeoutIcmp = data.timeoutIcmp // num
 
-		this.timeResponseReceived = data.timeResponseReceived
+		this.timeResponseReceived = data.timeResponseReceived // Date
 	}
 
 	// FRAGILE: Depends on particular structure of text output from `ping` binary. 
@@ -41,17 +43,63 @@ class PingData {
 
 		return structure
 	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'timeResponseReceived' }
+		]
+	}
 }
 
 class PingError {
 	constructor(pingErrorText, timeResponseReceived){
+		this._class = 'PingError'
+
 		this.pingErrorText = pingErrorText
 		this.timeResponseReceived = timeResponseReceived
+	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'timeResponseReceived' }
+		]
+	}
+}
+
+// TODO: extend from Outage?
+class TargetOutage {
+	constructor(pingList){
+		this._class = 'TargetOutage'
+
+		if ( !(pingList instanceof Array && pingList.length >= 1)){
+			throw Error('pingList is not a valid array: ' + pingList) 
+		}
+
+		this.pingList = pingList
+
+		this.contemporaries = []
+	}
+
+	get startDate(){
+		return this.pingList[0].timeResponseReceived
+	}
+
+	get endDate(){
+		return this.pingList[this.pingList.length - 1].timeResponseReceived
+	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'startDate' }, 
+			{ typeClass: Date, propKey: 'endDate' }
+		]
 	}
 }
 
 class Outage {
 	constructor(startDate, endDate){
+		this._class = 'Outage'
+
 		this.startDate = startDate
 		this.endDate = endDate
 	}
@@ -59,8 +107,40 @@ class Outage {
 	get durationSec(){
 		return (this.endDate - this.startDate) / 1000
 	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'startDate' }, 
+			{ typeClass: Date, propKey: 'endDate' }
+		]
+	}
+}
+
+
+class PingsLog {
+	constructor(obj){
+		this._class = 'PingsLog'
+
+		this.dateLogCreated = new Date()
+		this.dateLogLastUpdated = new Date()
+		this.combinedPingList = []
+
+		this.outages = obj.outages
+		this.sessionStartTime = obj.sessionStartTime
+		this.targetList = obj.targetList
+	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'dateLogCreated' }, 
+			{ typeClass: Date, propKey: 'dateLogLastUpdated' },
+			{ typeClass: Date, propKey: 'sessionStartTime' }
+		]
+	}
 }
 
 exports.PingError = PingError
 exports.PingData = PingData
 exports.Outage = Outage
+exports.TargetOutage = TargetOutage
+exports.PingsLog = PingsLog
