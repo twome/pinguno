@@ -31,15 +31,20 @@ class MyUtil {
 	}
 
 	// NB: only works with shallow properties
-	static reconstituteClassFromSimpleParse(liveClass, typePropList, simpleParseClass){
+	static reconstituteClassFromSimpleParse(liveClass, typePropList, simpleParseObj){
 		if (!typePropList || typePropList.length <= 0){
 			throw Error('No revivalPropTypes available for class ' + liveClass._class)
 		}
 
 		let ret = new liveClass()
-		ret = Object.assign(ret, simpleParseClass)
+		ret = Object.assign(ret, simpleParseObj)
 		typePropList.forEach((val) => {
-			ret[val.propKey] = reconstituteTypeFromSimpleParse(val.typeClass, simpleParseClass[val.propKey]) 
+			if (typeof ret[val.reviveFn] === 'function'){
+				// We can specify a 'reviveFn' instead of a 'type' if we need a customised revival function for this particular property
+				ret[val.propKey] = val.reviveFn(simpleParseObj[val.propKey])
+			} else {
+				ret[val.propKey] = reconstituteTypeFromSimpleParse(val.typeClass, simpleParseObj[val.propKey]) 	
+			}
 		})
 		return ret
 	}

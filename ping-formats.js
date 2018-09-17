@@ -116,7 +116,31 @@ class Outage {
 	}
 }
 
+
+class PingsLog {
+	constructor(obj){
+		this._class = 'PingsLog'
+
+		this.dateLogCreated = new Date()
+		this.dateLogLastUpdated = new Date()
+		this.combinedPingList = []
+
+		this.outages = obj.outages
+		this.sessionStartTime = obj.sessionStartTime
+		this.targetList = obj.targetList
+	}
+
+	get revivalPropTypes(){
+		return [
+			{ typeClass: Date, propKey: 'dateLogCreated' }, 
+			{ typeClass: Date, propKey: 'dateLogLastUpdated' },
+			{ typeClass: Date, propKey: 'sessionStartTime' }
+		]
+	}
+}
+
 exports.PingError = PingError
 exports.PingData = PingData
 exports.Outage = Outage
 exports.TargetOutage = TargetOutage
+exports.PingsLog = PingsLog
