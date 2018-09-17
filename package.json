@@ -1,10 +1,18 @@
 {
+  "name": "pingu-net-monitor",
+  "version": "1.0.0",
+  "author": "Tom Kenny",
+  "homepage": "https://gitlab.com/twome/pingu",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.16.3",
     "get-folder-size": "^2.0.0",
+    "global": "^4.3.2",
     "lodash": "^4.17.10",
     "moment": "^2.22.2",
+    "net-ping": "^1.2.3",
     "prettyjson": "^1.2.1",
-    "util": "^0.11.0"
+    "util": "^0.11.0",
+    "yarn": "^1.9.4"
   }
 }
