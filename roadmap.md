@@ -10,6 +10,9 @@
 	- can we get any date from `ping`s output?
 	- count in parallel using Pingu.pingIntervalMs
 
+- "print data straight to console" mode
+	- basically same console output as default ping (but more readable)
+	- for techy live monitoring
 
 - stretch: add PingLogger-style traceroute latency graph (total latency over time and per-IP latency over IP)
 	- keep a hold of ICMP_seqs to pair up latency of each IP

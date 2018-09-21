@@ -1,4 +1,4 @@
-console.log('RUNNING: pingu.js')
+console.info('RUNNING: pingu.js')
 
 // TODO: distinguish between UI info messages and temporary/dev console logs within the code (for code-searching and eventually clear rendering of UI messages)
 
@@ -101,8 +101,6 @@ class Pingu {
 		} else {
 			this.pingEngine = this.pingEngineEnum.NodeNetPing
 		}
-
-		console.debug(this.pingEngine)
 	}
 
 	updateInternetConnectionStatus(){
@@ -287,7 +285,7 @@ class Pingu {
 		if (target){
 			return target.pingList[target.pingList.length - 1]	
 		} else {
-			console.info('latestPing - No target specified so finding the latest ping from any target')
+			console.debug('latestPing - No target specified so finding the latest ping from any target')
 
 			let latestPerTarget = []
 			
@@ -319,7 +317,7 @@ class Pingu {
 			this.activeLogUri = fileUri
 
 			return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
-				console.log('Wrote log to ' + fileUri)
+				console.info('Wrote log to ' + fileUri)
 			}, (error)=>{
 				console.error(error)
 			})
@@ -345,7 +343,7 @@ class Pingu {
 			if ( !firstUnwrittenPing ){
 				// noop - just update timestamp and re-save same data (we already do this anyway)
 				if ( config.nodeVerbose >= 2 ){
-					console.warn('No new pings found to update existing session\'s log with.')
+					console.info('No new pings found to update existing session\'s log with.')
 				}
 			} else {
 				let onlyNewPings = liveData.combinedPingList.slice(firstUnwrittenPingIndex)
@@ -360,7 +358,7 @@ class Pingu {
 			toWrite = JSON.stringify(toWrite, null, this.pingLogIndent)
 			
 			return fsWriteFilePromise(this.activeLogUri, toWrite, 'utf8').then((file)=>{
-				console.log('Updated log at ' + this.activeLogUri)
+				console.info('Updated log at ' + this.activeLogUri)
 				return this.activeLogUri
 			}, (error)=>{
 				throw new Error(error) 
@@ -461,7 +459,7 @@ class Pingu {
 
 		if (this.outages.length >= 1){
 			for (let outage of this.outages){
-				let humanOutageDuration = outage.durationSec >= this.pingIntervalMs ? outage.durationSec : '<' + (this.pingIntervalMs / 1000)
+				let humanOutageDuration = (outage.durationSec >= this.pingIntervalMs / 1000) ? outage.durationSec : '<' + (this.pingIntervalMs / 1000)
 				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY hh:mm:ss ZZ') + ', duration: ' + humanOutageDuration + ' seconds'
 			}
 		} else {
@@ -482,18 +480,25 @@ class Pingu {
 				template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
 				template = template + 'Response size: ' + (ping.responseSize > 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
 			} else {
-				encounteredErrorTypes.push(ping.errorType)
+				let typeIsUniqueInList = true
+				for (let encounteredErrorType of encounteredErrorTypes){
+					// Need to use isEqual instead of === to deep-compare objects with different references
+					if (_.isEqual(ping.errorType, encounteredErrorType)){ typeIsUniqueInList = false }
+				}
+				if ( typeIsUniqueInList ){
+					encounteredErrorTypes.push(ping.errorType)
+				}
 				template = template + 'Error: ' + ping.errorType.accessor + ', '
 			}
 			template = template + 'ICMP: ' + ping.icmpSeq
 		}
 
 		if (encounteredErrorTypes.length){
-			template = template + '\n\n Encountered errors:'
+			template = template + '\n\nEncountered errors:'
 
 			for (let err of encounteredErrorTypes){
-				template = template + `${ind}- Error name: ` + err.accessor + ', '
-				template = template + 'Description: ' + err.humanName
+				template = template + `\n${ind}- Name: "` + err.accessor + '", '
+				template = template + 'description: ' + err.humanName
 			}
 		}
 
@@ -513,7 +518,7 @@ class Pingu {
 			}
 			
 			return fsWriteFilePromise(summaryUri, template, 'utf8').then((file)=>{
-				console.log('Wrote human-readable text summary to ' + summaryUri)
+				console.info('Wrote human-readable text summary to ' + summaryUri)
 				return summaryUri
 			}, (error)=>{
 				throw new Error(error)
@@ -559,7 +564,6 @@ class Pingu {
 		let selectedPingEngine = pingEngine || this.pingEngine // Allows API user to override the default platform 'ping' engine
 
 		for ( let pingTarget of pingTargets ){
-			console.debug(selectedPingEngine)
 			if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
 				console.info('Starting pinging - Using inbuilt/native `ping`')
 				this.regPingHandlersInbuilt(pingTarget)
@@ -673,6 +677,7 @@ class Pingu {
 		res.timeRequestSent = sent // Date - can be undefined if error
 		res.timeResponseReceived = rcvd // Date - can be undefined if error
 
+		// TODO: this needs to account for errors that occur within/deeper than net-ping (try/catch?)
 		if (err){
 			res.failure = true
 			for (let supportedErrorStr of [
@@ -697,30 +702,36 @@ class Pingu {
 					// Convert between net-ping's and our own errors
 					res.errorType = PingData.errorTypes[netPingToInternalError[supportedErrorStr]]
 				} else {
-					// Unknown misc error
-					console.error('processNetPingResponse: Unknown net-ping response error:')
-					console.error(err)
+					let handled = false
 
 					// NB: Errors emitted from raw-socket when network adapter turned off on macOS
 					// Should have been handled by netPing 
 					if (err.toString().match(/No route to host/)){
 						res.errorType = PingData.errorTypes.destinationUnreachableError
-						return // Don't trigger the final 'unknown' error
+						handled = true
 					}
 					if (err.toString().match(/Network is down/)){
 						res.errorType = PingData.errorTypes.networkDownError
-						return // Don't trigger the final 'unknown' error
+						handled = true
 					}
 
-					res.errorType = PingData.errorTypes.unknownError
-					// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
-					if (process.env.NODE_ENV === 'development'){
+					if (!handled){
+						// Unknown misc error
+						console.error('processNetPingResponse: Unknown net-ping response error:')
 						console.error(err)
-						throw Error('processNetPingResponse - Unhandled error:', err)	
+
+						res.errorType = PingData.errorTypes.unknownError
+						// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
+						if (process.env.NODE_ENV === 'development'){
+							console.error(err)
+							throw Error('processNetPingResponse - Unhandled error:', err)	
+						}	
 					}
+					
 				}
 			}
 			pingTarget.pingList.push(new PingData(res))
+
 		} else {
 			// Successful response
 			res.failure = false

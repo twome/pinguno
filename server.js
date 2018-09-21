@@ -1,4 +1,4 @@
-console.log('RUNNING: server.js')
+console.info('RUNNING: server.js')
 
 // Built-in modules
 
@@ -18,7 +18,7 @@ app.startPinging(app.pingTargets, app.pingEngineEnum.NodeNetPing)
 
 let connectionStatusTick = setInterval(()=>{
 	app.updateInternetConnectionStatus()
-	console.log(moment().format('MMMM Do YYYY hh:mm:ss') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
+	console.log(moment().format('YYYY-MM-DD hh:mm:ss') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
 }, app.connectionStatusIntervalMs)
 
 let updateOutagesTick = setInterval(()=>{	
@@ -29,12 +29,16 @@ let updateOutagesTick = setInterval(()=>{
 let alreadyNotifiedLogUri = false
 let writeToFileTick = setInterval(()=>{
 	if ( app.activeLogUri ){ 
-		console.log('Writing to file. Active log URI found, using that URI.')
-		alreadyNotifiedLogUri = true
+		if (!alreadyNotifiedLogUri){
+			console.log('Writing to file. Active log URI found, using that URI.')
+			alreadyNotifiedLogUri = true
+		}
 		app.updateSessionLog()
 	} else {
-		console.log('Writing to new log file.')
-		alreadyNotifiedLogUri = true
+		if (!alreadyNotifiedLogUri){
+			console.log('Writing to new log file.')			
+			alreadyNotifiedLogUri = true
+		}
 		app.writeSessionLog() 
 	}
 }, app.writeToFileIntervalMs)
