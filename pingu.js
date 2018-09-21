@@ -18,6 +18,7 @@ const netPing = require('net-ping')
 // const PubSub = require('pubsub-js') // Currently unused
 
 // In-house modules
+const { config } = require('./config.js')
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
 const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
@@ -342,9 +343,10 @@ class Pingu {
 			let toWrite = _.cloneDeep(original)
 			// Make sure there's any new pings *after* the most recently saved
 			if ( !firstUnwrittenPing ){
-				console.warn('No new pings found to update existing session\'s log with.')
-				// Just update timestamp and re-save same data
-				
+				// noop - just update timestamp and re-save same data (we already do this anyway)
+				if ( config.nodeVerbose >= 2 ){
+					console.warn('No new pings found to update existing session\'s log with.')
+				}
 			} else {
 				let onlyNewPings = liveData.combinedPingList.slice(firstUnwrittenPingIndex)
 
@@ -435,6 +437,11 @@ class Pingu {
 	exportSessionToTextSummary(indentSize/*, wrapAtCharLength*/){
 		// Indent size in number of spaces
 		let ind = typeof indentSize === 'number' ? Math.max(indentSize, 8) : 2
+		let indString = ''
+		for (let i = 0; i < ind; i = i + 1){
+			indString = indString + ' '
+		}
+		ind = indString
 
 		// This will overwrite any file with the same session start time
 		let summaryUri = this.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
@@ -496,9 +503,9 @@ class Pingu {
 
 		// TODO: Allow option to wrap the final output to x characters for display in bad/old/CL apps
 		// TODO: Potentially also allow tab character for indenting instead of just spaces
-		if (wrapAtCharLength){
+		/*if (wrapAtCharLength){
 			TODOwrapToCharLength(template, wrapAtCharLength)
-		}
+		}*/
 
 		fs.mkdir(this.summariesDir, undefined, (err)=>{
 			if (err) {
@@ -594,7 +601,10 @@ class Pingu {
 		});
 
 		pingProcess.stderr.on('data', (data)=>{
-		  	pingTarget.requestErrorList.push(new RequestError(data.toString(), new Date()))
+			console.err('inbuilt ping returned error through stderr:')
+			console.err(data)
+			// TODO: sort stderr errors into error types before storing
+		  	pingTarget.requestErrorList.push(new RequestError(RequestError.errorTypes.unknownError, new Date(), new Date(), data.toString()))
 		});
 
 		pingProcess.on('close', (code)=>{
@@ -633,27 +643,13 @@ class Pingu {
 				errorType: undefined
 			}
 
-
 			let instance = this // 'this' will refer to net-ping's internal context
 			npSession.pingHost(ipv4, (err, target, sent, rcvd)=>{
-				console.debug('Enum')
-				console.debug(Enum)
-
-				// let ret = Pingu.onNetPingResponse(instance, {
-				// 	err: err,
-				// 	target: target,
-				// 	sent: sent,
-				// 	rcvd: rcvd
-				// }, req, res, unpairedRequests, pingTarget)
-
-				// console.debug(ret)
+				instance.processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget)
 			})
 		}	
 
 		npSession.on('error', (err)=>{
-			console.debug('Enum in error')
-			console.debug(Enum)
-
 			console.debug('The underlying raw socket emitted an error:')
 			console.error(err.toString())
 			npSession.close()
@@ -671,39 +667,60 @@ class Pingu {
 		return true
 	}
 
-	static testEnum(){
-		new Enum(['one', 'two'])
-	}
-
-	static onNetPingResponse(instance, npr, req, res, unpairedRequests, pingTarget){
-		return instance.processNetPingResponse(npr.err, npr.target, npr.sent, npr.rcvd, req, res, unpairedRequests, pingTarget)
-	}
-
 	// Needs net-ping 
-	// TODO: Find better way to have access to Pingu stuff after getting the err/target/sent/rcvd
 	processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget){
 		res.icmpSeq = req.icmpSeq // num
 		res.timeRequestSent = sent // Date - can be undefined if error
 		res.timeResponseReceived = rcvd // Date - can be undefined if error
 
 		if (err){
-			if (err instanceof netPing.RequestTimedOutError){
-				// This was a timeout
-				res.failure = true
-				res.errorType = PingData.errorTypes.RequestTimedOutError
-				pingTarget.pingList.push(new PingData(res))
-			} else {
-				// Unhandled misc error
-				res.failure = true
-
-				console.error('processNetPingResponse: net-ping response error:')
-				console.error(err)
-				// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
-				if (process.env.NODE_ENV === 'development'){
+			res.failure = true
+			for (let supportedErrorStr of [
+				'RequestTimedOutError',
+				'DestinationUnreachableError',
+				'PacketTooBigError',
+				'ParameterProblemError',
+				'RedirectReceivedError',
+				'SourceQuenchError',
+				'TimeExceededError'
+			]){
+				if (err instanceof netPing[supportedErrorStr]){
+					let netPingToInternalError = {
+						RequestTimedOutError: 'requestTimedOutError',
+						DestinationUnreachableError: 'destinationUnreachableError',
+						PacketTooBigError: 'packetTooBigError',
+						ParameterProblemError: 'parameterProblemError',
+						RedirectReceivedError: 'redirectReceivedError',
+						SourceQuenchError: 'sourceQuenchError',
+						TimeExceededError: 'timeExceededError'
+					}
+					// Convert between net-ping's and our own errors
+					res.errorType = PingData.errorTypes[netPingToInternalError[supportedErrorStr]]
+				} else {
+					// Unknown misc error
+					console.error('processNetPingResponse: Unknown net-ping response error:')
 					console.error(err)
-					throw Error('processNetPingResponse - Unhandled error:', err)	
+
+					// NB: Errors emitted from raw-socket when network adapter turned off on macOS
+					// Should have been handled by netPing 
+					if (err.toString().match(/No route to host/)){
+						res.errorType = PingData.errorTypes.destinationUnreachableError
+						return // Don't trigger the final 'unknown' error
+					}
+					if (err.toString().match(/Network is down/)){
+						res.errorType = PingData.errorTypes.networkDownError
+						return // Don't trigger the final 'unknown' error
+					}
+
+					res.errorType = PingData.errorTypes.unknownError
+					// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
+					if (process.env.NODE_ENV === 'development'){
+						console.error(err)
+						throw Error('processNetPingResponse - Unhandled error:', err)	
+					}
 				}
 			}
+			pingTarget.pingList.push(new PingData(res))
 		} else {
 			// Successful response
 			res.failure = false

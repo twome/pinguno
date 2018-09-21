@@ -26,12 +26,15 @@ let updateOutagesTick = setInterval(()=>{
 }, app.updateOutagesIntervalMs)
 
 // POSSIBLE BUG: this runs almost assuming sync, not sure if need a flag or something to make sure not actively worked on
+let alreadyNotifiedLogUri = false
 let writeToFileTick = setInterval(()=>{
-	if ( app.activeLogUri ) { 
+	if ( app.activeLogUri ){ 
 		console.log('Writing to file. Active log URI found, using that URI.')
+		alreadyNotifiedLogUri = true
 		app.updateSessionLog()
 	} else {
 		console.log('Writing to new log file.')
+		alreadyNotifiedLogUri = true
 		app.writeSessionLog() 
 	}
 }, app.writeToFileIntervalMs)

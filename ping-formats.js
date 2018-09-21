@@ -1,3 +1,6 @@
+// In-house modules
+const { Enum } = require('./enum.js')
+
 class PingData {
 	constructor(data){
 		this._class = 'PingData'
@@ -10,7 +13,12 @@ class PingData {
 		this.timeRequestSent = data.timeRequestSent // Date
 		this.timeResponseReceived = data.timeResponseReceived // Date
 
-		this.errorTypes = new Enum([
+		this.errorType = data.errorType || null
+		this.failure = (data.failure === true || data.failure === false) ? data.failure : undefined 
+	}
+
+	static get errorTypes(){
+		return new Enum([
 			{
 				accessor: 'requestTimedOutError',
 				humanName: 'Request timed out (spent too long waiting for a response from the server)'
@@ -32,10 +40,14 @@ class PingData {
 			},{
 				accessor: 'timeExceededError', // TODO: What time?
 				humanName: 'Time exceeded'
+			},{
+				accessor: 'networkDownError',
+				humanName: 'Local network is down (caused by raw-socket)'
+			},{
+				accessor: 'unknownError',
+				humanName: 'Error with unknown cause / handling'
 			}
 		])
-		this.errorType = data.errorType || null
-		this.failure = (data.failure === true || data.failure === false) ? data.failure : undefined 
 	}
 
 	// FRAGILE: Depends on particular structure of text output from macOS 10.12.6 Sierra's inbuilt `ping` binary. 
@@ -77,17 +89,24 @@ class PingData {
 			{ typeClass: Date, propKey: 'timeResponseReceived' },
 			{ typeClass: Date, propKey: 'timeRequestSent' },
 			{ propKey: 'errorType', reviveFn: (simpleParseData)=>{
-				return this.errorTypes[simpleParseData.accessor] // Cast to enum
+				return PingData.errorTypes[simpleParseData.accessor] // Cast to enum
 			}}
 		]
 	}
 }
 
 class RequestError {
-	constructor(errorType, timeRequestSent, timeResponseReceived){
+	constructor(errorType, timeRequestSent, timeResponseReceived, errorData){
 		this._class = 'RequestError'
 
-		this.errorTypes = new Enum([
+		this.errorData = errorData
+		this.errorType = errorType
+		this.timeRequestSent = timeRequestSent
+		this.timeResponseReceived = timeResponseReceived // OK for this to be undefined
+	}
+
+	static get errorTypes(){
+		return new Enum([
 			// Most of these error names/descriptions taked from `net-ping` package
 			{
 				accessor: 'destinationUnreachableError',
@@ -107,12 +126,11 @@ class RequestError {
 			},{
 				accessor: 'timeExceededError', // TODO: What time?
 				humanName: 'Time exceeded'
+			},{
+				accessor: 'unknownError',
+				humanName: 'Error with unknown cause / handling'
 			}
 		])
-
-		this.errorType = errorType
-		this.timeRequestSent = timeRequestSent
-		this.timeResponseReceived = timeResponseReceived // OK for this to be undefined
 	}
 
 	get revivalPropTypes(){
@@ -120,7 +138,7 @@ class RequestError {
 			{ typeClass: Date, propKey: 'timeResponseReceived' },
 			{ typeClass: Date, propKey: 'timeRequestSent' },
 			{ propKey: 'errorType', reviveFn: (simpleParseData)=>{
-				return this.errorTypes[simpleParseData.accessor] // Cast to enum
+				return RequestError.errorTypes[simpleParseData.accessor] // Cast to enum
 			}}
 		]
 	}
