@@ -10,10 +10,16 @@
 	- can we get any date from `ping`s output?
 	- count in parallel using Pingu.pingIntervalMs
 
+
 - BUG: getting duplicates in saved ping list
+	- annoying but not inaccurate for manual inspection until we get to processing/averaging etc the data  
 
 - BUG: make sure we don't try to write to a file while already writing to a file
 	- asyncify the write calls
+
+- stretch: add PingLogger-style traceroute latency graph (total latency over time and per-IP latency over IP)
+	- keep a hold of ICMP_seqs to pair up latency of each IP
+	- automatically identify that problem is not with LAN if first hop is constantly <10ms
 
 - make a web front-end to display collected data & adjust settings (ideally w/o restart)
 	- needs server API for getting data and receiving commands
@@ -25,12 +31,6 @@
 
 - write to some kind of DB
 	- what kind of scheme?
-
-- stretch: add PingLogger-style traceroute latency graph (total latency over time and per-IP latency over IP)
-	- keep a hold of ICMP_seqs to pair up latency of each IP
-	- automatically identify that problem is not with LAN if first hop is constantly <10ms
-
-- stretch: render a latency-over-time graph
 
 - stretch: also do an ookla-style real bandwidth test
 	- what servers to use?
@@ -46,16 +46,10 @@
 - get min / max / mean / standard deviation of latencies for given time period of *sent and returned* pings
 	- stretch: latencies histogram
 
-### NEEDED FOR SELF-USAGE:
-
-- bugfix: updateOutage isn't recognising an outage that is continuing until the present (or the very last ping)
-	- HAPPENS IF YOU START DISCONNECTED TOO - ONLY RECOGNISES OUTAGE AFTER RECONNECTING 
-	- probably isn't creating a trailing targetOutage
-
-- find cross-platform binaries of ping to bundle with app, or an npm one (w dependency management builtin)
-	- add instructions in-app if must be done by user
-
-- reliably detect windows and insert a /t flag on `ping` to make it ping continuously
+- stretch: use windows inbuilt ping (for latency accuracy checking)
+	- the big problem: custom polling time & capturing / parsing separate ping attemps
+		- spawning / closing a new (sub)process for every ping attempt would probably suck ass performance-wise
+	- reliably detect windows and insert a /t flag on `ping` to make it ping continuously
 	https://stackoverflow.com/questions/9028312/difference-between-ping-on-windows-and-ubuntu
 	- also need to parse the following:
 	> Reply from 192.168.239.132: bytes=32 time=100ms TTL=124
@@ -64,7 +58,22 @@
 		- different order
 	- how to get ICMP?
 
+### NEEDED FOR SELF-USAGE:
 
+- WHY CAN'T WE ACCESS DEPENDENCIES IN net-ping???
 
+- error type prop in pingdata 
+	- print human explanation in text summary
 
+- replace .timeout prop with failure bool and errorType
 
+- session ended time in json+human logs
+
+- bugfix: ICMP not being recorded 
+- bugfix: smooth display in human-text summary for unknown values
+- bugfix: the log targets are not getting TargetOutages recorded in their log
+- bugfix: outages completely broken for net-ping engine
+
+- bugfix: nativePing updateOutage isn't recognising an outage that is continuing until the present (or the very last ping)
+	- HAPPENS IF YOU START DISCONNECTED TOO - ONLY RECOGNISES OUTAGE AFTER RECONNECTING 
+	- probably isn't creating a trailing targetOutage

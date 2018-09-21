@@ -1,4 +1,4 @@
-console.log('RUNNING: pinging.js')
+console.log('RUNNING: pingu.js')
 
 // TODO: distinguish between UI info messages and temporary/dev console logs within the code (for code-searching and eventually clear rendering of UI messages)
 
@@ -10,21 +10,20 @@ const zlib = require('zlib')
 const os = require('os')
 
 // 3rd-party dependencies
+require('dotenv').config() // We only need side-effects: process.env
 const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
-const prettyJson = require('prettyjson')
 const moment = require('moment')
-// const netPing = require('net-ping')
+const netPing = require('net-ping')
+// const PubSub = require('pubsub-js') // Currently unused
 
 // In-house modules
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
-const { PingData, PingError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
+const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
-
-const connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
 class Pingu {
 	constructor(options){
@@ -33,14 +32,25 @@ class Pingu {
 		this.appHomepageUrl = 'https://twome.name/pingu'
 		this.appSourceRepoUrl = 'https://gitlab.com/twome/pingu'
 
-		this.pingPacketSizeBytes = 56 // macOS default
+		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
+
+		/*
+			NB: in 'net-ping's settings this is the size of the *data* I think?? From the docs: 
+			> 8 bytes are required for the ICMP packet itself, then 4 bytes are required 
+			> to encode a unique session ID in the request and response packets
+		*/
+		this.pingPacketSizeBytes = 56 // macOS inbuilt ping default 
 		this.timeoutLimit = 2000 // Linux default is 2 x average RTT
 		// NB: Currently using default timeout limit times
 		this.pingIntervalMs = 3000
 		this.badLatencyThresholdMs = 250
+		// NB: ttl currently only used by 'net-ping'
+		this.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
 		
+		this.exportSessionToTextSummaryIntervalMs = 10000
+		this.updateOutagesIntervalMs = 2000
 		this.connectionStatusIntervalMs = 3000
-		this.writeToFileIntervalMs = 2 * 1000
+		this.writeToFileIntervalMs = 2000
 
 		this.pingTargets = [
 			{
@@ -48,30 +58,50 @@ class Pingu {
 				IPV4: '8.8.8.8',
 				connected: null,
 				pingList: [],
-				pingErrorList: []
+				requestErrorList: []
 			},
 			{
 				humanName: 'Level3',
 				IPV4: '4.2.2.2',
 				connected: null,
 				pingList: [],
-				pingErrorList: []
+				requestErrorList: []
 			}
 		]
 		this.logStandardFilename = 'pingu log'
 		this.logsDir = './logs'
 		this.summariesDir = './logs/human-readable' // Human-readable summary .txt files
 		this.archiveDir = this.logsDir + '/compressed'
+		this.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
 		this.activeLogUri = null // URI string
 		this.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
 
-		this.sessionStartTime = new Date() //TODO: set this Date when running the "start pinging" method
+		this.sessionStartTime = new Date()
 
-		this.lastFailure = null
-		this.lastDateConnected = null
-		this.internetConnected = null
+		this.lastFailure = null // Date
+		this.lastDateConnected = null // Date
+		this.internetConnected = null // boolean
 		this.firstPingSent = false
 		this.outages = []
+
+		// Use the inbuilt 'ping' command on Linux / Unix machines by default (more accurate latencies), 
+		// and use the 'net-ping' package on Windows / unknown because it's more reliable to work at all
+		// (We can't Windows' inbuilt ping because it doesn't support some features (like polling at <1sec 
+		// intervals))
+		this.pingEngineEnum = new Enum([{
+			accessor: 'InbuiltSpawn',
+			humanName: 'The OS\' native/default `ping` command-line program'
+		}, {
+			accessor: 'NodeNetPing',
+			humanName: 'Node package `net-ping`'
+		}])
+		if (['darwin', 'linux', 'freebsd', 'sunos'].includes(os.platform())){
+			this.pingEngine = this.pingEngineEnum.InbuiltSpawn
+		} else {
+			this.pingEngine = this.pingEngineEnum.NodeNetPing
+		}
+
+		console.debug(this.pingEngine)
 	}
 
 	updateInternetConnectionStatus(){
@@ -79,17 +109,17 @@ class Pingu {
 
 		// If at least one target responds, we assume we have a working general internet connection
 		for (let target of this.pingTargets){
-			if (target.connected === connectionState.CONNECTED){
+			if (target.connected === this.connectionState.CONNECTED){
 				this.lastDateConnected = new Date()
-				return this.internetConnected = connectionState.CONNECTED
+				return this.internetConnected = this.connectionState.CONNECTED
 			}
 		}
 
-		return this.internetConnected = connectionState.DISCONNECTED
+		return this.internetConnected = this.connectionState.DISCONNECTED
 	}
 
 	isBadResponse(ping){
-	 	return ping.timeout || ping.roundTripTimeMs > this.badLatencyThresholdMs  
+	 	return ping.failure || (ping.errorType || ping.roundTripTimeMs > this.badLatencyThresholdMs)
 	}
 
 	isRoughlyWithinTimeframe(dateToTest, timeframeStart, timeframeEnd, leniencyMs){
@@ -110,15 +140,15 @@ class Pingu {
 
 	updateOutages(combinedPingList, targetList){
 		let instance = this
-		// TODO: check inputs
+		// TODO: safety-check inputs
 		let pingLogTargets
 
 		if (combinedPingList && combinedPingList.length && targetList && targetList.length ){
-			console.debug('updateOutages - Using provided ping / target lists')
+			// console.debug('updateOutages - Using provided ping / target lists')
 			pingLogTargets = this.separatePingListIntoTargets(combinedPingList, targetList)
 		} else {
-			console.info('No ping-list/target-list provided to updateOutages - using active session ping history by default.')
-			console.debug('updateOutages - Using active-session ping / target lists')
+			// No ping-list/target-list provided to updateOutages - using active session ping history by default.
+			// console.debug('updateOutages - Using active-session ping / target lists')
 			pingLogTargets = this.pingTargets
 		}
 
@@ -216,7 +246,7 @@ class Pingu {
 
 			// NB: parseJsonAndReconstitute doesn't do anything at the moment! The saved JSON data is not in a normal class format
 			// so the function has no accurate targets to operate on.
-			fileData = MyUtil.parseJsonAndReconstitute(fileData, [PingData, PingError, TargetOutage, Outage])
+			fileData = MyUtil.parseJsonAndReconstitute(fileData, [PingData, RequestError, TargetOutage, Outage])
 
 			// TEMP: Cast stringified dates to Date instances
 			fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
@@ -232,21 +262,20 @@ class Pingu {
 	}
 
 	updateTargetsConnectionStatus(){
-
 		for (let target of this.pingTargets){
 			let latestPing = this.latestPing(target)
 
-			let anyResponse = latestPing && (typeof latestPing.roundTripTimeMs === 'number' )
+			let receivedAnyResponse = latestPing && (typeof latestPing.roundTripTimeMs === 'number' )
 			let responseWithinThreshold = latestPing && (latestPing.roundTripTimeMs <= this.badLatencyThresholdMs)
 
-			if (anyResponse && responseWithinThreshold){
+			if (receivedAnyResponse && responseWithinThreshold){
 				this.lastDateConnected = new Date()
-				return target.connected = connectionState.CONNECTED
-			} else if ( latestPing && !latestPing.timeout ){
-				return target.connected = connectionState.PENDING_RESPONSE
+				return target.connected = this.connectionState.CONNECTED
+			} else if ( latestPing && !latestPing.failure ){
+				return target.connected = this.connectionState.PENDING_RESPONSE
 			} else {
 				this.lastFailure = new Date()
-				return target.connected = connectionState.DISCONNECTED
+				return target.connected = this.connectionState.DISCONNECTED
 			}
 			
 			// console.log(target.humanName + ' connected?: ' + target.connected.humanName)
@@ -272,7 +301,7 @@ class Pingu {
 
 	writeSessionLog(){
 		const combinedTargets = this.combineTargetsForExport()
-		const content = JSON.stringify(combinedTargets)
+		const content = JSON.stringify(combinedTargets, null, this.pingLogIndent)
 		const fileCreationDate = new Date()
 		
 		// Turn ISO string into filesystem-compatible string (also strip milliseconds)
@@ -326,7 +355,7 @@ class Pingu {
 			toWrite.dateLogLastUpdated = new Date()
 			toWrite.outages = liveData.outages
 			
-			toWrite = JSON.stringify(toWrite)
+			toWrite = JSON.stringify(toWrite, null, this.pingLogIndent)
 			
 			return fsWriteFilePromise(this.activeLogUri, toWrite, 'utf8').then((file)=>{
 				console.log('Updated log at ' + this.activeLogUri)
@@ -366,9 +395,6 @@ class Pingu {
 	}
 
 	combineTargetsForExport(){
-		console.debug('∆∆∆ combineTargetsForExport')
-		console.debug(this.outages)
-
 		let exporter = new PingsLog({
 			sessionStartTime: this.sessionStartTime,
 			targetList: _.cloneDeep(this.pingTargets),
@@ -406,18 +432,22 @@ class Pingu {
 		})
 	}
 
-	exportSessionToTextSummary(){
+	exportSessionToTextSummary(indentSize/*, wrapAtCharLength*/){
+		// Indent size in number of spaces
+		let ind = typeof indentSize === 'number' ? Math.max(indentSize, 8) : 2
+
 		// This will overwrite any file with the same session start time
 		let summaryUri = this.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
 
 		let template = `Pingu internet connectivity log` +
 		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
 		`\nPing interval time (in milliseconds): ${this.pingIntervalMs}` +
+		`\nUnderlying ping engine used to get ping data: ${this.pingEngine.humanName}` +
 		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.badLatencyThresholdMs}` +
 		`\nPing targets:`
 		
 		for (let target of this.pingTargets){
-			template = template + '\n  - ' + target.humanName + ' (IP: ' + target.IPV4 + ')'
+			template = template + `\n${ind}- ` + target.humanName + ' (IP: ' + target.IPV4 + ')'
 		}
 
 		template = template + '\n\nFull internet connection outages (when all target IP addresses took too long to respond):'
@@ -428,29 +458,47 @@ class Pingu {
 				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY hh:mm:ss ZZ') + ', duration: ' + humanOutageDuration + ' seconds'
 			}
 		} else {
-			template = template + '\n  [No outages]'
+			template = template + `\n${ind}[No outages]`
 		}
 
 		template = template + '\n\nAll pings:'
 
 		let combinedPingList = this.combineTargetsForExport().combinedPingList
 
+		let encounteredErrorTypes = []
+
 		for (let ping of combinedPingList ){
 
-			template = template + '\n  - [' + moment(ping.timeResponseReceived).format('YYYY-MM-DD hh:mm:ss.SSS ZZ') + '] '
+			template = template + `\n${ind}- [` + moment(ping.timeResponseReceived).format('YYYY-MM-DD hh:mm:ss.SSS ZZ') + '] '
 			template = template + 'IP ' + ping.targetIPV4 + ' | '
-			if (!ping.timeout){
+			if (!ping.failure){
 				template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
-				template = template + 'Response size: ' + ping.responseSize + ' bytes, '	
-				template = template + 'ICMP: ' + ping.icmpSeq
+				template = template + 'Response size: ' + (ping.responseSize > 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
 			} else {
-				template = template + 'Response timed out, ICMP: ' + ping.timeoutIcmp
+				encounteredErrorTypes.push(ping.errorType)
+				template = template + 'Error: ' + ping.errorType.accessor + ', '
+			}
+			template = template + 'ICMP: ' + ping.icmpSeq
+		}
+
+		if (encounteredErrorTypes.length){
+			template = template + '\n\n Encountered errors:'
+
+			for (let err of encounteredErrorTypes){
+				template = template + `${ind}- Error name: ` + err.accessor + ', '
+				template = template + 'Description: ' + err.humanName
 			}
 		}
 
 		template = template + `\n\n${this.appHumanName} - ${this.appHumanSubtitle}` + `\n${this.appHomepageUrl}`
 		
 		template = template + `\nFree & open-source (gratis & libre)`
+
+		// TODO: Allow option to wrap the final output to x characters for display in bad/old/CL apps
+		// TODO: Potentially also allow tab character for indenting instead of just spaces
+		if (wrapAtCharLength){
+			TODOwrapToCharLength(template, wrapAtCharLength)
+		}
 
 		fs.mkdir(this.summariesDir, undefined, (err)=>{
 			if (err) {
@@ -500,153 +548,190 @@ class Pingu {
 		
 	}
 
-	startPinging(pingTargets){
-		const regPingHandlers = (pingTarget)=>{
-			console.info(`Registering ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
-
-			const pingProcess = spawn('ping', [
-				'-i', 
-				app.pingIntervalMs / 1000, 
-				pingTarget.IPV4
-			]);
-
-			app.firstPingSent = true
-
-			pingProcess.stdout.on('data', (data)=>{
-			  	// TEMP - TODO check if this is a junk message and if so discard or store differently
-			  	// FRAGILE
-			  	let dataAppearsStructurable = true
-
-			  	if (dataAppearsStructurable){
-			  		let pingAsStructure = PingData.pingTextToStructure(data.toString(), new Date())
-
-				  	pingTarget.pingList.push(new PingData(pingAsStructure))	
-			  	} 
-			  
-			});
-
-			pingProcess.stderr.on('data', (data)=>{
-			  	pingTarget.pingErrorList.push(new PingError(data.toString(), new Date()))
-			});
-
-			pingProcess.on('close', (code)=>{
-			  	console.info(`Child process (ping) exited with code ${code}`);
-			});
-		}
+	startPinging(pingTargets, pingEngine){
+		let selectedPingEngine = pingEngine || this.pingEngine // Allows API user to override the default platform 'ping' engine
 
 		for ( let pingTarget of pingTargets ){
-			regPingHandlers(pingTarget)
+			console.debug(selectedPingEngine)
+			if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
+				console.info('Starting pinging - Using inbuilt/native `ping`')
+				this.regPingHandlersInbuilt(pingTarget)
+			} else if (selectedPingEngine){
+				console.info('Starting pinging - Using node package `net-ping`')
+				this.regPingHandlersNetPing(pingTarget)
+			} else {
+				throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
+			}
 		}
 	}
 
+	regPingHandlersInbuilt(pingTarget){
+		console.info(`Registering inbuilt ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
+
+		// TODO: hold onto each ICMP as it gets sent out and pair it up with a new Date(); 
+		// attach it to its response/timeout when that comes back.
+		// - How to do this in a stream-like way? Have a stack of ICMPs (w max size) that gets popped from in onResponse?
+
+		const pingProcess = spawn('ping', [
+			'-i', 
+			this.pingIntervalMs / 1000, // Mac ping -i supports fractional intervals but <= 0.1s requires su privilege 
+			pingTarget.IPV4
+		]);
+
+		this.firstPingSent = true
+
+		pingProcess.stdout.on('data', (data)=>{
+		  	// TEMP - TODO check if this is a junk message and if so discard or store differently
+		  	// FRAGILE
+		  	let dataAppearsStructurable = true
+
+		  	if (dataAppearsStructurable){
+		  		let pingAsStructure = PingData.pingTextToStructure(data.toString(), new Date())
+
+			  	pingTarget.pingList.push(new PingData(pingAsStructure))	
+		  	} 
+		  
+		});
+
+		pingProcess.stderr.on('data', (data)=>{
+		  	pingTarget.requestErrorList.push(new RequestError(data.toString(), new Date()))
+		});
+
+		pingProcess.on('close', (code)=>{
+		  	console.info(`Child process (ping) exited with code ${code}`);
+		});
+
+		return true
+	}
+
+	regPingHandlersNetPing(pingTarget){
+		console.info(`Registering 'net-ping' handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
+
+		let npOptions = {
+			timeout: this.timeoutLimit,
+			packetSize: this.pingPacketSizeBytes,
+			ttl: this.pingOutgoingTtlHops
+		}
+
+		let npSession = netPing.createSession(npOptions)
+
+		let currentIcmp = null
+		let unpairedRequests = []
+
+		let pingHost = (ipv4)=>{
+			currentIcmp = currentIcmp === null ? 0 : currentIcmp + 1
+			let contextIcmp = currentIcmp
+
+			let req = {
+				icmpSeq: contextIcmp,
+				timeRequestSent: new Date()
+			}
+			unpairedRequests.push(req)
+
+			let res = {
+				failure: null,
+				errorType: undefined
+			}
+
+
+			let instance = this // 'this' will refer to net-ping's internal context
+			npSession.pingHost(ipv4, (err, target, sent, rcvd)=>{
+				console.debug('Enum')
+				console.debug(Enum)
+
+				// let ret = Pingu.onNetPingResponse(instance, {
+				// 	err: err,
+				// 	target: target,
+				// 	sent: sent,
+				// 	rcvd: rcvd
+				// }, req, res, unpairedRequests, pingTarget)
+
+				// console.debug(ret)
+			})
+		}	
+
+		npSession.on('error', (err)=>{
+			console.debug('Enum in error')
+			console.debug(Enum)
+
+			console.debug('The underlying raw socket emitted an error:')
+			console.error(err.toString())
+			npSession.close()
+
+			throw Error('net-ping\'s underlying raw socket emitted an error')
+		})
+
+		let npPingChosenTarget = ()=>{
+			this.firstPingSent = true
+			return pingHost(pingTarget.IPV4)
+		}
+
+		let targetPingingTick = setInterval(npPingChosenTarget, this.pingIntervalMs)
+
+		return true
+	}
+
+	static testEnum(){
+		new Enum(['one', 'two'])
+	}
+
+	static onNetPingResponse(instance, npr, req, res, unpairedRequests, pingTarget){
+		return instance.processNetPingResponse(npr.err, npr.target, npr.sent, npr.rcvd, req, res, unpairedRequests, pingTarget)
+	}
+
+	// Needs net-ping 
+	// TODO: Find better way to have access to Pingu stuff after getting the err/target/sent/rcvd
+	processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget){
+		res.icmpSeq = req.icmpSeq // num
+		res.timeRequestSent = sent // Date - can be undefined if error
+		res.timeResponseReceived = rcvd // Date - can be undefined if error
+
+		if (err){
+			if (err instanceof netPing.RequestTimedOutError){
+				// This was a timeout
+				res.failure = true
+				res.errorType = PingData.errorTypes.RequestTimedOutError
+				pingTarget.pingList.push(new PingData(res))
+			} else {
+				// Unhandled misc error
+				res.failure = true
+
+				console.error('processNetPingResponse: net-ping response error:')
+				console.error(err)
+				// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
+				if (process.env.NODE_ENV === 'development'){
+					console.error(err)
+					throw Error('processNetPingResponse - Unhandled error:', err)	
+				}
+			}
+		} else {
+			// Successful response
+			res.failure = false
+			res.roundTripTimeMs = rcvd - sent // num - we only bother to calc if both vals are truthy
+			// TODO: how to get response size in net-ping?
+			// TODO: how to get response ttl in net-ping (it's not the same as request ttl)?
+			
+			pingTarget.pingList.push(new PingData(res))
+		}
+
+		for (let requestIndex in unpairedRequests){
+			if (unpairedRequests[requestIndex].icmpSeq === res.icmpSeq){
+				unpairedRequests.splice(requestIndex, 1)
+			}
+		}
+
+		// TEMP
+		if (unpairedRequests.length > 10){
+			console.debug('=== Unpaired requests piling up...')
+			console.debug(unpairedRequests)
+		}
+
+		return {
+			req: req,
+			res: res,
+			unpairedRequests: unpairedRequests
+		}
+	}
 }
 
-let app = new Pingu()
-
-app.startPinging(app.pingTargets)
-
-app.tellArchiveSize()
-
-let connectionStatusTick = setInterval(()=>{
-	app.updateInternetConnectionStatus()
-	console.log(moment().format('MMMM Do YYYY hh:mm:ss') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
-}, app.connectionStatusIntervalMs)
-
-let updateOutagesTick = setInterval(()=>{	
-	app.updateOutages()
-}, 2 * 1000)
-
-// POSSIBLE BUG: this runs almost assuming sync, not sure if need a flag or something to make sure not actively worked on
-let writeToFileTick = setInterval(()=>{
-	if ( app.activeLogUri ) { 
-		console.log('Writing to file. Active log URI found, using that URI.')
-		app.updateSessionLog()
-	} else {
-		console.log('Writing to new log file.')
-		app.writeSessionLog() 
-	}
-}, app.writeToFileIntervalMs)
-
-let exportSessionToTextSummaryTick = setInterval(()=>{
-	app.exportSessionToTextSummary()
-}, 10 * 1000)
-
-
-
-
-
-
-
-
-
-// let npSession = netPing.createSession({
-// 	timeout: app.timeoutLimit,
-// 	packetSize: app.pingPacketSizeBytes
-// })
-
-// let npCurrentIcmp = null
-
-// let npPingHost = (ipv4)=>{
-// 	let results = {
-// 		npCurrentIcmp: npCurrentIcmp === null ? 0 : npCurrentIcmp + 1
-// 	}
-
-// 	npSession.pingHost(ipv4, (err, target, sent, rcvd)=>{
-// 		if (err){
-// 			if (err instanceof netPing.RequestTimedOutError){
-// 				// this was a timeout
-// 				console.debug('this was a timeout ' + new Date())
-// 				console.debug(err)
-// 				console.debug(err.source)
-// 				console.debug(err.message)
-// 			} else {
-// 				console.debug(err)
-// 				console.debug(err.source)
-// 				console.debug(err.message)
-// 			}
-// 		} else {
-// 			console.debug('sent: ', sent, 'rcvd: ', rcvd)
-// 			console.debug('rtt: ', rcvd - sent)
-// 			console.debug('net-ping: ' + target + ' alive')
-// 			console.debug(target)
-// 		}
-// 	})
-// }
-
-// npSession.on ('error', (err)=>{
-// 	console.debug('The underlying raw socket emitted an error')
-// 	console.error(err.toString())
-// 	npSession.close()
-// })
-
-// let npPingGoogle = ()=>{
-// 	return npPingHost('8.8.8.8')
-// }
-
-// setInterval(npPingGoogle, app.pingIntervalMs)
-
-
-
-
-
-
-
-
-
-
-// let compressLogToArchiveTick = setInterval(()=>{
-// 	app.compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri))
-// }, 20 * 1000)
-
-// let compressAllLogsToArchiveTick = setInterval(()=>{
-// 	app.compressAllLogsToArchive()
-// }, 5 * 1000)
-
-
-// TEMP: USING PRE-COOKED DATA
-// let updateOutagesTick = setInterval(()=>{
-// 	app.readCombinedListFromFile('./logs/test-data_frequent-disconnects.json', (fileData)=>{
-// 		app.updateOutages(fileData.combinedPingList, fileData.targetList)
-// 	})
-// }, 2 * 1000)
-
+exports.Pingu = Pingu

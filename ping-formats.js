@@ -2,18 +2,43 @@ class PingData {
 	constructor(data){
 		this._class = 'PingData'
 
-		this.ttlMs = data.ttlMs // num
+		this.ttlHops = data.ttlHops // num
 		this.roundTripTimeMs = data.roundTripTimeMs // num
 		this.responseSize = data.responseSize // num
 		this.icmpSeq = data.icmpSeq // num
 
-		this.timeout = data.timeout // bool
-		this.timeoutIcmp = data.timeoutIcmp // num
-
+		this.timeRequestSent = data.timeRequestSent // Date
 		this.timeResponseReceived = data.timeResponseReceived // Date
+
+		this.errorTypes = new Enum([
+			{
+				accessor: 'requestTimedOutError',
+				humanName: 'Request timed out (spent too long waiting for a response from the server)'
+			},{
+				accessor: 'destinationUnreachableError',
+				humanName: 'Destination unreachable'
+			},{
+				accessor: 'packetTooBigError',
+				humanName: 'Packet size too big' // TODO: too big for server or ping client?
+			},{
+				accessor: 'parameterProblemError',
+				humanName: 'Parameter problem (???)' // TODO: What parameters? Where did problem occur?
+			},{
+				accessor: 'redirectReceivedError',
+				humanName: 'Received a redirect' // TODO: On the way to the intended server or on the way back?
+			},{
+				accessor: 'sourceQuenchError',
+				humanName: 'Source quench (???)' // TODO: What is this?
+			},{
+				accessor: 'timeExceededError', // TODO: What time?
+				humanName: 'Time exceeded'
+			}
+		])
+		this.errorType = data.errorType || null
+		this.failure = (data.failure === true || data.failure === false) ? data.failure : undefined 
 	}
 
-	// FRAGILE: Depends on particular structure of text output from `ping` binary. 
+	// FRAGILE: Depends on particular structure of text output from macOS 10.12.6 Sierra's inbuilt `ping` binary. 
 	/*
 		Solution: distribute with specific binary, or replace this part with a `ping` 
 		substitute that gives out structured data instead of text.
@@ -22,7 +47,7 @@ class PingData {
 		const structure = {}
 
 		const roundTripTimeMsRegex = /time\=([\.\d]*) ms/
-		const ttlMsRegex = /ttl\=([\.\d]*) /
+		const ttlHopsRegex = /ttl\=([\.\d]*) /
 		const icmpSeqRegex = /icmp_seq\=([\.\d]*) /
 		const responseSizeRegex = /([\.\d]*) bytes from/
 
@@ -30,13 +55,16 @@ class PingData {
 
 		// Successful connection
 		structure.roundTripTimeMs = pingText.match(roundTripTimeMsRegex) ? Number(pingText.match(roundTripTimeMsRegex)[1]) : null
-		structure.ttlMs = pingText.match(ttlMsRegex) ? Number(pingText.match(ttlMsRegex)[1]) : null
+		structure.ttlHops = pingText.match(ttlHopsRegex) ? Number(pingText.match(ttlHopsRegex)[1]) : null
 		structure.icmpSeq = pingText.match(icmpSeqRegex) ? Number(pingText.match(icmpSeqRegex)[1]) : null
 		structure.responseSize = pingText.match(responseSizeRegex) ? Number(pingText.match(responseSizeRegex)[1]) : null
 		
 		// No connection
-		structure.timeout = !! pingText.match(timeoutRegex)
-		structure.timeoutIcmp = pingText.match(timeoutRegex) ? Number(pingText.match(timeoutRegex)[1]) : null
+		if (pingText.match(timeoutRegex)){
+			structure.failure = true
+			structure.errorType = this.errorTypes.requestTimedOutError
+			structure.icmpSeq = pingText.match(timeoutRegex) ? Number(pingText.match(timeoutRegex)[1]) : null
+		}
 		
 		// Either way
 		structure.timeResponseReceived = timeResponseReceived
@@ -46,22 +74,54 @@ class PingData {
 
 	get revivalPropTypes(){
 		return [
-			{ typeClass: Date, propKey: 'timeResponseReceived' }
+			{ typeClass: Date, propKey: 'timeResponseReceived' },
+			{ typeClass: Date, propKey: 'timeRequestSent' },
+			{ propKey: 'errorType', reviveFn: (simpleParseData)=>{
+				return this.errorTypes[simpleParseData.accessor] // Cast to enum
+			}}
 		]
 	}
 }
 
-class PingError {
-	constructor(pingErrorText, timeResponseReceived){
-		this._class = 'PingError'
+class RequestError {
+	constructor(errorType, timeRequestSent, timeResponseReceived){
+		this._class = 'RequestError'
 
-		this.pingErrorText = pingErrorText
-		this.timeResponseReceived = timeResponseReceived
+		this.errorTypes = new Enum([
+			// Most of these error names/descriptions taked from `net-ping` package
+			{
+				accessor: 'destinationUnreachableError',
+				humanName: 'Destination unreachable'
+			},{
+				accessor: 'packetTooBigError',
+				humanName: 'Packet size too big' // TODO: too big for server or ping client?
+			},{
+				accessor: 'parameterProblemError',
+				humanName: 'Parameter problem (???)' // TODO: What parameters? Where did problem occur?
+			},{
+				accessor: 'redirectReceivedError',
+				humanName: 'Received a redirect' // TODO: On the way to the intended server or on the way back?
+			},{
+				accessor: 'sourceQuenchError',
+				humanName: 'Source quench (???)' // TODO: What is this?
+			},{
+				accessor: 'timeExceededError', // TODO: What time?
+				humanName: 'Time exceeded'
+			}
+		])
+
+		this.errorType = errorType
+		this.timeRequestSent = timeRequestSent
+		this.timeResponseReceived = timeResponseReceived // OK for this to be undefined
 	}
 
 	get revivalPropTypes(){
 		return [
-			{ typeClass: Date, propKey: 'timeResponseReceived' }
+			{ typeClass: Date, propKey: 'timeResponseReceived' },
+			{ typeClass: Date, propKey: 'timeRequestSent' },
+			{ propKey: 'errorType', reviveFn: (simpleParseData)=>{
+				return this.errorTypes[simpleParseData.accessor] // Cast to enum
+			}}
 		]
 	}
 }
@@ -139,7 +199,7 @@ class PingsLog {
 	}
 }
 
-exports.PingError = PingError
+exports.RequestError = RequestError
 exports.PingData = PingData
 exports.Outage = Outage
 exports.TargetOutage = TargetOutage
