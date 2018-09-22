@@ -576,6 +576,31 @@ class Pingu {
 		}
 	}
 
+	// PRODUCTION TODO: Do this more thoroughly/securely (i.e. read up on it and use a tested 3rd-party lib)
+	sanitizeSpawnInput(intervalNumber, ipString){
+		let ret = {}
+
+		let pin = intervalNumber
+		let ips = ipString
+
+		let intervalOk = (pin === Number(pin)) && (typeof pin === 'number')
+		if (intervalOk){
+			ret.intervalNumber = Math.abs(Math.floor(pin))
+		} else {
+			throw Error('DANGER: this.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
+		}
+
+		let nothingButDigitsAndDots = (ips.match(/[^\d\.]+/) === null)
+		let ipOk = (typeof ips === 'string') && nothingButDigitsAndDots
+		if (ipOk){
+			ret.ipString = ips
+		} else {
+			throw Error('DANGER: this.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
+		}
+
+		return ret
+	}
+
 	regPingHandlersInbuilt(pingTarget){
 		console.info(`Registering inbuilt ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
 
@@ -583,13 +608,20 @@ class Pingu {
 		// attach it to its response/timeout when that comes back.
 		// - How to do this in a stream-like way? Have a stack of ICMPs (w max size) that gets popped from in onResponse?
 
+		let sanitizedSpawnInput = this.sanitizeSpawnInput(this.pingIntervalMs, pingTarget.IPV4)
+
 		const pingProcess = spawn('ping', [
 			'-i', 
-			this.pingIntervalMs / 1000, // Mac ping -i supports fractional intervals but <= 0.1s requires su privilege 
-			pingTarget.IPV4
-		]);
+			sanitizedSpawnInput.intervalNumber / 1000, // Mac ping -i supports fractional intervals but <= 0.1s requires su privilege 
+			sanitizedSpawnInput.ipString
+		])
 
 		this.firstPingSent = true
+
+		pingProcess.on('error', (code, signal)=>{
+			console.error('child process hit an error with ' + `code ${code} and signal ${signal}`)
+			throw Error('Node child process hit an error')
+		})
 
 		pingProcess.stdout.on('data', (data)=>{
 		  	// TEMP - TODO check if this is a junk message and if so discard or store differently
@@ -602,18 +634,22 @@ class Pingu {
 			  	pingTarget.pingList.push(new PingData(pingAsStructure))	
 		  	} 
 		  
-		});
+		})
 
 		pingProcess.stderr.on('data', (data)=>{
 			console.err('inbuilt ping returned error through stderr:')
 			console.err(data)
 			// TODO: sort stderr errors into error types before storing
 		  	pingTarget.requestErrorList.push(new RequestError(RequestError.errorTypes.unknownError, new Date(), new Date(), data.toString()))
-		});
+		})
 
 		pingProcess.on('close', (code)=>{
-		  	console.info(`Child process (ping) exited with code ${code}`);
-		});
+		  	console.info(`Child process (ping) closed with code ${code}`)
+		})
+
+		pingProcess.on('exit', (code)=>{
+		  	console.info(`Child process (ping) exited with code ${code}`)
+		})
 
 		return true
 	}
