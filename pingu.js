@@ -1,7 +1,5 @@
 console.info('RUNNING: pingu.js')
 
-// TODO: distinguish between UI info messages and temporary/dev console logs within the code (for code-searching and eventually clear rendering of UI messages)
-
 // Built-in modules
 const { spawn } = require('child_process')
 const fs = require('fs')
@@ -52,6 +50,7 @@ class Pingu {
 		this.updateOutagesIntervalMs = 2000
 		this.connectionStatusIntervalMs = 3000
 		this.writeToFileIntervalMs = 2000
+		this.updateSessionEndTimeIntervalMs = 5000
 
 		this.pingTargets = [
 			{
@@ -78,6 +77,7 @@ class Pingu {
 		this.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
 
 		this.sessionStartTime = new Date()
+		this.sessionEndTime = new Date()
 
 		this.lastFailure = null // Date
 		this.lastDateConnected = null // Date
@@ -251,6 +251,7 @@ class Pingu {
 			fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
 			fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
 			fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
+			fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
 			for (let pingIndex in fileData.combinedPingList){
 				let dateAsString = fileData.combinedPingList[pingIndex].timeResponseReceived
 				fileData.combinedPingList[pingIndex].timeResponseReceived = MyUtil.utcIsoStringToDateObj(dateAsString)
@@ -279,6 +280,19 @@ class Pingu {
 			
 			// console.log(target.humanName + ' connected?: ' + target.connected.humanName)
 		}
+	}
+
+	updateSessionEndTime(oldInstance){
+		// For getting an estimate of the closest session time from sessions that ended prematurely
+		if (oldInstance instanceof Pingu){
+			let latest = oldInstance.latestPing()
+			oldInstance.sessionEndTime = latest.timeResponseReceived || latest.timeRequestSent	
+			return oldInstance
+		} else {
+			throw Error('updateSessionEndTime: oldInstance provided is not a Pingu instance')
+		}
+
+		this.sessionEndTime = new Date()
 	}
 
 	latestPing(target){
@@ -397,6 +411,7 @@ class Pingu {
 	combineTargetsForExport(){
 		let exporter = new PingsLog({
 			sessionStartTime: this.sessionStartTime,
+			sessionEndTime: this.sessionEndTime,
 			targetList: _.cloneDeep(this.pingTargets),
 			outages: this.outages
 		})
@@ -446,6 +461,7 @@ class Pingu {
 
 		let template = `Pingu internet connectivity log` +
 		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
+		`\nTime of last ping in session: ${moment(this.sessionEndTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
 		`\nPing interval time (in milliseconds): ${this.pingIntervalMs}` +
 		`\nUnderlying ping engine used to get ping data: ${this.pingEngine.humanName}` +
 		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.badLatencyThresholdMs}` +
@@ -624,16 +640,8 @@ class Pingu {
 		})
 
 		pingProcess.stdout.on('data', (data)=>{
-		  	// TEMP - TODO check if this is a junk message and if so discard or store differently
-		  	// FRAGILE
-		  	let dataAppearsStructurable = true
-
-		  	if (dataAppearsStructurable){
-		  		let pingAsStructure = PingData.pingTextToStructure(data.toString(), new Date())
-
-			  	pingTarget.pingList.push(new PingData(pingAsStructure))	
-		  	} 
-		  
+	  		let pingAsStructure = PingData.pingTextToStructure(data.toString(), new Date())
+		  	pingTarget.pingList.push(new PingData(pingAsStructure))	
 		})
 
 		pingProcess.stderr.on('data', (data)=>{
@@ -772,8 +780,8 @@ class Pingu {
 			// Successful response
 			res.failure = false
 			res.roundTripTimeMs = rcvd - sent // num - we only bother to calc if both vals are truthy
-			// TODO: how to get response size in net-ping?
-			// TODO: how to get response ttl in net-ping (it's not the same as request ttl)?
+			// TODO: how to get response size in net-ping? seems impossible
+			// TODO: how to get response ttl in net-ping (it's not the same as request ttl)? seems impossible
 			
 			pingTarget.pingList.push(new PingData(res))
 		}

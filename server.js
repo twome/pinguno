@@ -47,6 +47,10 @@ let exportSessionToTextSummaryTick = setInterval(()=>{
 	app.exportSessionToTextSummary()
 }, app.exportSessionToTextSummaryIntervalMs)
 
+let updateSessionEndTimeTick = setInterval(()=>{
+	app.updateSessionEndTime()
+}, app.updateSessionEndTimeIntervalMs)
+
 
 
 
