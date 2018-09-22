@@ -10,6 +10,8 @@
 	- can we get any date from `ping`s output?
 	- count in parallel using Pingu.pingIntervalMs
 
+- check if spawn.on('data') is a junk message and if so discard or store differently
+
 - "print data straight to console" mode
 	- basically same console output as default ping (but more readable)
 	- for techy live monitoring
@@ -60,29 +62,27 @@
 	- simulate slow/shit internet using nodeish middleware instead somehow??
 	- would be huge advantage for autotesting
 
+
+- stretch: break apart in-house modules for public repos if it makes sense
+
 ### NEEDED FOR SELF-USAGE:
-
-- WHY CAN'T WE ACCESS DEPENDENCIES IN net-ping???
-
-- error type prop in pingdata 
-	- print human explanation in text summary
-
-- replace .timeout prop with failure bool and errorType
-
-- session ended time in json+human logs
-
-- bugfix: ICMP not being recorded 
-- bugfix: smooth display in human-text summary for unknown values
-- bugfix: the log targets are not getting TargetOutages recorded in their log
-- bugfix: outages completely broken for net-ping engine
 
 - bugfix: nativePing updateOutage isn't recognising an outage that is continuing until the present (or the very last ping)
 	- HAPPENS IF YOU START DISCONNECTED TOO - ONLY RECOGNISES OUTAGE AFTER RECONNECTING 
 	- probably isn't creating a trailing targetOutage
 
+- session ended time DONE
+	- in json+human logs NEED TEST
+	- need to perform some actions before ctrl+c fully exits NEED RESEARCH
+
+- bugfix: the log targets are not getting TargetOutages recorded in their log
+	- this doesn't matter that much; you can just look at the raw pings per target
+
+
 ### NEEDED FOR PUBLIC RELEASE:
 
+- sanitize child_process.spawn input properly (extremely important security)
 - remove all temporary / debug / dev comments etc
 - scour all personal information
-- instructional readme + move todo to roadmap.md
+- helpful readme
 - test suite
