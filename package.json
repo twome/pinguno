@@ -16,5 +16,10 @@
     "pubsub-js": "^1.7.0",
     "util": "^0.11.0",
     "yarn": "^1.9.4"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "logs/*"
+    ]
   }
 }
