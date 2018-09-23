@@ -1,5 +1,11 @@
 # Pingu - an ISP uptime logger
 
+## System requirements
+
+- Node v10.11.0 and up
+- [Unix-based systems only] `ping` binary accessible on the $PATH
+
+
 ## How to use (normal people):
 
 ### Installation

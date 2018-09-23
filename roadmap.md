@@ -2,6 +2,10 @@
 
 ### Misc
 
+- split ping engines off Pingu into modules
+
+- split logging off Pingu into module
+
 - run as service / auto-run on boot 
 	- PERSONAL ONLY: look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
 
