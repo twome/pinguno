@@ -20,6 +20,7 @@ const { config } = require('./config.js')
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
 const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
+const { Stats } = require('./stats.js')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
@@ -540,6 +541,11 @@ class Pingu {
 				throw new Error(error)
 			})
 		})
+	}
+
+	updateSessionStats(){
+		this.sessionStats = Stats.calcSessionStats(this)
+		return this.sessionStats
 	}
 
 	compressLogToArchive(filename){

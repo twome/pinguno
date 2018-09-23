@@ -8,6 +8,7 @@ const moment = require('moment')
 
 // In-house modules
 const { Pingu } = require('./pingu.js')
+const { Stats } = require('./stats.js')
 
 
 let app = new Pingu()
@@ -50,6 +51,9 @@ let exportSessionToTextSummaryTick = setInterval(()=>{
 let updateSessionEndTimeTick = setInterval(()=>{
 	app.updateSessionEndTime()
 }, app.updateSessionEndTimeIntervalMs)
+let statsTick = setInterval(()=>{
+	app.updateSessionStats()
+}, app.opt.updateSessionStatsIntervalMs)
 
 
 
