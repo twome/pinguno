@@ -62,22 +62,18 @@
 	- simulate slow/shit internet using nodeish middleware instead somehow??
 	- would be huge advantage for autotesting
 
-
 - stretch: break apart in-house modules for public repos if it makes sense
+
+- do we need to perform some actions before ctrl+c fully exits NEED RESEARCH
+	- check that we finished properly writing to file?
+
+- fragility: make sure we don't try to write to a file while already writing to a file
+	- asyncify the write calls
 
 ### NEEDED FOR SELF-USAGE:
 
-- bugfix: nativePing updateOutage isn't recognising an outage that is continuing until the present (or the very last ping)
-	- HAPPENS IF YOU START DISCONNECTED TOO - ONLY RECOGNISES OUTAGE AFTER RECONNECTING 
-	- probably isn't creating a trailing targetOutage
-
-- session ended time DONE
-	- in json+human logs NEED TEST
-	- need to perform some actions before ctrl+c fully exits NEED RESEARCH
-
 - bugfix: the log targets are not getting TargetOutages recorded in their log
 	- this doesn't matter that much; you can just look at the raw pings per target
-
 
 ### NEEDED FOR PUBLIC RELEASE:
 

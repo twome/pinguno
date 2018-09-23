@@ -161,7 +161,13 @@ class Pingu {
 			// Assumes list is chronological
 			for (let ping of target.pingList){
 				if (this.isBadResponse(ping)){
+					if (config.nodeVerbose >= 2){ console.info(`[${ping.timeResponseReceived.toISOString()}] Bad response from ${target.IPV4}: ${ping.errorType.accessor}`) }
+
 					currentStreak.push(ping)
+					if (ping === _.last(target.pingList) ){
+						target.targetOutages.push(new TargetOutage(currentStreak))
+						currentStreak = []
+					}
 				} else {
 					if ( currentStreak.length >= 1){
 						target.targetOutages.push(new TargetOutage(currentStreak))	
@@ -289,11 +295,11 @@ class Pingu {
 			let latest = oldInstance.latestPing()
 			oldInstance.sessionEndTime = latest.timeResponseReceived || latest.timeRequestSent	
 			return oldInstance
+		} else if (oldInstance === undefined){
+			this.sessionEndTime = new Date()
 		} else {
 			throw Error('updateSessionEndTime: oldInstance provided is not a Pingu instance')
 		}
-
-		this.sessionEndTime = new Date()
 	}
 
 	latestPing(target){
@@ -704,7 +710,6 @@ class Pingu {
 		}	
 
 		npSession.on('error', (err)=>{
-			console.debug('The underlying raw socket emitted an error:')
 			console.error(err.toString())
 			npSession.close()
 
