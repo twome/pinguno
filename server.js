@@ -20,11 +20,11 @@ app.startPinging(app.pingTargets, app.pingEngineEnum.NodeNetPing)
 let connectionStatusTick = setInterval(()=>{
 	app.updateInternetConnectionStatus()
 	console.log(moment().format('YYYY-MM-DD hh:mm:ss') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
-}, app.connectionStatusIntervalMs)
+}, app.opt.connectionStatusIntervalMs)
 
 let updateOutagesTick = setInterval(()=>{	
 	app.updateOutages()
-}, app.updateOutagesIntervalMs)
+}, app.opt.updateOutagesIntervalMs)
 
 // POSSIBLE BUG: this runs almost assuming sync, not sure if need a flag or something to make sure not actively worked on
 let alreadyNotifiedLogUri = false
@@ -42,15 +42,16 @@ let writeToFileTick = setInterval(()=>{
 		}
 		app.writeSessionLog() 
 	}
-}, app.writeToFileIntervalMs)
+}, app.opt.writeToFileIntervalMs)
 
 let exportSessionToTextSummaryTick = setInterval(()=>{
 	app.exportSessionToTextSummary()
-}, app.exportSessionToTextSummaryIntervalMs)
+}, app.opt.exportSessionToTextSummaryIntervalMs)
 
 let updateSessionEndTimeTick = setInterval(()=>{
 	app.updateSessionEndTime()
-}, app.updateSessionEndTimeIntervalMs)
+}, app.opt.updateSessionEndTimeIntervalMs)
+
 let statsTick = setInterval(()=>{
 	app.updateSessionStats()
 }, app.opt.updateSessionStatsIntervalMs)

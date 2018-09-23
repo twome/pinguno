@@ -35,50 +35,68 @@ class Pingu {
 		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
 		/*
+			Options
+		*/
+		let opt = {}
+		/*
 			NB: in 'net-ping's settings this is the size of the *data* I think?? From the docs: 
 			> 8 bytes are required for the ICMP packet itself, then 4 bytes are required 
 			> to encode a unique session ID in the request and response packets
 		*/
-		this.pingPacketSizeBytes = 56 // macOS inbuilt ping default 
-		this.timeoutLimit = 2000 // Linux default is 2 x average RTT
+		opt.pingPacketSizeBytes = 56 // macOS inbuilt ping default 
+		opt.timeoutLimit = 2000 // Linux default is 2 x average RTT
 		// NB: Currently using default timeout limit times
-		this.pingIntervalMs = 3000
-		this.badLatencyThresholdMs = 250
+		opt.pingIntervalMs = 3000
+		opt.badLatencyThresholdMs = 250
 		// NB: ttl currently only used by 'net-ping'
-		this.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
+		opt.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
 		
-		this.exportSessionToTextSummaryIntervalMs = 10000
-		this.updateOutagesIntervalMs = 2000
-		this.connectionStatusIntervalMs = 3000
-		this.writeToFileIntervalMs = 2000
-		this.updateSessionEndTimeIntervalMs = 5000
+		opt.exportSessionToTextSummaryIntervalMs = 10000
+		opt.updateOutagesIntervalMs = 2000
+		opt.connectionStatusIntervalMs = 3000
+		opt.writeToFileIntervalMs = 2000
+		opt.updateSessionEndTimeIntervalMs = 5000
+		opt.updateSessionStatsIntervalMs = 5000
 
-		this.pingTargets = [
+		opt.desiredPingTargets = [
 			{
 				humanName: 'Google',
-				IPV4: '8.8.8.8',
-				connected: null,
-				pingList: [],
-				requestErrorList: []
-			},
-			{
-				humanName: 'Level3',
-				IPV4: '4.2.2.2',
-				connected: null,
-				pingList: [],
-				requestErrorList: []
+				IPV4: '8.8.8.8'
+			},{
+				// IP belonging to company formerly named 'Level3' before merger; a popular pinging target host.
+				humanName: 'CenturyLink', 
+				IPV4: '4.2.2.2'
 			}
 		]
-		this.logStandardFilename = 'pingu log'
-		this.logsDir = './logs'
-		this.summariesDir = './logs/human-readable' // Human-readable summary .txt files
-		this.archiveDir = this.logsDir + '/compressed'
-		this.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
-		this.activeLogUri = null // URI string
-		this.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
+
+		opt.logStandardFilename = 'pingu log'
+		opt.logsDir = './logs'
+		opt.summariesDir = './logs/human-readable' // Human-readable summary .txt files
+		opt.archiveDir = opt.logsDir + '/compressed'
+		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
+		opt.activeLogUri = null // URI string
+		opt.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
+
+		// TODO: replace default options with passed-in options
+		// opt = Object.assign(opt, options)
+		this.opt = opt
+
+		/*
+			State properties
+		*/
+
+		this.pingTargets = _.cloneDeep(opt.desiredPingTargets)
+		for (let target of this.pingTargets){
+			target = Object.assign(target, {
+				connected: null,
+				pingList: [],
+				requestErrorList: []
+			})
+		}
 
 		this.sessionStartTime = new Date()
 		this.sessionEndTime = new Date()
+		this.sessionStats = {}
 
 		this.lastFailure = null // Date
 		this.lastDateConnected = null // Date
@@ -119,7 +137,7 @@ class Pingu {
 	}
 
 	isBadResponse(ping){
-	 	return ping.failure || (ping.errorType || ping.roundTripTimeMs > this.badLatencyThresholdMs)
+	 	return ping.failure || (ping.errorType || ping.roundTripTimeMs > this.opt.badLatencyThresholdMs)
 	}
 
 	isRoughlyWithinTimeframe(dateToTest, timeframeStart, timeframeEnd, leniencyMs){
@@ -273,7 +291,7 @@ class Pingu {
 			let latestPing = this.latestPing(target)
 
 			let receivedAnyResponse = latestPing && (typeof latestPing.roundTripTimeMs === 'number' )
-			let responseWithinThreshold = latestPing && (latestPing.roundTripTimeMs <= this.badLatencyThresholdMs)
+			let responseWithinThreshold = latestPing && (latestPing.roundTripTimeMs <= this.opt.badLatencyThresholdMs)
 
 			if (receivedAnyResponse && responseWithinThreshold){
 				this.lastDateConnected = new Date()
@@ -321,18 +339,18 @@ class Pingu {
 
 	writeSessionLog(){
 		const combinedTargets = this.combineTargetsForExport()
-		const content = JSON.stringify(combinedTargets, null, this.pingLogIndent)
+		const content = JSON.stringify(combinedTargets, null, this.opt.pingLogIndent)
 		const fileCreationDate = new Date()
 		
 		// Turn ISO string into filesystem-compatible string (also strip milliseconds)
-		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + this.logStandardFilename + '.json'
+		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + this.opt.logStandardFilename + '.json'
 
-		fs.mkdir(this.logsDir, undefined, (err)=>{
+		fs.mkdir(this.opt.logsDir, undefined, (err)=>{
 			if (err){ 
 				// We just want to make sure the folder exists so this doesn't matter
 			}
 
-			const fileUri = this.logsDir + '/' + filename 
+			const fileUri = this.opt.logsDir + '/' + filename 
 
 			// Keep track of this session's log so we can come back and update it
 			this.activeLogUri = fileUri
@@ -376,7 +394,7 @@ class Pingu {
 			toWrite.dateLogLastUpdated = new Date()
 			toWrite.outages = liveData.outages
 			
-			toWrite = JSON.stringify(toWrite, null, this.pingLogIndent)
+			toWrite = JSON.stringify(toWrite, null, this.opt.pingLogIndent)
 			
 			return fsWriteFilePromise(this.activeLogUri, toWrite, 'utf8').then((file)=>{
 				console.info('Updated log at ' + this.activeLogUri)
@@ -442,11 +460,11 @@ class Pingu {
 	}
 
 	tellArchiveSize(){
-		if (! fs.existsSync(this.logsDir)){
+		if (! fs.existsSync(this.opt.logsDir)){
 			console.info('No pre-existing archive folder.')
 			return false
 		}
-		getFolderSize(this.logsDir, (err, size)=>{
+		getFolderSize(this.opt.logsDir, (err, size)=>{
 		  if (err) { throw err }
 		 
 		  const sizeInMB = (size / 1024 / 1024).toFixed(2)
@@ -464,14 +482,14 @@ class Pingu {
 		ind = indString
 
 		// This will overwrite any file with the same session start time
-		let summaryUri = this.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
+		let summaryUri = this.opt.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
 
 		let template = `Pingu internet connectivity log` +
 		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
-		`\nTime of last ping in session: ${moment(this.sessionEndTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
-		`\nPing interval time (in milliseconds): ${this.pingIntervalMs}` +
+		`\nSession ended (approx): ${moment(this.sessionEndTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
+		`\nPing interval time (in milliseconds): ${this.opt.pingIntervalMs}` +
 		`\nUnderlying ping engine used to get ping data: ${this.pingEngine.humanName}` +
-		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.badLatencyThresholdMs}` +
+		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.opt.badLatencyThresholdMs}` +
 		`\nPing targets:`
 		
 		for (let target of this.pingTargets){
@@ -482,7 +500,7 @@ class Pingu {
 
 		if (this.outages.length >= 1){
 			for (let outage of this.outages){
-				let humanOutageDuration = (outage.durationSec >= this.pingIntervalMs / 1000) ? outage.durationSec : '<' + (this.pingIntervalMs / 1000)
+				let humanOutageDuration = (outage.durationSec >= this.opt.pingIntervalMs / 1000) ? outage.durationSec : '<' + (this.opt.pingIntervalMs / 1000)
 				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY hh:mm:ss ZZ') + ', duration: ' + humanOutageDuration + ' seconds'
 			}
 		} else {
@@ -535,7 +553,7 @@ class Pingu {
 			TODOwrapToCharLength(template, wrapAtCharLength)
 		}*/
 
-		fs.mkdir(this.summariesDir, undefined, (err)=>{
+		fs.mkdir(this.opt.summariesDir, undefined, (err)=>{
 			if (err) {
 				// Ignore; just wanted to ensure folder exists here.
 			}
@@ -556,14 +574,14 @@ class Pingu {
 
 	compressLogToArchive(filename){
 		
-		fs.mkdir(this.archiveDir, undefined, (err)=>{
+		fs.mkdir(this.opt.archiveDir, undefined, (err)=>{
 			if (err) {
 				// Ignore; just wanted to ensure folder exists here.
 			}
 
 			const gzip = zlib.createGzip()
-			const input = fs.createReadStream(this.logsDir + '/' + filename)
-			const output = fs.createWriteStream(this.archiveDir + '/' + filename + '.gz')
+			const input = fs.createReadStream(this.opt.logsDir + '/' + filename)
+			const output = fs.createWriteStream(this.opt.archiveDir + '/' + filename + '.gz')
 
 			input.pipe(gzip).pipe(output)
 
@@ -573,14 +591,14 @@ class Pingu {
 	}
 
 	compressAllLogsToArchive(){
-		fs.readdir(this.logsDir + '/', 'utf8', (err, files)=>{
+		fs.readdir(this.opt.logsDir + '/', 'utf8', (err, files)=>{
 			if (err){
 				throw new Error(err)
 			}
 
 			for (let uri of files){
 				// Only compress *our* JSON log files unless user specifies looser approach
-				if ( uri.match(this.logStandardFilename + '\.json$') || ( this.compressAnyJsonLogs && uri.match('\.json$') ) ){
+				if ( uri.match(this.opt.logStandardFilename + '\.json$') || ( this.opt.compressAnyJsonLogs && uri.match('\.json$') ) ){
 					this.compressLogToArchive(uri)
 				} 
 			}
@@ -615,7 +633,7 @@ class Pingu {
 		if (intervalOk){
 			ret.intervalNumber = Math.abs(Math.floor(pin))
 		} else {
-			throw Error('DANGER: this.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
+			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
 		}
 
 		let nothingButDigitsAndDots = (ips.match(/[^\d\.]+/) === null)
@@ -623,7 +641,7 @@ class Pingu {
 		if (ipOk){
 			ret.ipString = ips
 		} else {
-			throw Error('DANGER: this.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
+			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
 		}
 
 		return ret
@@ -636,7 +654,7 @@ class Pingu {
 		// attach it to its response/timeout when that comes back.
 		// - How to do this in a stream-like way? Have a stack of ICMPs (w max size) that gets popped from in onResponse?
 
-		let sanitizedSpawnInput = this.sanitizeSpawnInput(this.pingIntervalMs, pingTarget.IPV4)
+		let sanitizedSpawnInput = this.sanitizeSpawnInput(this.opt.pingIntervalMs, pingTarget.IPV4)
 
 		const pingProcess = spawn('ping', [
 			'-i', 
@@ -678,9 +696,9 @@ class Pingu {
 		console.info(`Registering 'net-ping' handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
 
 		let npOptions = {
-			timeout: this.timeoutLimit,
-			packetSize: this.pingPacketSizeBytes,
-			ttl: this.pingOutgoingTtlHops
+			timeout: this.opt.timeoutLimit,
+			packetSize: this.opt.pingPacketSizeBytes,
+			ttl: this.opt.pingOutgoingTtlHops
 		}
 
 		let npSession = netPing.createSession(npOptions)
@@ -721,7 +739,7 @@ class Pingu {
 			return pingHost(pingTarget.IPV4)
 		}
 
-		let targetPingingTick = setInterval(npPingChosenTarget, this.pingIntervalMs)
+		let targetPingingTick = setInterval(npPingChosenTarget, this.opt.pingIntervalMs)
 
 		return true
 	}
