@@ -1,3 +1,8 @@
+# Security
+## Env vars that contain passwords etc
+.env
+config/
+
 # Windows
 ## Image thumbnail cache
 Thumbs.db
@@ -40,5 +45,6 @@ ignored/
 # Node server files
 ## Ping logs
 logs/
-## Sandbox files for writing quick scrappy tests
+
+# Sandbox files for writing quick scrappy tests
 sandbox*.js
