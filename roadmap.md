@@ -2,6 +2,10 @@
 
 ### Misc
 
+- test DNS by using domain names after testing IPs
+
+- are we getting/logging ttl from native ping?
+
 - split ping engines off Pingu into modules
 
 - split logging off Pingu into module
@@ -73,6 +77,14 @@
 
 - fragility: make sure we don't try to write to a file while already writing to a file
 	- asyncify the write calls
+
+## GUI
+
+## Project management / organisation / presentation
+
+- Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
+- Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)
+
 
 ### NEEDED FOR SELF-USAGE:
 

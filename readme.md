@@ -2,18 +2,40 @@
 
 ## System requirements
 
-- Node v10.11.0 and up
-- [Unix-based systems only] `ping` binary accessible on the $PATH
+Officially supports:
+- Windows 10, 64-bit only
+- macOS Sierra 10.12.6, 64-bit only
 
+- [Developers only] Node v10.11.0 and up
+- [Developers who want to compile builds only] npm package [`zeit/pkg`](https://github.com/zeit/pkg) binary available on the global $PATH
+- [Unix-based systems only] `ping` binary accessible on the $PATH (can fall back to less accurate included 'ping'-like package)
 
 ## How to use (normal people):
 
 ### Installation
 
-- Mac: download [Pingu.app]() and Cmd-click / right-click and select "Open"
-- Windows:
+#### Command-line version:
+- Mac: download [pingu-cli-macos]() 
+- Windows: download [pingu-cli.exe]()
+
+The installation is portable and by default will output JSON and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
+
+#### GUI version:
+- Mac: download [Pingu.app]()
+- Windows: download [Pinge.exe]()
+
+TODO: portable? registry? global config/cache locations egg $APPDATA, ~/.config/pingu, ~/.cache/pingu
 
 ### Usage
+
+#### CLI version:
+
+- Mac: open `pingu-cli-macos` with Terminal or another command-line app. 
+- Windows: run `pingu-cli-win.exe`. It will open a cmd window.
+
+Pingu will begin logging to timestamped files in a directory called 'logs' created next to the executable. `Ctrl+C` to exit. If you want to send logs to your ISP to help troubleshoot your connection, send them all the compressed/zipped files in the local `./logs/compressed/` folder. TODO: automatic zipping.
+
+#### GUI version:
 
 - Mac: Pingu's icon will appear in the macOS menubar (top-right by default) when Pingu is running. 
 - Windows: Pingu's icon will appear in the Windows system tray (bottom-right by default) when Pingu is running.
@@ -54,10 +76,34 @@ Pingu is available as a GUI app and a command-line utility.
 
 TODO: the rest
 
+### Installation
+
+Clone this repo locally: `git clone git@github.com:twome/pingu.git`
+[Install Node.js v10.11.0](https://nodejs.org/en/download/) or above if you don't have it.
+
+### Building/compiling executables
+
+We use the [`pkg`](TODO) package & binary to build executables. 
+- Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the --dev dependency `pkg` defined in package.json.
+- Alternatively, install `pkg` globally with `npm install -g pkg` or `yarn global add pkg` and run it with your own settings.
+
 ### Git branch details
 
 - master: latest working version for public use. develop must pass existing tests/QA before master merges it in
 - develop: latest development version. does not need to work; merge feature branches in once the main gist of the feature is fleshed out)
+
+
+## Known bugs & caveats
+
+- The accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine. TODO: quantify. The accuracy of the `ping` engine is the same as the native `ping` binary.
+- Can't get TTL or byte size of ping responses when using `net-ping` engine (seemingly not supported by it). Use inbuilt/native `ping` binary if you need this info. 
+- TODO: testing DNS
+
+- The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
+- Pingu does not currently test bandwidth, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pingu data from when all network applications are off & your local network has no-one else using it for the best accuracy.
+- We have not tested if Pingu or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pingu. This means it may be hard for you to use Pingu to legally force your ISP to provide better service or get a refund etc. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
+
+## Administration things
 
 ### Version system
 
@@ -70,6 +116,6 @@ TODO
 ## License: MIT
 
 **Non-legally-binding plain English**:
-> You can use Pingu for anything (including commercial uses), as long as you include Pingu's MIT license in whatever copies you make of Pingu (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty nor can you hold Pingu's authors liable for anything.
+> You can use Pingu for anything (including commercial uses), as long as you don't remove Pingu's MIT license from whatever copies you make of Pingu (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty nor can you hold Pingu's authors liable for anything. It's free, so if someone's charging you money for basically the same thing you're probably getting ripped off!
 
-See file 'LICENSE' for full legally-binding details.
+See file '[LICENSE](LICENSE)' for full legally-binding details.
