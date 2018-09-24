@@ -13,7 +13,6 @@ const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
 const moment = require('moment')
 const netPing = require('net-ping')
-// const PubSub = require('pubsub-js') // Currently unused
 
 // In-house modules
 const { config } = require('./config.js')
