@@ -3,6 +3,9 @@
 .env
 config/
 
+# Large build files 
+build/
+
 # Windows
 ## Image thumbnail cache
 Thumbs.db

@@ -17,9 +17,22 @@
     "util": "^0.11.0",
     "yarn": "^1.9.4"
   },
+  "bin": {
+    "pingu": "./server.js"
+  },
+  "pkg": {
+    "scripts": [],
+    "assets": []
+  },
   "nodemonConfig": {
     "ignore": [
       "logs/*"
     ]
+  },
+  "scripts": {
+    "buildcli": "pkg . --debug"
+  },
+  "devDependencies": {
+    "pkg": "^4.3.4"
   }
 }
