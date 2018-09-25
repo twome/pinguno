@@ -25,12 +25,13 @@ const { Stats } = require('./stats.js')
 
 class Pingu {
 	constructor(options){
+		/*
+			Hard-coded app meta-information
+		*/
 		this.appHumanName = 'Pingu' // must be filesystem-compatible
 		this.appHumanSubtitle = 'ISP Uptime Logger'
 		this.appHomepageUrl = 'https://twome.name/pingu'
 		this.appSourceRepoUrl = 'https://gitlab.com/twome/pingu'
-
-		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
 		/*
 			Options
@@ -80,8 +81,9 @@ class Pingu {
 		this.opt = opt
 
 		/*
-			State properties
+			App state properties
 		*/
+		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
 		this.pingTargets = _.cloneDeep(opt.desiredPingTargets)
 		for (let target of this.pingTargets){

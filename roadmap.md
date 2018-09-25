@@ -70,6 +70,8 @@
 	- simulate slow/shit internet using nodeish middleware instead somehow??
 	- would be huge advantage for autotesting
 
+- store TargetOutage pings by ID/reference instead of copied data
+
 - stretch: break apart in-house modules for public repos if it makes sense
 
 - do we need to perform some actions before ctrl+c fully exits NEED RESEARCH
