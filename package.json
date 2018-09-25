@@ -5,6 +5,7 @@
   "homepage": "https://gitlab.com/twome/pingu",
   "license": "MIT",
   "dependencies": {
+    "del": "^3.0.0",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "get-folder-size": "^2.0.0",

@@ -9,6 +9,7 @@ const util = require('util')
 const getFolderSize = require('get-folder-size')
 const moment = require('moment')
 const { _ } = require('lodash')
+const del = require('del')
 
 // In-house modules
 const { config } = require('./config.js')
@@ -257,7 +258,31 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 	return true
 }
 
+let deleteAllLogs = (logsDir, summariesDir)=>{
+	// TODO: Require manual confirmation
+	console.warn('\n ------------ \n DELETING ALL UNCOMPRESSED PINGU LOGS in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
+	
+	let actuallyDelete = ()=>{
+		del([
+			logsDir + '/*.json', 
+			summariesDir + '/*.txt'
+		]).then(paths => {
+			console.info('\n ------------ \n Deleted files and folders: \n ------------ \n ')
+			if (paths.length > 0){
+				console.info(paths.join('\n'))	
+			} else {
+				console.info('(No files deleted)')	
+			}
+			
+		})	
+	}
+
+	setTimeout(actuallyDelete, 5000)
+	
+}
+
 exports.compressAllLogsToArchive = compressAllLogsToArchive
 exports.compressLogToArchive = compressLogToArchive
 exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
+exports.deleteAllLogs = deleteAllLogs
