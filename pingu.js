@@ -3,7 +3,7 @@ console.info('RUNNING: pingu.js')
 // Built-in modules
 const { spawn } = require('child_process')
 const fs = require('fs')
-const util = require('util')
+
 const zlib = require('zlib')
 const os = require('os')
 
@@ -16,13 +16,12 @@ const netPing = require('net-ping')
 
 // In-house modules
 const { config } = require('./config.js')
+const { fullOutagesAcrossTargets } = require('./outages.js')
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
 const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
+const { EngineNative, EngineNetPing } = require('./ping-engines.js')
 const { Stats } = require('./stats.js')
-
-const fsWriteFilePromise = util.promisify(fs.writeFile)
-const fsReadFilePromise = util.promisify(fs.readFile)
 
 class Pingu {
 	constructor(options){
@@ -135,28 +134,7 @@ class Pingu {
 		return this.internetConnected = this.connectionState.DISCONNECTED
 	}
 
-	isBadResponse(ping){
-	 	return ping.failure || (ping.errorType || ping.roundTripTimeMs > this.opt.badLatencyThresholdMs)
-	}
-
-	isRoughlyWithinTimeframe(dateToTest, timeframeStart, timeframeEnd, leniencyMs){
-		for (let param of [dateToTest, timeframeStart, timeframeEnd]){
-			if ( (! param instanceof Date) || (! typeof param.getTime === 'function') ){
-				throw Error('isRoughlyWithinTimeframe - param ' + param + 'is not a Date object')
-			}
-		}
-
-		dateToTest = dateToTest.getTime() // convert to total UTC ms since epoch for comparison
-		timeframeStart = timeframeStart.getTime()
-		timeframeEnd = timeframeEnd.getTime()
-
-		let isAfterStart = dateToTest >= ( timeframeStart - leniencyMs )
-		let isBeforeEnd = dateToTest <= ( timeframeEnd + leniencyMs )
-		return isAfterStart && isBeforeEnd
-	}
-
 	updateOutages(combinedPingList, targetList){
-		let instance = this
 		// TODO: safety-check inputs
 		let pingLogTargets
 
@@ -169,96 +147,18 @@ class Pingu {
 			pingLogTargets = this.pingTargets
 		}
 
-		// Add TargetOutages (streaks of bad-response pings) to each target
-		for (let target of pingLogTargets){
+		let outageData = fullOutagesAcrossTargets(pingLogTargets, this.opt.badLatencyThresholdMs)
 
-			target.targetOutages = []
-			
-			let currentStreak = []
-			// Assumes list is chronological
-			for (let ping of target.pingList){
-				if (this.isBadResponse(ping)){
-					if (config.nodeVerbose >= 2){ console.info(`[${ping.timeResponseReceived.toISOString()}] Bad response from ${target.IPV4}: ${ping.errorType.accessor}`) }
+		this.outages = outageData.fullOutages
 
-					currentStreak.push(ping)
-					if (ping === _.last(target.pingList) ){
-						target.targetOutages.push(new TargetOutage(currentStreak))
-						currentStreak = []
-					}
-				} else {
-					if ( currentStreak.length >= 1){
-						target.targetOutages.push(new TargetOutage(currentStreak))	
-					}
-					currentStreak = []
+		for (let origTarget of this.pingTargets){
+			for (let processedTarget of outageData.targets){
+				if (origTarget.IPV4 === processedTarget.IPV4){
+					origTarget.targetOutages = processedTarget.targetOutages
 				}
 			}
 		}
 
-		let fullOutages = []
-		let baseTarget = pingLogTargets[0]
-		let checkingTarget
-
-		if (pingLogTargets.length === 1){
-			// There are no other targets that need to have concurrent outages, so every target outage is a full outage
-			return baseTarget.targetOutages
-		}
-		
-		for (let baseTargetOutage of baseTarget.targetOutages){
-
-			// Min/max times this current outage could be (bound by current single-target outage)
-			let thisOutageExtremes = {
-				start: baseTargetOutage.startDate,
-				end: baseTargetOutage.endDate
-			}
-
-			let checkOutageListWithinExtremes = function(targetOutageList, extremes){
-				let targetOutagesThatIntersectExtremes = []
-
-				for (let targetOutage of targetOutageList){
-					// console.log('--- current targetOutage start/end', targetOutage.startDate, targetOutage.endDate)
-					let pingsWithinExtremes = []
-
-					for (let ping of targetOutage.pingList){
-
-						if (instance.isRoughlyWithinTimeframe(ping.timeResponseReceived, extremes.start, extremes.end, instance.badLatencyThresholdMs)){
-							// If we haven't already pushed this TO to list of extremes, then do so
-							if (targetOutagesThatIntersectExtremes.indexOf(targetOutage) <= -1){ 
-								targetOutagesThatIntersectExtremes.push(targetOutage) 
-							}
-							pingsWithinExtremes.push(ping)
-						}
-					}
-					// console.debug('--- pingsWithinExtremes.length')
-					// console.debug(pingsWithinExtremes.length)
-					if (pingsWithinExtremes.length === 0 ){
-						// console.debug('no pings within extremes for this TO')
-						// This TargetOutage doesn't intersect with the current full-outage's time boundaries; try the next one.  
-						continue
-					}
-
-					// FRAGILE: this assumes pings are already in chron order
-					thisOutageExtremes.start = pingsWithinExtremes[0].timeResponseReceived
-					thisOutageExtremes.end = _.last(pingsWithinExtremes).timeResponseReceived
-
-					// Within this TargetOutage, if there's an intersection with the current extremes, dive one level deeper
-					if (pingsWithinExtremes.length >= 1){
-						if (checkingTarget === _.last(pingLogTargets)){
-							// We're at the last target within this time-span
-							fullOutages.push(new Outage(thisOutageExtremes.start, thisOutageExtremes.end))
-						} else {
-							checkingTarget = pingLogTargets[pingLogTargets.indexOf(checkingTarget) + 1]
-							checkOutageListWithinExtremes(checkingTarget.targetOutages, thisOutageExtremes)
-						}
-					}
-				}		
-			}
-
-			// Initiate checking each subsequent target for this outage
-			checkingTarget = pingLogTargets[pingLogTargets.indexOf(baseTarget) + 1]
-			checkOutageListWithinExtremes(checkingTarget.targetOutages, thisOutageExtremes)
-		}	
-
-		this.outages = fullOutages
 		return this.outages
 	}
 
@@ -336,78 +236,6 @@ class Pingu {
 		}
 	}
 
-	writeSessionLog(){
-		const combinedTargets = this.combineTargetsForExport()
-		const content = JSON.stringify(combinedTargets, null, this.opt.pingLogIndent)
-		const fileCreationDate = new Date()
-		
-		// Turn ISO string into filesystem-compatible string (also strip milliseconds)
-		const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + this.opt.logStandardFilename + '.json'
-
-		fs.mkdir(this.opt.logsDir, undefined, (err)=>{
-			if (err){ 
-				// We just want to make sure the folder exists so this doesn't matter
-			}
-
-			const fileUri = this.opt.logsDir + '/' + filename 
-
-			// Keep track of this session's log so we can come back and update it
-			this.activeLogUri = fileUri
-
-			return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
-				console.info('Wrote log to ' + fileUri)
-			}, (error)=>{
-				console.error(error)
-			})
-		})
-	}
-
-	// Write to this sessions existing log file
-	updateSessionLog(){
-
-		let onFileRead = (data)=>{
-			let original = JSON.parse(data)
-
-			let liveData = this.combineTargetsForExport()
-
-			let latestPingInOriginal = _.sortBy(original.combinedPingList, ['timeResponseReceived', 'targetIPV4']).reverse()[0]
-
-			// This assumes original has exact same structure as live data
-			let firstUnwrittenPingIndex = original.combinedPingList.indexOf(latestPingInOriginal) + 1
-			let firstUnwrittenPing = liveData.combinedPingList[firstUnwrittenPingIndex]
-			
-			let toWrite = _.cloneDeep(original)
-			// Make sure there's any new pings *after* the most recently saved
-			if ( !firstUnwrittenPing ){
-				// noop - just update timestamp and re-save same data (we already do this anyway)
-				if ( config.nodeVerbose >= 2 ){
-					console.info('No new pings found to update existing session\'s log with.')
-				}
-			} else {
-				let onlyNewPings = liveData.combinedPingList.slice(firstUnwrittenPingIndex)
-
-				toWrite.combinedPingList = _.concat(original.combinedPingList, onlyNewPings)
-				toWrite.combinedPingList = _.sortBy(toWrite.combinedPingList, ['timeResponseReceived', 'targetIPV4'])
-			}
-			
-			toWrite.dateLogLastUpdated = new Date()
-			toWrite.outages = liveData.outages
-			
-			toWrite = JSON.stringify(toWrite, null, this.opt.pingLogIndent)
-			
-			return fsWriteFilePromise(this.activeLogUri, toWrite, 'utf8').then((file)=>{
-				console.info('Updated log at ' + this.activeLogUri)
-				return this.activeLogUri
-			}, (error)=>{
-				throw new Error(error) 
-			})
-		}
-
-		return fsReadFilePromise(this.activeLogUri, 'utf8').then(onFileRead, (error)=>{
-			throw new Error(error)
-		})
-	}
-
 	separatePingListIntoTargets(pingList, targetList){
 		let fullTargets = []
 		for (let ping of pingList){
@@ -432,6 +260,7 @@ class Pingu {
 		return fullTargets
 	}
 
+	// Interleave the ping-targets with their individual ping-lists into one shared ping list
 	combineTargetsForExport(){
 		let exporter = new PingsLog({
 			sessionStartTime: this.sessionStartTime,
@@ -452,6 +281,8 @@ class Pingu {
 			delete target.pingList
 			delete target.connected // "Connection" is live info and derived from pingList anyway
 		}
+
+		// Sort the aggregate ping list 1) chronologically 2) by target IP
 		let pingListSorted = _.sortBy(exporter.combinedPingList, [(o)=>{return o.timeResponseReceived}, (o)=>{return o.targetIPV4}])
 		exporter.combinedPingList = pingListSorted
 
@@ -471,138 +302,9 @@ class Pingu {
 		})
 	}
 
-	exportSessionToTextSummary(indentSize/*, wrapAtCharLength*/){
-		// Indent size in number of spaces
-		let ind = typeof indentSize === 'number' ? Math.max(indentSize, 8) : 2
-		let indString = ''
-		for (let i = 0; i < ind; i = i + 1){
-			indString = indString + ' '
-		}
-		ind = indString
-
-		// This will overwrite any file with the same session start time
-		let summaryUri = this.opt.summariesDir + '/' + MyUtil.isoDateToFileSystemName(this.sessionStartTime) + ' pingu summary.txt'
-
-		let template = `Pingu internet connectivity log` +
-		`\nSession started: ${moment(this.sessionStartTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
-		`\nSession ended (approx): ${moment(this.sessionEndTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
-		`\nPing interval time (in milliseconds): ${this.opt.pingIntervalMs}` +
-		`\nUnderlying ping engine used to get ping data: ${this.pingEngine.humanName}` +
-		`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${this.opt.badLatencyThresholdMs}` +
-		`\nPing targets:`
-		
-		for (let target of this.pingTargets){
-			template = template + `\n${ind}- ` + target.humanName + ' (IP: ' + target.IPV4 + ')'
-		}
-
-		template = template + '\n\nFull internet connection outages (when all target IP addresses took too long to respond):'
-
-		if (this.outages.length >= 1){
-			for (let outage of this.outages){
-				let humanOutageDuration = (outage.durationSec >= this.opt.pingIntervalMs / 1000) ? outage.durationSec : '<' + (this.opt.pingIntervalMs / 1000)
-				template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY hh:mm:ss ZZ') + ', duration: ' + humanOutageDuration + ' seconds'
-			}
-		} else {
-			template = template + `\n${ind}[No outages]`
-		}
-
-		template = template + '\n\nAll pings:'
-
-		let combinedPingList = this.combineTargetsForExport().combinedPingList
-
-		let encounteredErrorTypes = []
-
-		for (let ping of combinedPingList ){
-
-			template = template + `\n${ind}- [` + moment(ping.timeResponseReceived).format('YYYY-MM-DD hh:mm:ss.SSS ZZ') + '] '
-			template = template + 'IP ' + ping.targetIPV4 + ' | '
-			if (!ping.failure){
-				template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
-				template = template + 'Response size: ' + (ping.responseSize > 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
-			} else {
-				let typeIsUniqueInList = true
-				for (let encounteredErrorType of encounteredErrorTypes){
-					// Need to use isEqual instead of === to deep-compare objects with different references
-					if (_.isEqual(ping.errorType, encounteredErrorType)){ typeIsUniqueInList = false }
-				}
-				if ( typeIsUniqueInList ){
-					encounteredErrorTypes.push(ping.errorType)
-				}
-				template = template + 'Error: ' + ping.errorType.accessor + ', '
-			}
-			template = template + 'ICMP: ' + ping.icmpSeq
-		}
-
-		if (encounteredErrorTypes.length){
-			template = template + '\n\nEncountered errors:'
-
-			for (let err of encounteredErrorTypes){
-				template = template + `\n${ind}- Name: "` + err.accessor + '", '
-				template = template + 'description: ' + err.humanName
-			}
-		}
-
-		template = template + `\n\n${this.appHumanName} - ${this.appHumanSubtitle}` + `\n${this.appHomepageUrl}`
-		
-		template = template + `\nFree & open-source (gratis & libre)`
-
-		// TODO: Allow option to wrap the final output to x characters for display in bad/old/CL apps
-		// TODO: Potentially also allow tab character for indenting instead of just spaces
-		/*if (wrapAtCharLength){
-			TODOwrapToCharLength(template, wrapAtCharLength)
-		}*/
-
-		fs.mkdir(this.opt.summariesDir, undefined, (err)=>{
-			if (err) {
-				// Ignore; just wanted to ensure folder exists here.
-			}
-			
-			return fsWriteFilePromise(summaryUri, template, 'utf8').then((file)=>{
-				console.info('Wrote human-readable text summary to ' + summaryUri)
-				return summaryUri
-			}, (error)=>{
-				throw new Error(error)
-			})
-		})
-	}
-
 	updateSessionStats(){
 		this.sessionStats = Stats.calcSessionStats(this)
 		return this.sessionStats
-	}
-
-	compressLogToArchive(filename){
-		
-		fs.mkdir(this.opt.archiveDir, undefined, (err)=>{
-			if (err) {
-				// Ignore; just wanted to ensure folder exists here.
-			}
-
-			const gzip = zlib.createGzip()
-			const input = fs.createReadStream(this.opt.logsDir + '/' + filename)
-			const output = fs.createWriteStream(this.opt.archiveDir + '/' + filename + '.gz')
-
-			input.pipe(gzip).pipe(output)
-
-			console.info('Compressed "' + filename + '" to gzipped archive.')
-		})
-		
-	}
-
-	compressAllLogsToArchive(){
-		fs.readdir(this.opt.logsDir + '/', 'utf8', (err, files)=>{
-			if (err){
-				throw new Error(err)
-			}
-
-			for (let uri of files){
-				// Only compress *our* JSON log files unless user specifies looser approach
-				if ( uri.match(this.opt.logStandardFilename + '\.json$') || ( this.opt.compressAnyJsonLogs && uri.match('\.json$') ) ){
-					this.compressLogToArchive(uri)
-				} 
-			}
-		})
-		
 	}
 
 	startPinging(pingTargets, pingEngine){
@@ -611,225 +313,13 @@ class Pingu {
 		for ( let pingTarget of pingTargets ){
 			if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
 				console.info('Starting pinging - Using inbuilt/native `ping`')
-				this.regPingHandlersInbuilt(pingTarget)
+				EngineNative.regPingHandlersInbuilt(this, pingTarget)
 			} else if (selectedPingEngine){
 				console.info('Starting pinging - Using node package `net-ping`')
-				this.regPingHandlersNetPing(pingTarget)
+				EngineNetPing.regPingHandlersNetPing(this, pingTarget)
 			} else {
 				throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
 			}
-		}
-	}
-
-	// PRODUCTION TODO: Do this more thoroughly/securely (i.e. read up on it and use a tested 3rd-party lib)
-	sanitizeSpawnInput(intervalNumber, ipString){
-		let ret = {}
-
-		let pin = intervalNumber
-		let ips = ipString
-
-		let intervalOk = (pin === Number(pin)) && (typeof pin === 'number')
-		if (intervalOk){
-			ret.intervalNumber = Math.abs(Math.floor(pin))
-		} else {
-			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
-		}
-
-		let nothingButDigitsAndDots = (ips.match(/[^\d\.]+/) === null)
-		let ipOk = (typeof ips === 'string') && nothingButDigitsAndDots
-		if (ipOk){
-			ret.ipString = ips
-		} else {
-			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
-		}
-
-		return ret
-	}
-
-	regPingHandlersInbuilt(pingTarget){
-		console.info(`Registering inbuilt ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
-
-		// TODO: hold onto each ICMP as it gets sent out and pair it up with a new Date(); 
-		// attach it to its response/timeout when that comes back.
-		// - How to do this in a stream-like way? Have a stack of ICMPs (w max size) that gets popped from in onResponse?
-
-		let sanitizedSpawnInput = this.sanitizeSpawnInput(this.opt.pingIntervalMs, pingTarget.IPV4)
-
-		const pingProcess = spawn('ping', [
-			'-i', 
-			sanitizedSpawnInput.intervalNumber / 1000, // Mac ping -i supports fractional intervals but <= 0.1s requires su privilege 
-			sanitizedSpawnInput.ipString
-		])
-
-		this.firstPingSent = true
-
-		pingProcess.on('error', (code, signal)=>{
-			console.error('child process hit an error with ' + `code ${code} and signal ${signal}`)
-			throw Error('Node child process hit an error')
-		})
-
-		pingProcess.stdout.on('data', (data)=>{
-	  		let pingAsStructure = PingData.pingTextToStructure(data.toString(), new Date())
-		  	pingTarget.pingList.push(new PingData(pingAsStructure))	
-		})
-
-		pingProcess.stderr.on('data', (data)=>{
-			console.err('inbuilt ping returned error through stderr:')
-			console.err(data)
-			// TODO: sort stderr errors into error types before storing
-		  	pingTarget.requestErrorList.push(new RequestError(RequestError.errorTypes.unknownError, new Date(), new Date(), data.toString()))
-		})
-
-		pingProcess.on('close', (code)=>{
-		  	console.info(`Child process (ping) closed with code ${code}`)
-		})
-
-		pingProcess.on('exit', (code)=>{
-		  	console.info(`Child process (ping) exited with code ${code}`)
-		})
-
-		return true
-	}
-
-	regPingHandlersNetPing(pingTarget){
-		console.info(`Registering 'net-ping' handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
-
-		let npOptions = {
-			timeout: this.opt.timeoutLimit,
-			packetSize: this.opt.pingPacketSizeBytes,
-			ttl: this.opt.pingOutgoingTtlHops
-		}
-
-		let npSession = netPing.createSession(npOptions)
-
-		let currentIcmp = null
-		let unpairedRequests = []
-
-		let pingHost = (ipv4)=>{
-			currentIcmp = currentIcmp === null ? 0 : currentIcmp + 1
-			let contextIcmp = currentIcmp
-
-			let req = {
-				icmpSeq: contextIcmp,
-				timeRequestSent: new Date()
-			}
-			unpairedRequests.push(req)
-
-			let res = {
-				failure: null,
-				errorType: undefined
-			}
-
-			let instance = this // 'this' will refer to net-ping's internal context
-			npSession.pingHost(ipv4, (err, target, sent, rcvd)=>{
-				instance.processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget)
-			})
-		}	
-
-		npSession.on('error', (err)=>{
-			console.error(err.toString())
-			npSession.close()
-
-			throw Error('net-ping\'s underlying raw socket emitted an error')
-		})
-
-		let npPingChosenTarget = ()=>{
-			this.firstPingSent = true
-			return pingHost(pingTarget.IPV4)
-		}
-
-		let targetPingingTick = setInterval(npPingChosenTarget, this.opt.pingIntervalMs)
-
-		return true
-	}
-
-	// Needs net-ping 
-	processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget){
-		res.icmpSeq = req.icmpSeq // num
-		res.timeRequestSent = sent // Date - can be undefined if error
-		res.timeResponseReceived = rcvd // Date - can be undefined if error
-
-		// TODO: this needs to account for errors that occur within/deeper than net-ping (try/catch?)
-		if (err){
-			res.failure = true
-			for (let supportedErrorStr of [
-				'RequestTimedOutError',
-				'DestinationUnreachableError',
-				'PacketTooBigError',
-				'ParameterProblemError',
-				'RedirectReceivedError',
-				'SourceQuenchError',
-				'TimeExceededError'
-			]){
-				if (err instanceof netPing[supportedErrorStr]){
-					let netPingToInternalError = {
-						RequestTimedOutError: 'requestTimedOutError',
-						DestinationUnreachableError: 'destinationUnreachableError',
-						PacketTooBigError: 'packetTooBigError',
-						ParameterProblemError: 'parameterProblemError',
-						RedirectReceivedError: 'redirectReceivedError',
-						SourceQuenchError: 'sourceQuenchError',
-						TimeExceededError: 'timeExceededError'
-					}
-					// Convert between net-ping's and our own errors
-					res.errorType = PingData.errorTypes[netPingToInternalError[supportedErrorStr]]
-				} else {
-					let handled = false
-
-					// NB: Errors emitted from raw-socket when network adapter turned off on macOS
-					// Should have been handled by netPing 
-					if (err.toString().match(/No route to host/)){
-						res.errorType = PingData.errorTypes.destinationUnreachableError
-						handled = true
-					}
-					if (err.toString().match(/Network is down/)){
-						res.errorType = PingData.errorTypes.networkDownError
-						handled = true
-					}
-
-					if (!handled){
-						// Unknown misc error
-						console.error('processNetPingResponse: Unknown net-ping response error:')
-						console.error(err)
-
-						res.errorType = PingData.errorTypes.unknownError
-						// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
-						if (process.env.NODE_ENV === 'development'){
-							console.error(err)
-							throw Error('processNetPingResponse - Unhandled error:', err)	
-						}	
-					}
-					
-				}
-			}
-			pingTarget.pingList.push(new PingData(res))
-
-		} else {
-			// Successful response
-			res.failure = false
-			res.roundTripTimeMs = rcvd - sent // num - we only bother to calc if both vals are truthy
-			// TODO: how to get response size in net-ping? seems impossible
-			// TODO: how to get response ttl in net-ping (it's not the same as request ttl)? seems impossible
-			
-			pingTarget.pingList.push(new PingData(res))
-		}
-
-		for (let requestIndex in unpairedRequests){
-			if (unpairedRequests[requestIndex].icmpSeq === res.icmpSeq){
-				unpairedRequests.splice(requestIndex, 1)
-			}
-		}
-
-		// TEMP
-		if (unpairedRequests.length > 10){
-			console.debug('=== Unpaired requests piling up...')
-			console.debug(unpairedRequests)
-		}
-
-		return {
-			req: req,
-			res: res,
-			unpairedRequests: unpairedRequests
 		}
 	}
 }

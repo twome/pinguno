@@ -7,15 +7,21 @@ const express = require('express')
 const moment = require('moment')
 
 // In-house modules
+const { 
+	compressAllLogsToArchive, 
+	compressLogToArchive, 
+	saveSessionLogHuman,
+	saveSessionLogJSON
+} = require('./logging.js')
+
 const { Pingu } = require('./pingu.js')
 const { Stats } = require('./stats.js')
-
 
 let app = new Pingu()
 
 app.tellArchiveSize()
 
-app.startPinging(app.pingTargets, app.pingEngineEnum.NodeNetPing)
+app.startPinging(app.pingTargets/*, app.pingEngineEnum.NodeNetPing*/)
 
 let connectionStatusTick = setInterval(()=>{
 	app.updateInternetConnectionStatus()
@@ -26,26 +32,12 @@ let updateOutagesTick = setInterval(()=>{
 	app.updateOutages()
 }, app.opt.updateOutagesIntervalMs)
 
-// POSSIBLE BUG: this runs almost assuming sync, not sure if need a flag or something to make sure not actively worked on
-let alreadyNotifiedLogUri = false
 let writeToFileTick = setInterval(()=>{
-	if ( app.activeLogUri ){ 
-		if (!alreadyNotifiedLogUri){
-			console.log('Writing to file. Active log URI found, using that URI.')
-			alreadyNotifiedLogUri = true
-		}
-		app.updateSessionLog()
-	} else {
-		if (!alreadyNotifiedLogUri){
-			console.log('Writing to new log file.')			
-			alreadyNotifiedLogUri = true
-		}
-		app.writeSessionLog() 
-	}
+	saveSessionLogJSON(app)
 }, app.opt.writeToFileIntervalMs)
 
 let exportSessionToTextSummaryTick = setInterval(()=>{
-	app.exportSessionToTextSummary()
+	saveSessionLogHuman(app)
 }, app.opt.exportSessionToTextSummaryIntervalMs)
 
 let updateSessionEndTimeTick = setInterval(()=>{
@@ -57,30 +49,14 @@ let statsTick = setInterval(()=>{
 }, app.opt.updateSessionStatsIntervalMs)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Periodically compress all loose JSON logs to a single gzipped archive
 
 // let compressLogToArchiveTick = setInterval(()=>{
-// 	app.compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri))
+// 	compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri), app.opt.archiveDir, app.opt.logsDir)
 // }, 20 * 1000)
 
 // let compressAllLogsToArchiveTick = setInterval(()=>{
-// 	app.compressAllLogsToArchive()
+// 	compressAllLogsToArchive(app.opt.logsDir, app.opt.archiveDir, app.opt.logStandardFilename, app.opt.compressAnyJsonLogs)
 // }, 5 * 1000)
 
 

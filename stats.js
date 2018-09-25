@@ -9,6 +9,7 @@ const simpleStatistics = require('simple-statistics')
 
 // In-house modules
 const { config } = require('./config.js')
+const { isBadResponse } = require('./outages.js')
 
 // TODO: better way of managing user configs for stats
 let statsConfig = {		
@@ -63,7 +64,7 @@ class Stats {
 				let successfulRTTs = _.filter(rTTs, val => val)
 				let successfulRTTsBinned = _.map(successfulRTTs, val => toNearestMultipleOf(val, statsConfig.rttBinSize))
 				let badResponses = _.filter(sortedPings, val => {
-					return session.isBadResponse(val)
+					return isBadResponse(val)
 				})
 
 				thisStatTarget.meanGoodRTT = successfulRTTs.length > 0 ? _.mean(successfulRTTs) : null

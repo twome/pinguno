@@ -50,40 +50,6 @@ class PingData {
 		])
 	}
 
-	// FRAGILE: Depends on particular structure of text output from macOS 10.12.6 Sierra's inbuilt `ping` binary. 
-	/*
-		Solution: distribute with specific binary, or replace this part with a `ping` 
-		substitute that gives out structured data instead of text.
-	*/
-	static pingTextToStructure(pingText, timeResponseReceived){
-		const structure = {}
-
-		const roundTripTimeMsRegex = /time\=([\.\d]*) ms/
-		const ttlHopsRegex = /ttl\=([\.\d]*) /
-		const icmpSeqRegex = /icmp_seq\=([\.\d]*) /
-		const responseSizeRegex = /([\.\d]*) bytes from/
-
-		const timeoutRegex = /Request timeout for icmp_seq (\d*)/
-
-		// Successful connection
-		structure.roundTripTimeMs = pingText.match(roundTripTimeMsRegex) ? Number(pingText.match(roundTripTimeMsRegex)[1]) : null
-		structure.ttlHops = pingText.match(ttlHopsRegex) ? Number(pingText.match(ttlHopsRegex)[1]) : null
-		structure.icmpSeq = pingText.match(icmpSeqRegex) ? Number(pingText.match(icmpSeqRegex)[1]) : null
-		structure.responseSize = pingText.match(responseSizeRegex) ? Number(pingText.match(responseSizeRegex)[1]) : null
-		
-		// No connection
-		if (pingText.match(timeoutRegex)){
-			structure.failure = true
-			structure.errorType = this.errorTypes.requestTimedOutError
-			structure.icmpSeq = pingText.match(timeoutRegex) ? Number(pingText.match(timeoutRegex)[1]) : null
-		}
-		
-		// Either way
-		structure.timeResponseReceived = timeResponseReceived
-
-		return structure
-	}
-
 	get revivalPropTypes(){
 		return [
 			{ typeClass: Date, propKey: 'timeResponseReceived' },
