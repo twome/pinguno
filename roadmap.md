@@ -4,6 +4,11 @@
 
 - test DNS by using domain names after testing IPs
 
+- use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/pingu-chosen-settings.json file. 
+
+- also save last-used pingu settings in /config/pingu-last-settings.json
+
+- reduce the size of the logs somehow; it's really balooning. reduce deuplication
 
 - split ping engines off Pingu into modules
 
@@ -18,6 +23,8 @@
 	- count in parallel using Pingu.pingIntervalMs
 
 - check if spawn.on('data') is a junk message and if so discard or store differently
+
+- function to decompress all existing zipped archives, concatenate, and then recompress with all other new data (better compression efficiency)
 
 - "print data straight to console" mode
 	- basically same console output as default ping (but more readable)
@@ -87,6 +94,11 @@
 - Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)
 
 
+## 3rd-party code changes
+
+- proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
+- support getting TTL & response size for response pings
+
 ### NEEDED FOR SELF-USAGE:
 
 - bugfix: the log targets are not getting TargetOutages recorded in their log
@@ -94,8 +106,12 @@
 
 ### NEEDED FOR PUBLIC RELEASE:
 
-- sanitize child_process.spawn input properly (extremely important security)
+- SECURITY: ensure that personal / config / gitignored files are not included in the build
+	- how to deal with .env?
+	- FAIRLY sure that .env values are "frozen" into the pkg build at build time
+	- to let the user use other env vars in perhaps a bundled zip; we can build the relative URL from `process.execPath`
+- SECURITY: sanitize child_process.spawn input properly (extremely important security)
 - remove all temporary / debug / dev comments etc
-- scour all personal information
+- PERSONAL: scour all personal information
 - helpful readme
 - test suite
