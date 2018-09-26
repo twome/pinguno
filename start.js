@@ -1,5 +1,3 @@
-console.info('RUNNING: start.js')
-
 // Built-in modules
 
 // 3rd-party dependencies
@@ -7,15 +5,22 @@ const express = require('express')
 const moment = require('moment')
 
 // In-house modules
+const { config } = require('./config.js')
 const { 
 	compressAllLogsToArchive, 
 	compressLogToArchive, 
 	saveSessionLogHuman,
 	saveSessionLogJSON
 } = require('./logging.js')
-
 const { Pingu } = require('./pingu.js')
 const { Stats } = require('./stats.js')
+
+if (config.nodeVerbose >= 2){
+	console.info('RUNNING: start.js') // verbose 2
+	console.info(`Process PID: ${process.pid}`) // verbose 2
+	console.info(`process.cwd: ${process.cwd()}`) // verbose 2
+	console.info(`process.execPath: ${process.execPath}`) // verbose 2
+}
 
 let app = new Pingu()
 

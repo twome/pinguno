@@ -4,7 +4,6 @@
 
 - test DNS by using domain names after testing IPs
 
-- are we getting/logging ttl from native ping?
 
 - split ping engines off Pingu into modules
 

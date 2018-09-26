@@ -7,6 +7,7 @@ const { spawn } = require('child_process')
 const netPing = require('net-ping')
 
 // In-house modules
+const { config } = require('./config.js')
 const { PingData, RequestError } = require('./ping-formats.js')
 
 
@@ -68,7 +69,7 @@ class EngineNative {
 
 		pingProcess.stderr.on('data', (data)=>{
 			let dataStr = data.toString()
-			if ( process.env.NODE_VERBOSE >= 2){
+			if ( config.nodeVerbose >= 2){
 				console.error('inbuilt ping returned error through stderr: ', dataStr)
 			} 
 

@@ -5,7 +5,7 @@ let config = {}
 
 // Check environment variables
 if (process.env.NODE_VERBOSE){
-	let verbosityAsInt = new Number(process.env.NODE_VERBOSE)
+	let verbosityAsInt = Number(process.env.NODE_VERBOSE)
 	if ( typeof verbosityAsInt === 'number' && verbosityAsInt <= 9 && verbosityAsInt >= 0 ){
 		config.nodeVerbose = verbosityAsInt
 	} else {

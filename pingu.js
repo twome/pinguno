@@ -8,7 +8,6 @@ const zlib = require('zlib')
 const os = require('os')
 
 // 3rd-party dependencies
-require('dotenv').config() // We only need side-effects: process.env
 const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
 const moment = require('moment')
