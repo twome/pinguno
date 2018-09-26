@@ -41,7 +41,7 @@ let fullOutagesAcrossTargets = (targets, timeframeLeniencyMs)=>{
 		// Assumes list is chronological
 		for (let ping of target.pingList){
 			if (isBadResponse(ping, timeframeLeniencyMs)){
-				if (config.nodeVerbose >= 2){ 
+				if (config.nodeVerbose >= 2 && ping.errorType){ 
 					console.info(`[${ping.timeResponseReceived.toISOString()}] Bad response from ${target.IPV4}: ${ping.errorType.accessor}`) 
 				}
 				currentStreak.push(ping)
