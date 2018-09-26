@@ -74,7 +74,7 @@ let statsTick = setInterval(()=>{
 
 let handlePOSIXSignal = (signalStr)=>{
 	if (signalStr === 'SIGINT'){
-		console.info('\nReceived SIGINT; exiting program. Press Control-\\ to force exit.')
+		console.info('\nReceived SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
 		process.exit()
 	}
 	process.exit()	

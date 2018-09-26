@@ -10,6 +10,7 @@ const getFolderSize = require('get-folder-size')
 const moment = require('moment')
 const { _ } = require('lodash')
 const del = require('del')
+const prompts = require('prompts')
 
 // In-house modules
 const { config } = require('./config.js')
@@ -163,7 +164,8 @@ let formatSessionAsHumanText = (instance, options)=>{
 		template = template + 'IP ' + ping.targetIPV4 + ' | '
 		if (!ping.failure){
 			template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
-			template = template + 'Response size: ' + (ping.responseSize > 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
+			template = template + 'Response size: ' + (ping.responseSize >= 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
+			template = template + 'TTL hops left: ' + (ping.ttlHops >= 1 ? ping.ttlHops + ' hops' : '(unknown)') + ', '
 		} else {
 			let typeIsUniqueInList = true
 			for (let encounteredErrorType of encounteredErrorTypes){
@@ -187,7 +189,8 @@ let formatSessionAsHumanText = (instance, options)=>{
 		}
 	}
 
-	template = template + `\n\n${instance.appHumanName} - ${instance.appHumanSubtitle}` + `\n${instance.appHomepageUrl}`
+	// No `` template literal for appHomepageUrl because we want to use the implicit toString() to convert from URL type
+	template = template + `\n\n${instance.appHumanName} - ${instance.appHumanSubtitle}` + `\n` + instance.appHomepageUrl
 	
 	template = template + `\nFree & open-source (gratis & libre)`
 
@@ -259,26 +262,53 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 }
 
 let deleteAllLogs = (logsDir, summariesDir)=>{
-	// TODO: Require manual confirmation
-	console.warn('\n ------------ \n DELETING ALL UNCOMPRESSED PINGU LOGS in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
 	
 	let actuallyDelete = ()=>{
 		del([
-			logsDir + '/*.json', 
-			summariesDir + '/*.txt'
+			path.join(logsDir, '*.json'),
+			path.join(summariesDir, '*.txt')
 		]).then(paths => {
-			console.info('\n ------------ \n Deleted files and folders: \n ------------ \n ')
+			console.info('\n ------------ \n Deleted files and folders: \n ')
 			if (paths.length > 0){
 				console.info(paths.join('\n'))	
 			} else {
 				console.info('(No files deleted)')	
 			}
-			
+			return paths
+		}, (err)=>{
+			console.error('Hit error while trying to delete logs.')
+			throw Error(err)
 		})	
 	}
 
-	setTimeout(actuallyDelete, 5000)
-	
+	let inputValidation = (value)=>{
+		return value === 'delete' ? true : 'Confirmation failed (type "delete" without quote marks).'
+	}
+
+	// TODO: maybe just switch to a simple y/N confirm?
+	// Require the user to manually confirm deletion
+	let deletionPromptResponse = prompts({
+	type: 'text',
+	name: 'confirmDeleteResponse',
+	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
+	validation: inputValidation // TODO: Why does this seem to do absolutely nothing?
+	})
+
+	deletionPromptResponse.then((val)=>{
+		let validated = inputValidation(val.confirmDeleteResponse)
+
+		if (validated === true){
+			// Give a little moment to allow second thoughts
+			console.warn('\n ------------ \n Deleting all uncompressed pingu logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
+			setTimeout(actuallyDelete, 5000)
+		} else {
+			console.warn('Failed prompt:', validated)
+			return false
+		}
+	}, (err)=>{
+		console.error('prompts - Prompt error encountered: ', err)
+		return err
+	})
 }
 
 exports.compressAllLogsToArchive = compressAllLogsToArchive
