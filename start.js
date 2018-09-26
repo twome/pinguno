@@ -1,4 +1,4 @@
-console.info('RUNNING: server.js')
+console.info('RUNNING: start.js')
 
 // Built-in modules
 
@@ -67,4 +67,17 @@ let statsTick = setInterval(()=>{
 // 	})
 // }, 2 * 1000)
 
+let handlePOSIXSignal = (signalStr)=>{
+	if (signalStr === 'SIGINT'){
+		console.info('\nReceived SIGINT; exiting program. Press Control-\\ to force exit.')
+		process.exit()
+	}
+	process.exit()	
+}
 
+process.on('SIGINT', handlePOSIXSignal)
+
+process.on('exit', (code)=>{
+	// Everything returned asynchronously will be ignored before the program exits
+	console.info(`start.js - About to exit with code: ${code}`)
+})

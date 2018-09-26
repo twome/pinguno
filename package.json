@@ -19,7 +19,7 @@
     "yarn": "^1.9.4"
   },
   "bin": {
-    "pingu": "./server.js"
+    "pingu": "./start.js"
   },
   "pkg": {
     "scripts": [],
