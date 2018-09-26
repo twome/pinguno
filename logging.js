@@ -4,6 +4,7 @@ console.info('RUNNING: logging.js')
 const fs = require('fs')
 const zlib = require('zlib')
 const util = require('util')
+const path = require('path')
 
 // 3rd-party dependencies
 const getFolderSize = require('get-folder-size')
@@ -234,8 +235,8 @@ let compressLogToArchive = (filename, archiveDir, logsDir)=>{
 		}
 
 		const gzip = zlib.createGzip()
-		const input = fs.createReadStream(logsDir + '/' + filename)
-		const output = fs.createWriteStream(archiveDir + '/' + filename + '.gz')
+		const input = fs.createReadStream(path.join(logsDir, filename))
+		const output = fs.createWriteStream(path.join(archiveDir, filename + '.gz'))
 
 		input.pipe(gzip).pipe(output)
 
@@ -245,14 +246,16 @@ let compressLogToArchive = (filename, archiveDir, logsDir)=>{
 }
 
 let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compressAnyJsonLogs)=>{
-	fs.readdir(logsDir + '/', 'utf8', (err, files)=>{
+	fs.readdir(logsDir, 'utf8', (err, files)=>{
 		if (err){
 			throw new Error(err)
 		}
 
 		for (let uri of files){
 			// Only compress *our* JSON log files unless user specifies looser approach
-			if ( uri.match(logStandardFilename + '\.json$') || ( compressAnyJsonLogs && uri.match('\.json$') ) ){
+			let usesOurStandardName = path.basename(uri, '.json') === path.standardize(logStandardFilename)
+			let isJSONFile = path.extname(uri) === '.json'
+			if ( usesOurStandardName || ( compressAnyJsonLogs && isJSONFile ) ){
 				compressLogToArchive(uri, archiveDir, logsDir)
 			} 
 		}
@@ -261,11 +264,11 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 	return true
 }
 
-let deleteAllLogs = (logsDir, summariesDir)=>{
+let deleteAllLogs = (logsDir, summariesDir)=>{	
 	
 	let actuallyDelete = ()=>{
 		del([
-			path.join(logsDir, '*.json'),
+			path.join(logsDir, '*.json'), 
 			path.join(summariesDir, '*.txt')
 		]).then(paths => {
 			console.info('\n ------------ \n Deleted files and folders: \n ')
@@ -288,10 +291,10 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	// TODO: maybe just switch to a simple y/N confirm?
 	// Require the user to manually confirm deletion
 	let deletionPromptResponse = prompts({
-	type: 'text',
-	name: 'confirmDeleteResponse',
-	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
-	validation: inputValidation // TODO: Why does this seem to do absolutely nothing?
+    	type: 'text',
+    	name: 'confirmDeleteResponse',
+    	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
+    	validation: inputValidation // TODO: Why does this seem to do absolutely nothing?
 	})
 
 	deletionPromptResponse.then((val)=>{
@@ -300,11 +303,11 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 		if (validated === true){
 			// Give a little moment to allow second thoughts
 			console.warn('\n ------------ \n Deleting all uncompressed pingu logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
-			setTimeout(actuallyDelete, 5000)
+			setTimeout(actuallyDelete, 5000)	
 		} else {
 			console.warn('Failed prompt:', validated)
 			return false
-		}
+		}		
 	}, (err)=>{
 		console.error('prompts - Prompt error encountered: ', err)
 		return err

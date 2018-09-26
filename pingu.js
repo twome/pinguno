@@ -3,6 +3,7 @@ console.info('RUNNING: pingu.js')
 // Built-in modules
 const { spawn } = require('child_process')
 const fs = require('fs')
+const path = require('path')
 
 const zlib = require('zlib')
 const os = require('os')
@@ -29,8 +30,8 @@ class Pingu {
 		*/
 		this.appHumanName = 'Pingu' // must be filesystem-compatible
 		this.appHumanSubtitle = 'ISP Uptime Logger'
-		this.appHomepageUrl = 'https://twome.name/pingu'
-		this.appSourceRepoUrl = 'https://gitlab.com/twome/pingu'
+		this.appHomepageUrl = new URL('https://twome.name/pingu')
+		this.appSourceRepoUrl = new URL('https://gitlab.com/twome/pingu')
 
 		/*
 			Options
@@ -68,12 +69,23 @@ class Pingu {
 		]
 
 		opt.logStandardFilename = 'pingu log'
-		opt.logsDir = './logs'
-		opt.summariesDir = './logs/human-readable' // Human-readable summary .txt files
-		opt.archiveDir = opt.logsDir + '/compressed'
+		opt.logsDir = path.normalize('logs')
+		opt.summariesDir = path.join(opt.logsDir, '/human-readable') // Human-readable summary .txt files
+		opt.archiveDir = path.join(opt.logsDir, '/compressed')
 		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
 		opt.activeLogUri = null // URI string
 		opt.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
+		opt.maxUncompressedSizeMiB = 100 // Maximum size of JSON log directory to reach before running a compression on all uncompressed logs, in MiB
+
+		// Maximum MiB size to temporarily allow the program to require when decompressing all archives (just prior to recompressing in a new archive)
+		opt.maxDecompressionHeadroomMiB = 1000 
+
+		// If the total uncompressed JSON + compressed archive size is greater than this, start refusing to create new files and kick up a stink
+		opt.neverExceedSizeMiB = 2000 
+
+		// Boolean: use the terminal user's current working directory as the relative base of Pingu-related paths
+		// (instead of the directory of the Pingu app files)
+		opt.pathsRelativeToUserCwd = false 
 
 		// TODO: replace default options with passed-in options
 		// opt = Object.assign(opt, options)
@@ -82,6 +94,25 @@ class Pingu {
 		/*
 			App state properties
 		*/
+		this.appPath = __filename
+		// At built-time, pkg moves references to local files to a virtual folder /snapshot/
+		// We're going to use this to check whether this program is running from inside a pkg'd executable
+		let snapshotIsFirstFolder = String.prototype.split.call(process.cwd(), path.sep)[1] === 'snapshot'
+		this.runningInPkgExecutable = process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder)
+		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
+			console.info('Pingu is running from within a pkg-built executable.')
+		}
+		this.appDir = opt.pathsRelativeToUserCwd ? process.cwd : __dirname
+		if (this.runningInPkgExecutable){
+			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : process.execPath
+		}
+		console.info(
+			`Pingu's main directory for this session: ${this.appDir}` + 
+			`\nPingu will write logs to ${path.join(this.appDir, opt.logsDir)}` + 
+			`\nPingu will write human-readable summaries to ${path.join(this.appDir, opt.summariesDir)}` + 
+			`\nPingu will compress logs archives to ${path.join(this.appDir, opt.archiveDir)}\n`
+		)
+
 		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
 		this.pingTargets = _.cloneDeep(opt.desiredPingTargets)
@@ -290,16 +321,24 @@ class Pingu {
 		return exporter
 	}
 
-	tellArchiveSize(){
+	getArchiveSize(callback){
 		if (! fs.existsSync(this.opt.logsDir)){
-			console.info('No pre-existing archive folder.')
 			return false
 		}
 		getFolderSize(this.opt.logsDir, (err, size)=>{
-		  if (err) { throw err }
-		 
-		  const sizeInMB = (size / 1024 / 1024).toFixed(2)
-		  console.info(`Archive size: ${sizeInMB} MB`)
+			if (err) { throw err }
+			let sizeInMiB = (size / 1024 / 1024).toFixed(2)
+			callback(sizeInMiB)
+		})
+	}
+
+	tellArchiveSize(){
+		this.getArchiveSize((sizeInMiB)=>{
+			if ( sizeInMiB ){
+				console.info(`Archive size: ${sizeInMiB} MiB`)
+			} else {
+				console.info('No pre-existing archive folder.')
+			}	
 		})
 	}
 
