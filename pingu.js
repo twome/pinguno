@@ -176,11 +176,9 @@ class Pingu {
 		let pingLogTargets
 
 		if (combinedPingList && combinedPingList.length && targetList && targetList.length ){
-			// console.debug('updateOutages - Using provided ping / target lists')
 			pingLogTargets = this.separatePingListIntoTargets(combinedPingList, targetList)
 		} else {
 			// No ping-list/target-list provided to updateOutages - using active session ping history by default.
-			// console.debug('updateOutages - Using active-session ping / target lists')
 			pingLogTargets = this.pingTargets
 		}
 
@@ -215,8 +213,6 @@ class Pingu {
 				this.lastFailure = new Date()
 				return target.connected = this.connectionState.DISCONNECTED
 			}
-			
-			// console.log(target.humanName + ' connected?: ' + target.connected.humanName)
 		}
 	}
 
@@ -358,7 +354,7 @@ class Pingu {
 			throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
 		}
 
-		for ( let pingTarget of pingTargets ){
+		for ( let pingTarget of pingTargets ){				
 			registerEngineFn(this, pingTarget)
 		}
 	}

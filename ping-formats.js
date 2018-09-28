@@ -171,6 +171,7 @@ class PingsLog {
 
 		this.outages = obj.outages
 		this.sessionStartTime = obj.sessionStartTime
+		this.sessionEndTime = obj.sessionEndTime
 		this.targetList = obj.targetList
 	}
 
@@ -178,7 +179,8 @@ class PingsLog {
 		return [
 			{ typeClass: Date, propKey: 'dateLogCreated' }, 
 			{ typeClass: Date, propKey: 'dateLogLastUpdated' },
-			{ typeClass: Date, propKey: 'sessionStartTime' }
+			{ typeClass: Date, propKey: 'sessionStartTime' },
+			{ typeClass: Date, propKey: 'sessionEndTime' }
 		]
 	}
 }

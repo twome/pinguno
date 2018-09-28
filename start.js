@@ -87,6 +87,8 @@ let handlePOSIXSignal = (signalStr)=>{
 		console.info('\nReceived SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
 		process.exit()
 	}
+
+	// Regardless of specific signal, ensure we exit
 	process.exit()	
 }
 

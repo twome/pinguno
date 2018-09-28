@@ -77,7 +77,6 @@ let fullOutagesAcrossTargets = (targets, timeframeLeniencyMs)=>{
 			let targetOutagesThatIntersectExtremes = []
 
 			for (let targetOutage of targetOutageList){
-				// console.log('--- current targetOutage start/end', targetOutage.startDate, targetOutage.endDate)
 				let pingsWithinExtremes = []
 
 				for (let ping of targetOutage.pingList){
@@ -90,10 +89,8 @@ let fullOutagesAcrossTargets = (targets, timeframeLeniencyMs)=>{
 						pingsWithinExtremes.push(ping)
 					}
 				}
-				// console.debug('--- pingsWithinExtremes.length')
-				// console.debug(pingsWithinExtremes.length)
+
 				if (pingsWithinExtremes.length === 0 ){
-					// console.debug('no pings within extremes for this TO')
 					// This TargetOutage doesn't intersect with the current full-outage's time boundaries; try the next one.  
 					continue
 				}
