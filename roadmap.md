@@ -2,6 +2,13 @@
 
 ### Misc
 
+- refactor the (write/update) JSON log stuff together, and remove the 'partial' rewriting stuff
+	- just detect if there's anything new to write (to save HDD writes)
+		- if we have a valid "changed session since last saved" property
+		- else: deep value-compare live session & readed data
+	- we can stitch entire sessions together with very different start/end times
+	- if memory is a concern just split the session rather than reconnecting to the existing log file
+
 - test DNS by using domain names after testing IPs
 
 - use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/pingu-chosen-settings.json file. 

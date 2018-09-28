@@ -14,9 +14,10 @@ const del = require('del')
 const prompts = require('prompts')
 
 // In-house modules
+const { Pingu } = require('./pingu.js')
 const { config } = require('./config.js')
 const { MyUtil } = require('./my-util.js')
-const { Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
+const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats.js')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
@@ -47,9 +48,98 @@ let writeNewSessionLog = (instance)=>{
 	})
 }
 
+// TODO: optimise / simplify this
+let readJSONLogIntoSession = (logFileUri)=>{
+
+	let getPingFromIcmpTarget = (session, icmpSeq, targetIPV4)=>{
+		for (let target of session.pingTargets){
+			if (target.IPV4 === targetIPV4){
+				for (let ping of target.pingList){
+					if (icmpSeq === ping.icmpSeq){
+						return ping
+					}
+				}
+			}
+		}
+
+		return Error('getPingFromIcmpTarget - Could not find ping with that icmpSeq and target IP.')
+	}
+
+	let onFileRead = (dataStr)=>{
+		let fileData = JSON.parse(dataStr)
+
+		let newSession = new Pingu(Object.assign(fileData.opt, {
+			activeLogUri: logFileUri
+		}))
+
+		fileData.combinedPingList = _.sortBy(fileData.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
+
+		newSession.pingTargets = _.cloneDeep(fileData.targetList)
+
+		// ~ separate combined ping list into newSession targets
+		if (fileData.combinedPingList.length >= 1){
+			for (let ping of fileData.combinedPingList){
+				for (let target of newSession.pingTargets){
+					target.pingList = []
+					if (target.IPV4 === ping.targetIPV4){
+						target.pingList.push(ping)
+					}
+				}
+			}	
+		}
+
+		// ~ Recreate RequestErrors from accessors
+		for (let target of newSession.pingTargets){
+			if (target.requestErrorList.length <= 0){ continue }
+			for (let requestError of target.requestErrorList){
+
+				console.debug('requestError', requestError)
+				// Turn error name back into type error
+				requestError.errorType = RequestError.errorTypes[requestError.errorType.accessor]
+			}
+		}
+
+		// ~ Recreate Ping Errors from accessors
+		for (let target of newSession.pingTargets){
+			for (let ping of target.pingList){
+				if (!ping.errorType){ continue }
+				// Turn error name back into type error
+				ping.errorType = RequestError.errorTypes[ping.errorType.accessor]
+			}
+		}
+		
+		// ~ recreate TargetOutage pings from their icmp&target
+		// Perf: bad
+		for (let target of newSession.pingTargets){
+			for (let to of target.targetOutages ){
+				for (let ping of to){
+					let referencedPing = getPingFromIcmpTarget(newSession, ping.icmpSeq, target.IPV4)
+					let ping = _.cloneDeep(referencedPing)
+				}
+			}
+		}
+
+		newSession.outages = fileData.outages // Or we could just recalculate these outages
+		newSession.sessionStartTime = fileData.sessionStartTime
+	
+		return newSession
+	}
+
+	return fsReadFilePromise(logFileUri, 'utf8').then(onFileRead, (error)=>{
+		throw new Error(error)
+	})
+}
+
 // Read, extend, and overwrite this sessions existing log file
 let extendExistingSessionLog = (instance)=>{
 	// TODO: clean this up; write as simply to a new PingsLog as you can
+
+	// TODO: only need to determine whether there's any new data
+	// ~ sort by ICMP, then try find an ICMP higher than the latest we have
+
+	// TODO: Long-term, we probably don't really need to "resume" session; they can be idempotent and we can just 
+	// wholesale replace them 
+
 	let onFileRead = (data)=>{
 		let original = JSON.parse(data)
 
@@ -77,9 +167,29 @@ let extendExistingSessionLog = (instance)=>{
 		
 		toWrite.dateLogLastUpdated = new Date()
 		toWrite.outages = liveData.outages
+		toWrite.opt = instance.opt
 		
+		// TODO: remove humanName from errors (just store error name)
+
+		// Remove all duplicated or recreatable data
+		let strippedTargetList = _.cloneDeep(liveData.targetList)
+		for (let target of strippedTargetList){
+			for (let reqError of target.requestErrorList){
+				delete reqError.errorType.humanName
+			}
+
+			for (let targetOutage of target.targetOutages){
+				for (let ping of targetOutage.pingList){
+					for (let key of Object.keys(ping)){
+						if (!['icmpSeq'].includes(key)){
+							delete ping[key]
+						}
+					}	
+				}
+			}
+		}
 		// POSSIBLE BUG: This just completely overwrites the original targets (incl TargetOutages and RequestErrorList)
-		toWrite.targetList = liveData.targetList
+		toWrite.targetList = strippedTargetList
 
 		// TODO: use PingsLog for this and writeNewSessionLog's structures
 		
@@ -319,3 +429,4 @@ exports.compressLogToArchive = compressLogToArchive
 exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
 exports.deleteAllLogs = deleteAllLogs
+exports.readJSONLogIntoSession = readJSONLogIntoSession

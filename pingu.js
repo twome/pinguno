@@ -87,8 +87,10 @@ class Pingu {
 		// (instead of the directory of the Pingu app files)
 		opt.pathsRelativeToUserCwd = false 
 
-		// TODO: replace default options with passed-in options
-		// opt = Object.assign(opt, options)
+		// Replace default options with passed-in options
+		if (options && typeof options === 'object'){
+			Object.assign(opt, options)
+		}
 		this.opt = opt
 
 		/*
@@ -98,7 +100,7 @@ class Pingu {
 		// At built-time, pkg moves references to local files to a virtual folder /snapshot/
 		// We're going to use this to check whether this program is running from inside a pkg'd executable
 		let snapshotIsFirstFolder = String.prototype.split.call(process.cwd(), path.sep)[1] === 'snapshot'
-		this.runningInPkgExecutable = process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder)
+		this.runningInPkgExecutable = !!(process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder))
 		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
 			console.info('Pingu is running from within a pkg-built executable.')
 		}

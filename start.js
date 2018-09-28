@@ -10,7 +10,8 @@ const {
 	compressAllLogsToArchive, 
 	compressLogToArchive, 
 	saveSessionLogHuman,
-	saveSessionLogJSON
+	saveSessionLogJSON,
+	readJSONLogIntoSession
 } = require('./logging.js')
 const { Pingu } = require('./pingu.js')
 const { Stats } = require('./stats.js')
@@ -52,6 +53,15 @@ let updateSessionEndTimeTick = setInterval(()=>{
 let statsTick = setInterval(()=>{
 	app.updateSessionStats()
 }, app.opt.updateSessionStatsIntervalMs)
+
+let readFromThisSessionJSONLogTick = setInterval(()=>{
+	// let mockSession = readJSONLogIntoSession('./dev-materials/test-data_frequent-disconnects.json')
+	readJSONLogIntoSession(app.activeLogUri).then((mockSession)=>{
+		console.debug(mockSession)
+	},(err)=>{
+		console.debug(err)
+	})
+}, 10000)
 
 
 // Periodically compress all loose JSON logs to a single gzipped archive
