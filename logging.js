@@ -22,48 +22,8 @@ const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
 
-let writeNewSessionLog = (instance)=>{
-	const combinedTargets = instance.combineTargetsForExport()
-	const content = JSON.stringify(combinedTargets, null, instance.opt.pingLogIndent)
-	const fileCreationDate = new Date()
-	
-	// Turn ISO string into filesystem-compatible string (also strip milliseconds)
-	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
-
-	fs.mkdir(instance.opt.logsDir, undefined, (err)=>{
-		if (err){ 
-			// We just want to make sure the folder exists so this doesn't matter
-		}
-
-		const fileUri = instance.opt.logsDir + '/' + filename 
-
-		// Keep track of this session's log so we can come back and update it
-		instance.activeLogUri = fileUri
-
-		return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
-			console.info('Wrote log to ' + fileUri)
-		}, (error)=>{
-			console.error(error)
-		})
-	})
-}
-
 // TODO: optimise / simplify this
 let readJSONLogIntoSession = (logFileUri)=>{
-
-	let getPingFromIcmpTarget = (session, icmpSeq, targetIPV4)=>{
-		for (let target of session.pingTargets){
-			if (target.IPV4 === targetIPV4){
-				for (let ping of target.pingList){
-					if (icmpSeq === ping.icmpSeq){
-						return ping
-					}
-				}
-			}
-		}
-
-		return Error('getPingFromIcmpTarget - Could not find ping with that icmpSeq and target IP.')
-	}
 
 	let onFileRead = (dataStr)=>{
 		let fileData = JSON.parse(dataStr)
@@ -71,6 +31,25 @@ let readJSONLogIntoSession = (logFileUri)=>{
 		let newSession = new Pingu(Object.assign(fileData.opt, {
 			activeLogUri: logFileUri
 		}))
+
+		// Cast JSON strings to class instances
+		fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
+		fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
+		fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
+		fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
+		for (let ping of fileData.combinedPingList){
+			ping.timeResponseReceived = MyUtil.utcIsoStringToDateObj(ping.timeResponseReceived)
+		}
+		for (let outage of fileData.outages){
+			outage.startDate = MyUtil.utcIsoStringToDateObj(outage.startDate)
+			outage.endDate = MyUtil.utcIsoStringToDateObj(outage.endDate)
+		}
+		for (let target of fileData.targetList){
+			for (let requestError of target.requestErrorList){
+				requestError.timeResponseReceived = MyUtil.utcIsoStringToDateObj(requestError.timeResponseReceived)
+				requestError.timeRequestSent = MyUtil.utcIsoStringToDateObj(requestError.timeRequestSent)
+			}
+		}
 
 		fileData.combinedPingList = _.sortBy(fileData.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
 
@@ -88,18 +67,16 @@ let readJSONLogIntoSession = (logFileUri)=>{
 			}	
 		}
 
-		// ~ Recreate RequestErrors from accessors
+		// Recreate RequestErrors from accessors
 		for (let target of newSession.pingTargets){
 			if (target.requestErrorList.length <= 0){ continue }
 			for (let requestError of target.requestErrorList){
-
-				console.debug('requestError', requestError)
 				// Turn error name back into type error
 				requestError.errorType = RequestError.errorTypes[requestError.errorType.accessor]
 			}
 		}
 
-		// ~ Recreate Ping Errors from accessors
+		// Recreate Ping Errors from accessors
 		for (let target of newSession.pingTargets){
 			for (let ping of target.pingList){
 				if (!ping.errorType){ continue }
@@ -108,12 +85,12 @@ let readJSONLogIntoSession = (logFileUri)=>{
 			}
 		}
 		
-		// ~ recreate TargetOutage pings from their icmp&target
+		// Recreate TargetOutage pings from their ICMP & target
 		// Perf: bad
 		for (let target of newSession.pingTargets){
 			for (let to of target.targetOutages ){
 				for (let ping of to){
-					let referencedPing = getPingFromIcmpTarget(newSession, ping.icmpSeq, target.IPV4)
+					let referencedPing = Pingu.getPingFromIcmpTarget(newSession, ping.icmpSeq, target.IPV4)
 					let ping = _.cloneDeep(referencedPing)
 				}
 			}
@@ -130,81 +107,79 @@ let readJSONLogIntoSession = (logFileUri)=>{
 	})
 }
 
-// Read, extend, and overwrite this sessions existing log file
-let extendExistingSessionLog = (instance)=>{
-	// TODO: clean this up; write as simply to a new PingsLog as you can
+let writeNewSessionLog = (instance)=>{
+	const combinedTargets = instance.combineTargetsForExport()
+	const content = JSON.stringify(combinedTargets, null, instance.opt.pingLogIndent)
+	const fileCreationDate = new Date()
+	
+	// Turn ISO string into filesystem-compatible string (also strip milliseconds)
+	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
 
-	// TODO: only need to determine whether there's any new data
-	// ~ sort by ICMP, then try find an ICMP higher than the latest we have
-
-	// TODO: Long-term, we probably don't really need to "resume" session; they can be idempotent and we can just 
-	// wholesale replace them 
-
-	let onFileRead = (data)=>{
-		let original = JSON.parse(data)
-
-		let liveData = instance.combineTargetsForExport()
-
-		let latestPingInOriginal = _.sortBy(original.combinedPingList, ['timeResponseReceived', 'targetIPV4']).reverse()[0]
-
-		// This assumes original has exact same structure as live data
-		let firstUnwrittenPingIndex = original.combinedPingList.indexOf(latestPingInOriginal) + 1
-		let firstUnwrittenPing = liveData.combinedPingList[firstUnwrittenPingIndex]
-		
-		let toWrite = _.cloneDeep(original)
-		// Make sure there's any new pings *after* the most recently saved
-		if ( !firstUnwrittenPing ){
-			// noop - just update timestamp and re-save same data (we already do this anyway)
-			if ( config.nodeVerbose >= 2 ){
-				console.info('No new pings found to update existing session\'s log with.')
-			}
-		} else {
-			let onlyNewPings = liveData.combinedPingList.slice(firstUnwrittenPingIndex)
-
-			toWrite.combinedPingList = _.concat(original.combinedPingList, onlyNewPings)
-			toWrite.combinedPingList = _.sortBy(toWrite.combinedPingList, ['timeResponseReceived', 'targetIPV4'])
+	return fs.mkdir(instance.opt.logsDir, undefined, (err)=>{
+		if (err){ 
+			// We just want to make sure the folder exists so this doesn't matter
 		}
-		
-		toWrite.dateLogLastUpdated = new Date()
-		toWrite.outages = liveData.outages
-		toWrite.opt = instance.opt
-		
-		// TODO: remove humanName from errors (just store error name)
 
-		// Remove all duplicated or recreatable data
-		let strippedTargetList = _.cloneDeep(liveData.targetList)
-		for (let target of strippedTargetList){
-			for (let reqError of target.requestErrorList){
-				delete reqError.errorType.humanName
-			}
+		const fileUri = path.join(instance.opt.logsDir, filename)
 
-			for (let targetOutage of target.targetOutages){
-				for (let ping of targetOutage.pingList){
-					for (let key of Object.keys(ping)){
-						if (!['icmpSeq'].includes(key)){
-							delete ping[key]
-						}
-					}	
-				}
-			}
-		}
-		// POSSIBLE BUG: This just completely overwrites the original targets (incl TargetOutages and RequestErrorList)
-		toWrite.targetList = strippedTargetList
+		// Keep track of this session's log so we can come back and update it
+		instance.activeLogUri = fileUri
 
-		// TODO: use PingsLog for this and writeNewSessionLog's structures
-		
-		toWrite = JSON.stringify(toWrite, null, instance.opt.pingLogIndent)
-		
-		return fsWriteFilePromise(instance.activeLogUri, toWrite, 'utf8').then((file)=>{
-			console.info('Updated log at ' + instance.activeLogUri)
-			return instance.activeLogUri
+		return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
+			console.info('Wrote new log file to ' + fileUri)
+			return fileUri
 		}, (error)=>{
-			throw new Error(error) 
+			console.error(error)
+			return error
 		})
+	})
+}
+
+// Read, extend, and overwrite this sessions existing log file
+let overwriteExistingSessionLog = (instance)=>{
+	if (!instance.sessionDirty){
+		// Nothing's changed, so don't bother writing. Consumer will need to test for non-Promise return value
+		// noop - just update timestamp and re-save same data (we already do this anyway)
+		if ( config.nodeVerbose >= 2 ){
+			console.info('No new pings found to update existing session\'s log with.')
+		}
+		return Error('No new data to write')
+	} 
+
+	let toWrite = instance.combineTargetsForExport()
+	toWrite.combinedPingList = _.sortBy(toWrite.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
+	toWrite.dateLogLastUpdated = new Date()
+	toWrite.outages = _.cloneDeep(instance.outages)
+	toWrite.opt = _.cloneDeep(instance.opt)
+
+	// Remove all duplicated or recreatable data
+	let strippedTargetList = _.cloneDeep(instance.pingTargets)
+	for (let target of strippedTargetList){
+		for (let reqError of target.requestErrorList){
+			// Only need errorType.accessor to uniquely identify error
+			delete reqError.errorType.humanName
+		}
+
+		for (let targetOutage of target.targetOutages){
+			for (let ping of targetOutage.pingList){
+				for (let key of Object.keys(ping)){
+					if (!['icmpSeq'].includes(key)){
+						// ICMP sequence and target (parent) is all we need to deduce exactly which ping this is
+						delete ping[key]
+					}
+				}	
+			}
+		}
 	}
 
-	return fsReadFilePromise(instance.activeLogUri, 'utf8').then(onFileRead, (error)=>{
-		throw new Error(error)
+	toWrite = JSON.stringify(toWrite, null, instance.opt.pingLogIndent)
+	
+	return fsWriteFilePromise(instance.activeLogUri, toWrite, 'utf8').then((file)=>{
+		console.info('Overwrote log at ' + instance.activeLogUri)
+		return instance.activeLogUri
+	}, (error)=>{
+		console.error(error)
+		return error
 	})
 }
 
@@ -212,19 +187,21 @@ let extendExistingSessionLog = (instance)=>{
 // POSSIBLE BUG: this runs almost assuming sync, not sure if need a flag or something to make sure not actively worked on
 let alreadyNotifiedLogUri = false
 let saveSessionLogJSON = (instance)=>{	
+	let outcome
 	if ( instance.activeLogUri ){ 
 		if (!alreadyNotifiedLogUri){
 			console.log('Writing to file. Active log URI found, using that URI.')
 			alreadyNotifiedLogUri = true
 		}
-		extendExistingSessionLog(instance)
+		outcome = overwriteExistingSessionLog(instance)
 	} else {
 		if (!alreadyNotifiedLogUri){
 			console.log('Writing to new log file.')			
 			alreadyNotifiedLogUri = true
 		}
-		writeNewSessionLog(instance) 
+		outcome = writeNewSessionLog(instance) 
 	}
+	return outcome
 }
 
 

@@ -58,6 +58,7 @@ class EngineNative {
 
 		pingProcess.on('error', (code, signal)=>{
 			console.error('child process hit an error with ' + `code ${code} and signal ${signal}`)
+			instance.sessionDirty = true
 			throw Error('Node child process hit an error')
 		})
 
@@ -65,6 +66,7 @@ class EngineNative {
 			let dataStr = data.toString()
 	  		let pingAsStructure = EngineNative.macOSPingTextToStructure(dataStr, new Date())
 		  	pingTarget.pingList.push(new PingData(pingAsStructure))	
+		  	instance.sessionDirty = true
 		})
 
 		pingProcess.stderr.on('data', (data)=>{
@@ -83,6 +85,7 @@ class EngineNative {
 			}
 
 			pingTarget.requestErrorList.push(new RequestError(errorType, errorReqTime, errorResTime, dataStr))	
+			instance.sessionDirty = true
 		})
 
 		pingProcess.on('close', (code)=>{
@@ -163,12 +166,14 @@ class EngineNetPing {
 
 			npSession.pingHost(ipv4, (err, target, sent, rcvd)=>{
 				EngineNetPing.processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget)
+				instance.sessionDirty = true
 			})
 		}	
 
 		npSession.on('error', (err)=>{
 			console.error(err.toString())
 			npSession.close()
+			instance.sessionDirty = true
 
 			throw Error('net-ping\'s underlying raw socket emitted an error')
 		})

@@ -130,6 +130,9 @@ class Pingu {
 		this.sessionEndTime = new Date()
 		this.sessionStats = {}
 
+		// Has this session's state changed since it was last saved?
+		this.sessionDirty = false
+
 		this.lastFailure = null // Date
 		this.lastDateConnected = null // Date
 		this.internetConnected = null // boolean
@@ -196,29 +199,6 @@ class Pingu {
 		return this.outages
 	}
 
-	readCombinedListFromFile(fileUri, onReadFile){
-
-		fs.readFile(fileUri, (err, fileData)=>{
-			if (err) throw err
-
-			// NB: parseJsonAndReconstitute doesn't do anything at the moment! The saved JSON data is not in a normal class format
-			// so the function has no accurate targets to operate on.
-			fileData = MyUtil.parseJsonAndReconstitute(fileData, [PingData, RequestError, TargetOutage, Outage])
-
-			// TEMP: Cast stringified dates to Date instances
-			fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
-			fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
-			fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
-			fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
-			for (let pingIndex in fileData.combinedPingList){
-				let dateAsString = fileData.combinedPingList[pingIndex].timeResponseReceived
-				fileData.combinedPingList[pingIndex].timeResponseReceived = MyUtil.utcIsoStringToDateObj(dateAsString)
-			}
-			
-			onReadFile(fileData)
-		})
-	}
-
 	updateTargetsConnectionStatus(){
 		for (let target of this.pingTargets){
 			let latestPing = this.latestPing(target)
@@ -248,6 +228,7 @@ class Pingu {
 			return oldInstance
 		} else if (oldInstance === undefined){
 			this.sessionEndTime = new Date()
+			this.sessionDirty = true
 		} else {
 			throw Error('updateSessionEndTime: oldInstance provided is not a Pingu instance')
 		}
@@ -292,6 +273,20 @@ class Pingu {
 		}
 
 		return fullTargets
+	}
+
+	static getPingFromIcmpTarget (session, icmpSeq, targetIPV4){
+		for (let target of session.pingTargets){
+			if (target.IPV4 === targetIPV4){
+				for (let ping of target.pingList){
+					if (icmpSeq === ping.icmpSeq){
+						return ping
+					}
+				}
+			}
+		}
+
+		return Error('getPingFromIcmpTarget - Could not find ping with that icmpSeq and target IP.')
 	}
 
 	// Interleave the ping-targets with their individual ping-lists into one shared ping list
@@ -346,22 +341,25 @@ class Pingu {
 
 	updateSessionStats(){
 		this.sessionStats = Stats.calcSessionStats(this)
+		this.sessionDirty = true
 		return this.sessionStats
 	}
 
 	startPinging(pingTargets, pingEngine){
 		let selectedPingEngine = pingEngine || this.pingEngine // Allows API user to override the default platform 'ping' engine
+		let registerEngineFn
+		if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
+			console.info('Starting pinging - Using inbuilt/native `ping`')
+			registerEngineFn = EngineNative.regPingHandlersInbuilt
+		} else if (selectedPingEngine === this.pingEngineEnun.NodeNetPing){
+			console.info('Starting pinging - Using node package `net-ping`')
+			registerEngineFn = EngineNetPing.regPingHandlersNetPing
+		} else {
+			throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
+		}
 
 		for ( let pingTarget of pingTargets ){
-			if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
-				console.info('Starting pinging - Using inbuilt/native `ping`')
-				EngineNative.regPingHandlersInbuilt(this, pingTarget)
-			} else if (selectedPingEngine){
-				console.info('Starting pinging - Using node package `net-ping`')
-				EngineNetPing.regPingHandlersNetPing(this, pingTarget)
-			} else {
-				throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
-			}
+			registerEngineFn(this, pingTarget)
 		}
 	}
 }
