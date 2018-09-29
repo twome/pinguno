@@ -73,6 +73,7 @@ class Pingu {
 		opt.archiveDir = path.join(opt.logsDir, '/compressed')
 		opt.luxonDateFormatShortPrecise = 'yyyy-LL-dd HH:mm:ss.SSS' // Custom date output format for Luxon (date library)
 		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
+		opt.wrapHumanLogAtCharLength = false // Number/falsey: number of characters-per-line to hard-wrap log output to
 		opt.activeLogUri = null // URI string
 		opt.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs
 		opt.maxUncompressedSizeMiB = 100 // Maximum size of JSON log directory to reach before running a compression on all uncompressed logs, in MiB

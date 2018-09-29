@@ -281,11 +281,12 @@ let formatSessionAsHumanText = (instance, options)=>{
 	
 	template = template + `\nFree & open-source (gratis & libre)`
 
-	// TODO: Allow option to wrap the final output to x characters for display in bad/old/CL apps
 	// TODO: Potentially also allow tab character for indenting instead of just spaces
-	/*if (wrapAtCharLength){
-		TODOwrapToCharLength(template, wrapAtCharLength)
-	}*/
+
+	// Wrap the final output to x characters for display in bad/old/command-line apps
+	if (options.wrapAtCharLength){
+		template = MyUtil.hardWrapToCharLength(template, options.wrapAtCharLength)
+	}
 
 	return { template, summaryUri }
 }

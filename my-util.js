@@ -1,6 +1,30 @@
 const { DateTime } = require('luxon')
 
 class MyUtil {
+	// Forcibly wrap a string by inserting newline characters if any line exceeds X characters length
+	static hardWrapToCharLength(source, charLength){
+		let inputLines = source.split(`\n`)
+		let truncatedLines = []
+		for (let i = 0; i < inputLines.length; i = i + 1){
+			let line = inputLines[i]
+			if (line.length > charLength){
+				let truncated = line.slice(0, charLength)
+				let remainder = line.slice(charLength, line.length)
+				inputLines.splice(i + 1, 0, remainder) // Push the remaining content to a new input line
+				truncatedLines.push(truncated)
+			} else {
+				truncatedLines.push(line)
+			}
+		}
+		let continuous = []
+		for (let line of truncatedLines){
+			continuous.push(line + `\n`) // Add 1 newline per line
+		}
+		let ret = continuous.join('') // Combine into 1 string
+		ret = ret.slice(0, ret.length - 1) // Trim the final newline we added
+		return ret
+	}
+
 	static isoDateToFileSystemName(date){
 		// Destroys information (milliseconds)
 		return date.toISOString().replace(':','').replace(':','-').replace(/\.\d{3}/,'').replace('T', '_')
