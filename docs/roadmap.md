@@ -9,6 +9,8 @@
 	- we can stitch entire sessions together with very different start/end times
 	- if memory is a concern just split the session rather than reconnecting to the existing log file
 
+	- TODO: Long-term, we probably don't really need to "resume" session; they can be idempotent and we can just wholesale replace them 
+
 - test DNS by using domain names after testing IPs
 
 - use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/pingu-chosen-settings.json file. 
@@ -86,6 +88,8 @@
 - store TargetOutage pings by ID/reference instead of copied data
 
 - stretch: break apart in-house modules for public repos if it makes sense
+
+- stretch: i18n
 
 - do we need to perform some actions before ctrl+c fully exits NEED RESEARCH
 	- check that we finished properly writing to file?

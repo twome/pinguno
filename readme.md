@@ -7,7 +7,6 @@ Officially supports:
 - macOS Sierra 10.12.6, 64-bit only
 
 - [Developers only] Node v10.11.0 and up
-- [Developers who want to compile builds only] npm package [`zeit/pkg`](https://github.com/zeit/pkg) binary available on the global $PATH
 - [Unix-based systems only] `ping` binary accessible on the $PATH (can fall back to less accurate included 'ping'-like package)
 
 ## How to use (normal people):
@@ -78,12 +77,33 @@ TODO: the rest
 
 ### Installation
 
-Clone this repo locally: `git clone git@github.com:twome/pingu.git`
 [Install Node.js v10.11.0](https://nodejs.org/en/download/) or above if you don't have it.
+Clone this repo locally: `git clone git@github.com:twome/pingu.git`
+TODO: what requires node-gyp?
+[Windows only] This project depends on `node-gyp`, so you may need to install `node-gyp`'s dependencies with `npm install --global windows-build-tools`
+
+### Usage as an end-user CLI app
+
+NB. We need to keep some environment variables (listed in init-env-vars.sh) in the shell so Node knows where to look for ICU (locale data, inbuilt in browsers). Run `. init-env-vars.sh` for each shell session, or you can use the `npm run ...` shortcuts in package.json which include the env vars.
+
+Run `node start.js` to start a Pingu session.
+Supported environment variables (can use a .env file in project root):
+```
+NODE_VERBOSE: 0-9 (verbosity of console output)
+NODE_ENV: 'production' or 'development' 
+```
+
+### Usage as an npm package (for getting Pingu data programmatically)
+
+TODO: publish to GitHub & npm  
+`npm install twome/pingu` or `yarn add twome/pingu`
+Pingu (pingu.js) is the main class, and session state is stored as properties of Pingu objects.
+
+TODO: Pingu API documentation 
 
 ### Building/compiling executables
 
-We use the [`pkg`](TODO) package & binary to build executables. 
+We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build executables. 
 - Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the --dev dependency `pkg` defined in package.json.
 - Alternatively, install `pkg` globally with `npm install -g pkg` or `yarn global add pkg` and run it with your own settings.
 
@@ -92,6 +112,13 @@ We use the [`pkg`](TODO) package & binary to build executables.
 - master: latest working version for public use. develop must pass existing tests/QA before master merges it in
 - develop: latest development version. does not need to work; merge feature branches in once the main gist of the feature is fleshed out)
 
+
+## Further documentations:
+
+See the /docs folder in this repo for Markdown-formatted documentation.
+	- bugs.md: the full list of known bugs
+	- hacks.md: currently-implemented hacks to be wary of
+	- roadmap.md: future development plans
 
 ## Known bugs & caveats
 
@@ -109,13 +136,17 @@ We use the [`pkg`](TODO) package & binary to build executables.
 
 Uses [semantic versioning](https://semver.org/)
 
-### Contributing
+### Error reporting & contributing
 
-TODO
+Send us a PR or make an issue on GitHub! All help is appreciated :)
+
+### Contributors:
+
+Tom Kenny - [website](https://twome.name)
 
 ## License: MIT
 
 **Non-legally-binding plain English**:
-> You can use Pingu for anything (including commercial uses), as long as you don't remove Pingu's MIT license from whatever copies you make of Pingu (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty nor can you hold Pingu's authors liable for anything. It's free, so if someone's charging you money for basically the same thing you're probably getting ripped off!
+> You can use Pingu for anything (including commercial uses), as long as you don't remove Pingu's MIT license from whatever copies you make of Pingu (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty, nor can you hold Pingu's authors liable for anything Pingu does. It's free, so if someone's charging you money for basically the same thing you're probably getting ripped off!
 
 See file '[LICENSE](LICENSE)' for full legally-binding details.
