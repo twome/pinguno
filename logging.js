@@ -20,6 +20,62 @@ const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
 
+
+// Interleave the ping-targets with their individual ping-lists into one shared ping list
+let combineTargetsForExport = (instance)=>{
+	let exporter = new PingsLog({
+		sessionStartTime: instance.sessionStartTime,
+		sessionEndTime: instance.sessionEndTime,
+		targetList: _.cloneDeep(instance.pingTargets),
+		outages: instance.outages
+	})
+
+	// Remove ping lists from individual targets and concat them all into combinedPingList
+	for (let target of exporter.targetList){
+		for (let ping of target.pingList){
+			// Add targetIPV4 to pings to identify their target now that they have no parent
+			ping.targetIPV4 = target.IPV4
+		}
+		exporter.combinedPingList = _.concat(exporter.combinedPingList, target.pingList)
+	}
+	for (let target of exporter.targetList){
+		delete target.pingList
+		delete target.connected // "Connection" is live info and derived from pingList anyway
+	}
+
+	// Sort the aggregate ping list by 1) ICMP sequence number 2) by target IP 3) chronologically
+	let pingListSorted = _.sortBy(exporter.combinedPingList, [(o)=>{return o.icmpSeq}, (o)=>{return o.targetIPV4}, (o)=>{return o.timeResponseReceived} ])
+	exporter.combinedPingList = pingListSorted
+
+	exporter.outages = _.cloneDeep(instance.outages)
+	exporter.opt = _.cloneDeep(instance.opt)
+
+	// Remove all duplicated or recreatable data
+	let strippedTargetList = _.cloneDeep(exporter.targetList)
+	for (let target of strippedTargetList){
+		for (let reqError of target.requestErrorList){
+			// Only need errorType.accessor to uniquely identify error
+			delete reqError.errorType.humanName
+		}
+
+		for (let targetOutage of target.targetOutages){
+			for (let ping of targetOutage.pingList){
+				for (let key of Object.keys(ping)){
+					if (!['icmpSeq'].includes(key)){
+						// ICMP sequence and target (parent) is all we need to deduce exactly which ping this is
+						delete ping[key]
+					}
+				}	
+			}
+		}
+	}
+	exporter.targetList = strippedTargetList
+
+	return exporter
+}
+
+
+
 // TODO: optimise / simplify this
 let readJSONLogIntoSession = (logFileUri)=>{
 
@@ -57,7 +113,7 @@ let readJSONLogIntoSession = (logFileUri)=>{
 		if (fileData.combinedPingList.length >= 1){
 			for (let ping of fileData.combinedPingList){
 				for (let target of newSession.pingTargets){
-					target.pingList = []
+					target.pingList = (target.pingList && target.pingList.length >= 1) ? target.pingList : []
 					if (target.IPV4 === ping.targetIPV4){
 						target.pingList.push(ping)
 					}
@@ -86,10 +142,11 @@ let readJSONLogIntoSession = (logFileUri)=>{
 		// Recreate TargetOutage pings from their ICMP & target
 		// Perf: bad
 		for (let target of newSession.pingTargets){
-			for (let to of target.targetOutages ){
-				for (let ping of to){
-					let referencedPing = Pingu.getPingFromIcmpTarget(newSession, ping.icmpSeq, target.IPV4)
-					let ping = _.cloneDeep(referencedPing)
+			for (let targetOutage of target.targetOutages ){
+				if (targetOutage.pingList.length <= 0){ continue }
+				for (let pingIndex in targetOutage.pingList){
+					let referencedPing = Pingu.getPingFromIcmpTarget(newSession, targetOutage.pingList[pingIndex].icmpSeq, target.IPV4)
+					targetOutage.pingList[pingIndex] = _.cloneDeep(referencedPing)
 				}
 			}
 		}
@@ -106,11 +163,10 @@ let readJSONLogIntoSession = (logFileUri)=>{
 }
 
 let writeNewSessionLog = (instance)=>{
-	const combinedTargets = instance.combineTargetsForExport()
-	const content = JSON.stringify(combinedTargets, null, instance.opt.pingLogIndent)
-	const fileCreationDate = new Date()
+	const combinedTargets = combineTargetsForExport(instance)
 	
 	// Turn ISO string into filesystem-compatible string (also strip milliseconds)
+	const fileCreationDate = new Date()
 	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
 
 	return fs.mkdir(instance.opt.logsDir, undefined, (err)=>{
@@ -119,10 +175,10 @@ let writeNewSessionLog = (instance)=>{
 		}
 
 		const fileUri = path.join(instance.opt.logsDir, filename)
-
 		// Keep track of this session's log so we can come back and update it
 		instance.activeLogUri = fileUri
 
+		const content = JSON.stringify(combinedTargets, null, instance.opt.pingLogIndent)
 		return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
 			console.info('Wrote new log file to ' + fileUri)
 			return fileUri
@@ -144,36 +200,15 @@ let overwriteExistingSessionLog = (instance)=>{
 		return Error('No new data to write')
 	} 
 
-	let toWrite = instance.combineTargetsForExport()
-	toWrite.combinedPingList = _.sortBy(toWrite.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
+	let toWrite = combineTargetsForExport(instance)
+
 	toWrite.dateLogLastUpdated = new Date()
-	toWrite.outages = _.cloneDeep(instance.outages)
-	toWrite.opt = _.cloneDeep(instance.opt)
-
-	// Remove all duplicated or recreatable data
-	let strippedTargetList = _.cloneDeep(instance.pingTargets)
-	for (let target of strippedTargetList){
-		for (let reqError of target.requestErrorList){
-			// Only need errorType.accessor to uniquely identify error
-			delete reqError.errorType.humanName
-		}
-
-		for (let targetOutage of target.targetOutages){
-			for (let ping of targetOutage.pingList){
-				for (let key of Object.keys(ping)){
-					if (!['icmpSeq'].includes(key)){
-						// ICMP sequence and target (parent) is all we need to deduce exactly which ping this is
-						delete ping[key]
-					}
-				}	
-			}
-		}
-	}
 
 	toWrite = JSON.stringify(toWrite, null, instance.opt.pingLogIndent)
-	
 	return fsWriteFilePromise(instance.activeLogUri, toWrite, 'utf8').then((file)=>{
-		console.info('Overwrote log at ' + instance.activeLogUri)
+		if (process.env.NODE_ENV !== 'development'){
+			console.info('Overwrote log at ' + instance.activeLogUri)	
+		} 
 		return instance.activeLogUri
 	}, (error)=>{
 		console.error(error)
@@ -298,6 +333,7 @@ let saveSessionLogHuman = (instance)=>{
 		summariesDir: instance.opt.summariesDir,
 		badLatencyThresholdMs: instance.opt.badLatencyThresholdMs,
 		pingIntervalMs: instance.opt.pingIntervalMs,
+		wrapAtCharLength: instance.opt.wrapHumanLogAtCharLength
 	})
 
 	fs.mkdir(instance.opt.summariesDir, undefined, (err)=>{
@@ -307,7 +343,7 @@ let saveSessionLogHuman = (instance)=>{
 		
 		return fsWriteFilePromise(formatted.summaryUri, formatted.template, 'utf8').then((file)=>{
 			if (process.env.NODE_ENV !== 'development'){
-				console.info('Wrote human-readable text summary to ' + formatted.summaryUri)
+				console.info('Wrote human-readable text summary to ' + formatted.summaryUri)	
 			}
 			return formatted.summaryUri
 		}, (error)=>{
@@ -409,3 +445,4 @@ exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
 exports.deleteAllLogs = deleteAllLogs
 exports.readJSONLogIntoSession = readJSONLogIntoSession
+exports.combineTargetsForExport = combineTargetsForExport

@@ -44,8 +44,23 @@ let updateOutagesTick = setInterval(()=>{
 }, app.opt.updateOutagesIntervalMs)
 
 let writeToFileTick = setInterval(()=>{
-	saveSessionLogJSON(app)
+	Promise.resolve(saveSessionLogJSON(app)).then((val)=>{
+		// TEMP
+		// Testing reading from file into a new Pingu session
+		/*console.debug('WriteToFile outcome:', val)
+		if (typeof val === 'string'){
+			readJSONLogIntoSession(app.activeLogUri).then((newSessionFromRead)=>{
+				console.debug('readJSONLogIntoSession - newSessionFromRead:', !!newSessionFromRead)
+			},(err)=>{
+				console.debug('readJSONLogIntoSession - error:', err)
+			})
+		}*/
+	}, (err)=>{
+		console.error(err)
+	})
 }, app.opt.writeToFileIntervalMs)
+
+// let mockSession = readJSONLogIntoSession('./dev-materials/test-data_frequent-disconnects.json')
 
 let exportSessionToTextSummaryTick = setInterval(()=>{
 	saveSessionLogHuman(app)

@@ -102,7 +102,7 @@ class Pingu {
 		// We're going to use this to check whether this program is running from inside a pkg'd executable
 		let snapshotIsFirstFolder = String.prototype.split.call(process.cwd(), path.sep)[1] === 'snapshot'
 		this.runningInPkgExecutable = !!(process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder))
-
+		
 		this.appDir = opt.pathsRelativeToUserCwd ? process.cwd : __dirname
 		if (this.runningInPkgExecutable){
 			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : process.execPath
@@ -155,9 +155,9 @@ class Pingu {
 			console.info('Pingu is running from within a pkg-built executable.')
 		}
 		console.info(
-			`Pingu's main directory for this session: ${this.appDir}` +
-			`\nPingu will write logs to ${path.join(this.appDir, this.opt.logsDir)}` +
-			`\nPingu will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` +
+			`Pingu's main directory for this session: ${this.appDir}` + 
+			`\nPingu will write logs to ${path.join(this.appDir, this.opt.logsDir)}` + 
+			`\nPingu will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` + 
 			`\nPingu will compress logs archives to ${path.join(this.appDir, this.opt.archiveDir)}\n`
 		)
 		this.tellArchiveSize()
@@ -180,7 +180,7 @@ class Pingu {
 				console.info(`Archive size: ${sizeInMiB} MiB`)
 			} else {
 				console.info('No pre-existing archive folder.')
-			}
+			}	
 		})
 	}
 
