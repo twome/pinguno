@@ -1,5 +1,3 @@
-console.info('RUNNING: outages.js')
-
 // Built-in modules
 // const { spawn } = require('child_process')
 
@@ -34,9 +32,7 @@ let	isRoughlyWithinTimeframe = (dateToTest, timeframeStart, timeframeEnd, lenien
 let fullOutagesAcrossTargets = (targets, timeframeLeniencyMs)=>{
 	// Add TargetOutages (streaks of bad-response pings) to each target
 	for (let target of targets){
-
 		target.targetOutages = []
-		
 		let currentStreak = []
 		// Assumes list is chronological
 		for (let ping of target.pingList){

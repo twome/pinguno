@@ -1,5 +1,3 @@
-console.info('RUNNING: logging.js')
-
 // Built-in modules
 const fs = require('fs')
 const zlib = require('zlib')

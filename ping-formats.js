@@ -120,8 +120,6 @@ class TargetOutage {
 		}
 
 		this.pingList = pingList
-
-		this.contemporaries = []
 	}
 
 	get startDate(){

@@ -1,5 +1,3 @@
-console.info('RUNNING: stats.js')
-
 // Built-in modules
 // (none)
 

@@ -1,5 +1,3 @@
-console.info('RUNNING: ping-engines.js')
-
 // Built-in modules
 const { spawn } = require('child_process')
 
@@ -71,7 +69,7 @@ class EngineNative {
 
 		pingProcess.stderr.on('data', (data)=>{
 			let dataStr = data.toString()
-			if ( config.nodeVerbose >= 2){
+			if ( config.nodeVerbose >= 3){
 				console.error('inbuilt ping returned error through stderr: ', dataStr)
 			} 
 

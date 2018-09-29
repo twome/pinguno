@@ -1,4 +1,4 @@
-console.info('RUNNING: pingu.js')
+let pinguFirstRun = true
 
 // Built-in modules
 const { spawn } = require('child_process')
@@ -11,7 +11,6 @@ const os = require('os')
 // 3rd-party dependencies
 const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
-const moment = require('moment')
 const netPing = require('net-ping')
 
 // In-house modules
@@ -45,17 +44,17 @@ class Pingu {
 		opt.pingPacketSizeBytes = 56 // macOS inbuilt ping default 
 		opt.timeoutLimit = 2000 // Linux default is 2 x average RTT
 		// NB: Currently using default timeout limit times
-		opt.pingIntervalMs = 3000
+		opt.pingIntervalMs = process.env.NODE_ENV === 'development' ? 1000 : 3000
 		opt.badLatencyThresholdMs = 250
 		// NB: ttl currently only used by 'net-ping'
 		opt.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
 		
-		opt.exportSessionToTextSummaryIntervalMs = 10000
-		opt.updateOutagesIntervalMs = 2000
-		opt.connectionStatusIntervalMs = 3000
+		opt.exportSessionToTextSummaryIntervalMs = process.env.NODE_ENV === 'development' ? 4000 :10000
+		opt.updateOutagesIntervalMs = process.env.NODE_ENV === 'development' ? 500 : 2000
+		opt.connectionStatusIntervalMs = process.env.NODE_ENV === 'development' ? 2000 : 3000
 		opt.writeToFileIntervalMs = 2000
-		opt.updateSessionEndTimeIntervalMs = 5000
-		opt.updateSessionStatsIntervalMs = 5000
+		opt.updateSessionEndTimeIntervalMs = process.env.NODE_ENV === 'development' ? 1000 : 5000
+		opt.updateSessionStatsIntervalMs = process.env.NODE_ENV === 'development' ? 10000 : 20000
 
 		opt.desiredPingTargets = [
 			{
@@ -101,19 +100,11 @@ class Pingu {
 		// We're going to use this to check whether this program is running from inside a pkg'd executable
 		let snapshotIsFirstFolder = String.prototype.split.call(process.cwd(), path.sep)[1] === 'snapshot'
 		this.runningInPkgExecutable = !!(process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder))
-		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
-			console.info('Pingu is running from within a pkg-built executable.')
-		}
+
 		this.appDir = opt.pathsRelativeToUserCwd ? process.cwd : __dirname
 		if (this.runningInPkgExecutable){
 			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : process.execPath
 		}
-		console.info(
-			`Pingu's main directory for this session: ${this.appDir}` + 
-			`\nPingu will write logs to ${path.join(this.appDir, opt.logsDir)}` + 
-			`\nPingu will write human-readable summaries to ${path.join(this.appDir, opt.summariesDir)}` + 
-			`\nPingu will compress logs archives to ${path.join(this.appDir, opt.archiveDir)}\n`
-		)
 
 		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
@@ -155,6 +146,40 @@ class Pingu {
 		} else {
 			this.pingEngine = this.pingEngineEnum.NodeNetPing
 		}
+	}
+
+	tellStatus(){
+		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
+			console.info('Pingu is running from within a pkg-built executable.')
+		}
+		console.info(
+			`Pingu's main directory for this session: ${this.appDir}` +
+			`\nPingu will write logs to ${path.join(this.appDir, this.opt.logsDir)}` +
+			`\nPingu will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` +
+			`\nPingu will compress logs archives to ${path.join(this.appDir, this.opt.archiveDir)}\n`
+		)
+		this.tellArchiveSize()
+	}
+
+	getArchiveSize(callback){
+		if (! fs.existsSync(this.opt.logsDir)){
+			return false
+		}
+		getFolderSize(this.opt.logsDir, (err, size)=>{
+			if (err) { throw err }
+			let sizeInMiB = (size / 1024 / 1024).toFixed(2)
+			callback(sizeInMiB)
+		})
+	}
+
+	tellArchiveSize(){
+		this.getArchiveSize((sizeInMiB)=>{
+			if ( sizeInMiB ){
+				console.info(`Archive size: ${sizeInMiB} MiB`)
+			} else {
+				console.info('No pre-existing archive folder.')
+			}
+		})
 	}
 
 	updateInternetConnectionStatus(){
@@ -285,56 +310,6 @@ class Pingu {
 		return Error('getPingFromIcmpTarget - Could not find ping with that icmpSeq and target IP.')
 	}
 
-	// Interleave the ping-targets with their individual ping-lists into one shared ping list
-	combineTargetsForExport(){
-		let exporter = new PingsLog({
-			sessionStartTime: this.sessionStartTime,
-			sessionEndTime: this.sessionEndTime,
-			targetList: _.cloneDeep(this.pingTargets),
-			outages: this.outages
-		})
-
-		// Remove ping lists from individual targets and concat them all into combinedPingList
-		for (let target of exporter.targetList){
-			for (let ping of target.pingList){
-				// Add targetIPV4 to pings to identify their target now that they have no parent
-				ping.targetIPV4 = target.IPV4
-			}
-			exporter.combinedPingList = _.concat(exporter.combinedPingList, target.pingList)
-		}
-		for (let target of exporter.targetList){
-			delete target.pingList
-			delete target.connected // "Connection" is live info and derived from pingList anyway
-		}
-
-		// Sort the aggregate ping list 1) chronologically 2) by target IP
-		let pingListSorted = _.sortBy(exporter.combinedPingList, [(o)=>{return o.timeResponseReceived}, (o)=>{return o.targetIPV4}])
-		exporter.combinedPingList = pingListSorted
-
-		return exporter
-	}
-
-	getArchiveSize(callback){
-		if (! fs.existsSync(this.opt.logsDir)){
-			return false
-		}
-		getFolderSize(this.opt.logsDir, (err, size)=>{
-			if (err) { throw err }
-			let sizeInMiB = (size / 1024 / 1024).toFixed(2)
-			callback(sizeInMiB)
-		})
-	}
-
-	tellArchiveSize(){
-		this.getArchiveSize((sizeInMiB)=>{
-			if ( sizeInMiB ){
-				console.info(`Archive size: ${sizeInMiB} MiB`)
-			} else {
-				console.info('No pre-existing archive folder.')
-			}	
-		})
-	}
-
 	updateSessionStats(){
 		this.sessionStats = Stats.calcSessionStats(this)
 		this.sessionDirty = true
@@ -347,7 +322,7 @@ class Pingu {
 		if (selectedPingEngine === this.pingEngineEnum.InbuiltSpawn){
 			console.info('Starting pinging - Using inbuilt/native `ping`')
 			registerEngineFn = EngineNative.regPingHandlersInbuilt
-		} else if (selectedPingEngine === this.pingEngineEnun.NodeNetPing){
+		} else if (selectedPingEngine === this.pingEngineEnum.NodeNetPing){
 			console.info('Starting pinging - Using node package `net-ping`')
 			registerEngineFn = EngineNetPing.regPingHandlersNetPing
 		} else {
