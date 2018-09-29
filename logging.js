@@ -6,7 +6,7 @@ const path = require('path')
 
 // 3rd-party dependencies
 const getFolderSize = require('get-folder-size')
-const moment = require('moment')
+const { DateTime } = require('luxon')
 const { _ } = require('lodash')
 const del = require('del')
 const prompts = require('prompts')
@@ -216,8 +216,9 @@ let formatSessionAsHumanText = (instance, options)=>{
 	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pingu summary.txt'
 
 	let template = `Pingu internet connectivity log` +
-	`\nSession started: ${moment(instance.sessionStartTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
-	`\nSession ended (approx): ${moment(instance.sessionEndTime).format('MMMM Do YYYY hh:mm:ss ZZ')}` +
+	`\nSession started: ${DateTime.fromJSDate(instance.sessionStartTime).toISO()}` +
+	`\nSession ended (approx): ${DateTime.fromJSDate(instance.sessionEndTime).toISO()}` +
+	`\nSession timezone (all displayed times are in this zone): ${DateTime.fromJSDate(instance.sessionStartTime).toFormat('ZZ')}` +
 	`\nPing interval time (in milliseconds): ${options.pingIntervalMs}` +
 	`\nUnderlying ping engine used to get ping data: ${instance.pingEngine.humanName}` +
 	`\nMaximum round-trip time before considering a connection "down" (in milliseconds): ${options.badLatencyThresholdMs}` +
@@ -232,7 +233,7 @@ let formatSessionAsHumanText = (instance, options)=>{
 	if (instance.outages.length >= 1){
 		for (let outage of instance.outages){
 			let humanOutageDuration = (outage.durationSec >= options.pingIntervalMs / 1000) ? outage.durationSec : '<' + (options.pingIntervalMs / 1000)
-			template = template + '\n    - ' + moment(outage.startDate).format('MMMM Do YYYY hh:mm:ss ZZ') + ', duration: ' + humanOutageDuration + ' seconds'
+			template = template + '\n    - ' + DateTime.fromJSDate(outage.startDate).toISO() + ', duration: ' + humanOutageDuration + ' seconds'
 		}
 	} else {
 		template = template + `\n${ind}[No outages]`
@@ -240,14 +241,14 @@ let formatSessionAsHumanText = (instance, options)=>{
 
 	template = template + '\n\nAll pings:'
 
-	let combinedPingList = instance.combineTargetsForExport().combinedPingList
+	let combinedPingList = combineTargetsForExport(instance).combinedPingList
 
 	let encounteredErrorTypes = []
 
 	for (let ping of combinedPingList ){
 
-		template = template + `\n${ind}- [` + moment(ping.timeResponseReceived).format('YYYY-MM-DD hh:mm:ss.SSS ZZ') + '] '
-		template = template + 'IP ' + ping.targetIPV4 + ' | '
+		template = template + `\n` + DateTime.fromJSDate(ping.timeResponseReceived).toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' | '
+		template = template + 'IP: ' + ping.targetIPV4 + ', '
 		if (!ping.failure){
 			template = template + 'Round-trip time: ' + ping.roundTripTimeMs + ' ms, '
 			template = template + 'Response size: ' + (ping.responseSize >= 1 ? ping.responseSize + ' bytes' : '(unknown)') + ', '
@@ -304,7 +305,9 @@ let saveSessionLogHuman = (instance)=>{
 		}
 		
 		return fsWriteFilePromise(formatted.summaryUri, formatted.template, 'utf8').then((file)=>{
-			console.info('Wrote human-readable text summary to ' + formatted.summaryUri)
+			if (process.env.NODE_ENV !== 'development'){
+				console.info('Wrote human-readable text summary to ' + formatted.summaryUri)
+			}
 			return formatted.summaryUri
 		}, (error)=>{
 			throw new Error(error)

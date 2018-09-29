@@ -71,6 +71,7 @@ class Pingu {
 		opt.logsDir = path.normalize('logs')
 		opt.summariesDir = path.join(opt.logsDir, '/human-readable') // Human-readable summary .txt files
 		opt.archiveDir = path.join(opt.logsDir, '/compressed')
+		opt.luxonDateFormatShortPrecise = 'yyyy-LL-dd HH:mm:ss.SSS' // Custom date output format for Luxon (date library)
 		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
 		opt.activeLogUri = null // URI string
 		opt.compressAnyJsonLogs = false // Option to allow users to compress non-standard-named JSON logs

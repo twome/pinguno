@@ -2,7 +2,7 @@
 
 // 3rd-party dependencies
 const express = require('express')
-const moment = require('moment')
+const { DateTime } = require('luxon')
 
 // In-house modules
 const { config } = require('./config.js')
@@ -17,7 +17,7 @@ const { Pingu } = require('./pingu.js')
 const { Stats } = require('./stats.js')
 
 if (config.nodeVerbose >= 2){
-	console.info('RUNNING: start.js') // verbose 2
+	console.info('  -----\nStarting Pingu\n  -----') // verbose 2
 	console.info(`Process PID: ${process.pid}`) // verbose 2
 	console.info(`process.cwd: ${process.cwd()}`) // verbose 2
 	console.info(`process.execPath: ${process.execPath}`) // verbose 2
@@ -25,13 +25,18 @@ if (config.nodeVerbose >= 2){
 
 let app = new Pingu()
 
-app.tellArchiveSize()
+if (config.nodeVerbose >= 2){
+	app.tellStatus()
+}
 
-app.startPinging(app.pingTargets/*, app.pingEngineEnum.NodeNetPing*/)
+app.startPinging(
+	app.pingTargets
+	/*, app.pingEngineEnum.NodeNetPing*/
+)
 
 let connectionStatusTick = setInterval(()=>{
 	app.updateInternetConnectionStatus()
-	console.log(moment().format('YYYY-MM-DD hh:mm:ss') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
+	console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
 }, app.opt.connectionStatusIntervalMs)
 
 let updateOutagesTick = setInterval(()=>{	
@@ -52,17 +57,8 @@ let updateSessionEndTimeTick = setInterval(()=>{
 
 let statsTick = setInterval(()=>{
 	app.updateSessionStats()
+	console.info(app.sessionStats)
 }, app.opt.updateSessionStatsIntervalMs)
-
-let readFromThisSessionJSONLogTick = setInterval(()=>{
-	// let mockSession = readJSONLogIntoSession('./dev-materials/test-data_frequent-disconnects.json')
-	readJSONLogIntoSession(app.activeLogUri).then((mockSession)=>{
-		console.debug(mockSession)
-	},(err)=>{
-		console.debug(err)
-	})
-}, 10000)
-
 
 // Periodically compress all loose JSON logs to a single gzipped archive
 

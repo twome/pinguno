@@ -8,9 +8,10 @@
     "del": "^3.0.0",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
+    "full-icu": "^1.2.1",
     "get-folder-size": "^2.0.0",
     "lodash": "^4.17.10",
-    "moment": "^2.22.2",
+    "luxon": "^1.4.1",
     "net-ping": "^1.2.3",
     "prettyjson": "^1.2.1",
     "prompts": "^1.1.1",
@@ -32,9 +33,12 @@
     ]
   },
   "scripts": {
-    "buildcli": "pkg . --out-path build --debug"
+    "buildcli": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" pkg . --out-path build --debug",
+    "dev": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" node start.js",
+    "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon start.js"
   },
   "devDependencies": {
+    "cross-env": "^5.2.0",
     "pkg": "^4.3.4"
   }
 }

@@ -1,4 +1,4 @@
-const moment = require('moment')
+const { DateTime } = require('luxon')
 
 class MyUtil {
 	static isoDateToFileSystemName(date){
@@ -11,7 +11,7 @@ class MyUtil {
 	}
 
 	static utcIsoStringToDateObj(utcIsoString){
-		return moment(utcIsoString, moment.ISO_8601, true).toDate()
+		return DateTime.fromISO(utcIsoString).toJSDate()
 	}
 
 	static parseJsonAndReconstitute(obj, classList){
@@ -52,7 +52,7 @@ class MyUtil {
 	static reconstituteTypeFromSimpleParse(type, simpleParseVal){
 		if (type === Date){
 			console.debug('=== reconstituteTypeFromSimpleParse - Casting string to Date')
-			return moment(simpleParseVal, moment.ISO_8601, true).toDate()
+			return MyUtil.utcIsoStringToDateObj(simpleParseVal)
 		} else {
 			throw Error('Unsupported type provided to reconstituteTypeFromSimpleParse: ' + type)
 		}
