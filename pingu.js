@@ -4,7 +4,6 @@ let pinguFirstRun = true
 const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
-
 const zlib = require('zlib')
 const os = require('os')
 
@@ -36,6 +35,8 @@ class Pingu {
 			Options
 		*/
 		let opt = {}
+
+		// Individual ping settings
 		/*
 			NB: in 'net-ping's settings this is the size of the *data* I think?? From the docs: 
 			> 8 bytes are required for the ICMP packet itself, then 4 bytes are required 
@@ -67,10 +68,13 @@ class Pingu {
 			}
 		]
 
+		// Logging
 		opt.logStandardFilename = 'pingu log'
-		opt.logsDir = path.normalize('logs')
-		opt.summariesDir = path.join(opt.logsDir, '/human-readable') // Human-readable summary .txt files
-		opt.archiveDir = path.join(opt.logsDir, '/compressed')
+		opt.logsDir = 'logs'
+		opt.summariesDir = 'human-readable' // Human-readable summary .txt files
+		opt.archiveDir = 'compressed'
+		opt.configDir = 'config'
+		opt.configLastUsedPath = 'pingu-last-settings.json'
 		opt.luxonDateFormatShortPrecise = 'yyyy-LL-dd HH:mm:ss.SSS' // Custom date output format for Luxon (date library)
 		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
 		opt.wrapHumanLogAtCharLength = false // Number/falsey: number of characters-per-line to hard-wrap log output to
@@ -95,18 +99,31 @@ class Pingu {
 		this.opt = opt
 
 		/*
-			App state properties
+			# App state properties
 		*/
-		this.appPath = __filename
-		// At built-time, pkg moves references to local files to a virtual folder /snapshot/
+		// At build-time, pkg moves references to local files to a virtual folder /snapshot/
 		// We're going to use this to check whether this program is running from inside a pkg'd executable
 		let snapshotIsFirstFolder = String.prototype.split.call(process.cwd(), path.sep)[1] === 'snapshot'
 		this.runningInPkgExecutable = !!(process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder))
-		
+
+		/*
+				## Path resolution
+		*/
+		this.appPath = __filename
+
 		this.appDir = opt.pathsRelativeToUserCwd ? process.cwd : __dirname
 		if (this.runningInPkgExecutable){
+			// process.execPath will point to the executable's location and *won't* be overriden by pkg to relate to 'snapshot'
 			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : process.execPath
 		}
+		// Combine the directory names into proper path strings
+		this.opt.configDir = path.join(this.appDir, this.opt.configDir)
+		this.opt.configLastUsedPath = path.join(this.opt.configDir, this.opt.configLastUsedPath)
+		this.opt.logsDir = path.join(this.appDir, this.opt.logsDir)
+		this.opt.summariesDir = path.join(this.opt.configDir, this.opt.summariesDir)
+		this.opt.archiveDir = path.join(this.opt.configDir, this.opt.archiveDir)
+
+
 
 		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
@@ -330,6 +347,11 @@ class Pingu {
 		} else {
 			throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
 		}
+		
+		// Before we start doing anything, save this session's active settings/config
+		this.saveSessionConfigToJSON().then((val)=>{
+			console.info('Saved Pingu settings to ' + val)
+		}, (err)=>{throw Error(err)})
 
 		for ( let pingTarget of pingTargets ){				
 			registerEngineFn(this, pingTarget)

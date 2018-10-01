@@ -76,7 +76,6 @@ let statsTick = setInterval(()=>{
 }, app.opt.updateSessionStatsIntervalMs)
 
 // Periodically compress all loose JSON logs to a single gzipped archive
-
 // let compressLogToArchiveTick = setInterval(()=>{
 // 	compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri), app.opt.archiveDir, app.opt.logsDir)
 // }, 20 * 1000)
