@@ -58,10 +58,10 @@ class Stats {
 				thisStatTarget = null
 			} else {
 				let sortedPings = _.sortBy(target.pingList, (ping)=> ping.icmpSeq)
-				let rTTs = _.map(sortedPings, val => val.roundTripTimeMs)
-				let successfulRTTs = _.filter(rTTs, val => val)
-				let successfulRTTsBinned = _.map(successfulRTTs, val => toNearestMultipleOf(val, statsConfig.rttBinSize))
-				let badResponses = _.filter(sortedPings, val => {
+				let rTTs = sortedPings.map(val => val.roundTripTimeMs)
+				let successfulRTTs = rTTs.filter(val => val)
+				let successfulRTTsBinned = successfulRTTs.map(val => toNearestMultipleOf(val, statsConfig.rttBinSize))
+				let badResponses = sortedPings.filter( val => {
 					return isBadResponse(val)
 				})
 
