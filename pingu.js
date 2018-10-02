@@ -21,6 +21,9 @@ const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./pi
 const { EngineNative, EngineNetPing } = require('./ping-engines.js')
 const { Stats } = require('./stats.js')
 
+// Extensions of this module's main class
+const { attachExtensions } = require('./pingu-ext-fs.js')
+
 class Pingu {
 	constructor(options){
 		/*
@@ -358,5 +361,7 @@ class Pingu {
 		}
 	}
 }
+
+attachExtensions(Pingu) // Attach extensions to Pingu
 
 exports.Pingu = Pingu
