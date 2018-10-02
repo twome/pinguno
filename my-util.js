@@ -30,6 +30,21 @@ class MyUtil {
 		return date.toISOString().replace(':','').replace(':','-').replace(/\.\d{3}/,'').replace('T', '_')
 	}
 
+	static strSplice(str, insertionIndex, deleteLength, ...newItems){
+		let arr = str.split('')
+		arr.splice(insertionIndex, deleteLength, ...newItems)
+		let newStr = arr.join('')
+		return newStr
+	}
+
+	static fileSystemDateStrToIsoDate(dateStr){
+		let str = dateStr.replace('_', 'T')
+		str = this.strSplice(str, 13, 0, ':')
+		str = this.strSplice(str, 16, 1, ':')
+		str = this.strSplice(str, 19, 0, '.000')
+		return this.utcIsoStringToDateObj(str)
+	}
+
 	static filenameFromUri(uri){
 		return uri.substring(uri.lastIndexOf('/') + 1)
 	}
