@@ -73,94 +73,6 @@ let combineTargetsForExport = (instance)=>{
 	return exporter
 }
 
-
-
-// TODO: optimise / simplify this
-let readJSONLogIntoSession = (logFileUri)=>{
-
-	let onFileRead = (dataStr)=>{
-		let fileData = JSON.parse(dataStr)
-
-		let newSession = new Pingu(Object.assign(fileData.opt, {
-			activeLogUri: logFileUri
-		}))
-
-		// Cast JSON strings to class instances
-		fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
-		fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
-		fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
-		fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
-		for (let ping of fileData.combinedPingList){
-			ping.timeResponseReceived = MyUtil.utcIsoStringToDateObj(ping.timeResponseReceived)
-		}
-		for (let outage of fileData.outages){
-			outage.startDate = MyUtil.utcIsoStringToDateObj(outage.startDate)
-			outage.endDate = MyUtil.utcIsoStringToDateObj(outage.endDate)
-		}
-		for (let target of fileData.targetList){
-			for (let requestError of target.requestErrorList){
-				requestError.timeResponseReceived = MyUtil.utcIsoStringToDateObj(requestError.timeResponseReceived)
-				requestError.timeRequestSent = MyUtil.utcIsoStringToDateObj(requestError.timeRequestSent)
-			}
-		}
-
-		fileData.combinedPingList = _.sortBy(fileData.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
-
-		newSession.pingTargets = _.cloneDeep(fileData.targetList)
-
-		// ~ separate combined ping list into newSession targets
-		if (fileData.combinedPingList.length >= 1){
-			for (let ping of fileData.combinedPingList){
-				for (let target of newSession.pingTargets){
-					target.pingList = (target.pingList && target.pingList.length >= 1) ? target.pingList : []
-					if (target.IPV4 === ping.targetIPV4){
-						target.pingList.push(ping)
-					}
-				}
-			}	
-		}
-
-		// Recreate RequestErrors from accessors
-		for (let target of newSession.pingTargets){
-			if (target.requestErrorList.length <= 0){ continue }
-			for (let requestError of target.requestErrorList){
-				// Turn error name back into type error
-				requestError.errorType = RequestError.errorTypes[requestError.errorType.accessor]
-			}
-		}
-
-		// Recreate Ping Errors from accessors
-		for (let target of newSession.pingTargets){
-			for (let ping of target.pingList){
-				if (!ping.errorType){ continue }
-				// Turn error name back into type error
-				ping.errorType = RequestError.errorTypes[ping.errorType.accessor]
-			}
-		}
-		
-		// Recreate TargetOutage pings from their ICMP & target
-		// Perf: bad
-		for (let target of newSession.pingTargets){
-			for (let targetOutage of target.targetOutages ){
-				if (targetOutage.pingList.length <= 0){ continue }
-				for (let pingIndex in targetOutage.pingList){
-					let referencedPing = Pingu.getPingFromIcmpTarget(newSession, targetOutage.pingList[pingIndex].icmpSeq, target.IPV4)
-					targetOutage.pingList[pingIndex] = _.cloneDeep(referencedPing)
-				}
-			}
-		}
-
-		newSession.outages = fileData.outages // Or we could just recalculate these outages
-		newSession.sessionStartTime = fileData.sessionStartTime
-	
-		return newSession
-	}
-
-	return fsReadFilePromise(logFileUri, 'utf8').then(onFileRead, (error)=>{
-		throw new Error(error)
-	})
-}
-
 let writeNewSessionLog = (instance)=>{
 	const combinedTargets = combineTargetsForExport(instance)
 	
@@ -385,7 +297,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 			let usesOurStandardName = !! path.basename(uri, '.json').match(path.normalize(logStandardFilename))
 			let isJSONFile = path.extname(uri) === '.json'
 			if ( usesOurStandardName || ( compressAnyJsonLogs && isJSONFile ) ){
-				console.debug('Compressing file: ' + uri)
+				if (config.nodeVerbose >= 1){ console.info('Compressing file: ' + uri) }
 				allURIsToCompress.push(uri)
 			} 
 		}
@@ -474,7 +386,7 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
     	type: 'text',
     	name: 'confirmDeleteResponse',
     	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
-    	validation: inputValidation // TODO: Why does this seem to do absolutely nothing?
+    	validation: inputValidation
 	})
 
 	deletionPromptResponse.then((val)=>{
