@@ -3,23 +3,25 @@
 ## GUI
 
 - create mock dataset for UI designing with
-	- add a delay in the server to simulate shit/slow/async data
+	- add a delay in the server to simulate spotty/slow/async data
 
-- design blueprint
+- design blueprint:
 	- tray icon colour / fullness indicators for when 
+		- initialising
 		- connection status changes
 		- serious user-action-required occurs
 
 	- cmd+click tray icon for simple list (faster, no webkit load, less bug-prone)
 		- will need native code (we need anyway to create tray icon)
 
-	- optioned: sounds play when events occur
-		- great default sound effects
-		- drag a .mp3 or .ogg into /sound-effects 
-		- events:
+	- optional: sounds play when events occur
+		- high-quality, non-intrusive default sound effects
+		- drag a .mp3 or .ogg into /sound-effects and rename to specific sound
+		- events (mostly we just want these for asynchronous or user-absent events):
 			- disconnected
 			- reconnect
 			- pings getting close to timeout (constant sound with slow fade / pitch modulate)
+			- successfully change pingu server
 		- simple mute & volume control in tray menu
 
 	- tray mini-window:
@@ -57,6 +59,11 @@
 
 - focus on designing for the mini-window (a kind of quasi-"mobile-first"), and just centre it in huge space / widen the scrollable or graph areas to fill empty space. then we also get hand-screen browsers UI for free
 
+- "invisible" mode - when executed by "run on boot" lists, run without tray icon visible to save clutter
+	- clearly tell user which process(es) to look for in Activity Monitor / `ps -e` if they can't get access to a GUI for it due to a bug
+	- any time user manually opens program, invisble mode deactivated
+	- obviously there's a button to go into invisible mode again in the UI
+
 ### Misc
 
 - [highpriority] learn how to process and use command-line arguments in Node to allow options
@@ -66,7 +73,8 @@
 	- possible to make low-resource-cost Webkit GUI that only consumes resources when visible (when user is changing options etc), separated from Node server logging?
 
 - [highpriority] run cli as service / auto-run on boot 
-	- PERSONAL ONLY: look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
+	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
+		- could relay these instructions to users looking for that
 
 - name compressed archives with date range 
 	- give options to restrict to size (10MB) and time-interval (30 days)
@@ -76,24 +84,20 @@
 
 - use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/pingu-chosen-settings.json file. 
 
-- [lowpriority] reduce the size of the logs somehow; it's really balooning. reduce deuplication
+- [lowpriority] reduce the size of the logs somehow; it's really balooning. reduce duplication
 
 - native/inbuilt ping: method to calculate the time that each request would have been sent
 	- pair up ICMPs?
 	- can we get any date from `ping`s output using different (for eg) verbosity settings?
 	- count in parallel using Pingu.pingIntervalMs
 
-- [lowpriority] function to decompress all existing zipped archives, concatenate, and then recompress with all other new data (better compression efficiency)
-
 - stretch: "print data straight to console" mode
 	- basically same console output as default ping (but more readable)
 	- for techy live monitoring
 
-- stretch: add PingLogger-style traceroute latency graph (total latency over time and per-IP latency over IP)
-	- keep a hold of ICMP_seqs to pair up latency of each IP
+- stretch: add traceroute latency graph (total latency over time and per-IP latency over IP)
 	- automatically identify that problem is not with LAN if first hop is constantly <10ms
-
-
+	- suggest the issue maybe be ISP's fault if total latency is high and large jump in latency occurs in hop 3+
 
 - stretch: phantomJS-like spider to log in and crawl router's web interface (get DSL/analogue line readings when modem-ISP net connection is down to see whether to blame modem's ability, the line, or the ISP's provisions/availability)
 
@@ -107,8 +111,9 @@
 	- what servers to use?
 	- how to measure?
 
-- stretch: add user's text notes to logs (describing if wifi was down, storm happening, etc)
+- stretch: add user's text notes to logs (describing if wifi router was power cycling, storm happening, etc)
 	- important: show a very simple straightforward example
+	- lets everyone better diagnose outage causes
 
 - get min / max / mean / standard deviation of latencies for given time period of *sent and returned* pings
 	- stretch: latencies histogram
@@ -127,7 +132,7 @@
 
 - stretch: programatically change/disable OS network settings to simulate changing network contexts 
 	- need access to OS network APIs
-	- simulate slow/shit internet using nodeish middleware instead somehow??
+	- simulate slow/spotty internet using nodeish middleware instead somehow??
 	- would be huge advantage for autotesting
 
 - stretch: break apart in-house modules for public repos if it makes sense
@@ -145,25 +150,31 @@
 - Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
 - Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)
 
+### promo website
+
+- clearly explain benefits first
+	- harder for ISP to bullshit you
+	- close to zero installation & daily usage effort. just forget about it. doesn't take up CPU, doesn't take up space.
+- live demo from pingu cli running on domain's server
 
 ## 3rd-party code changes
 
 - proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
 - support getting TTL & response size for response pings
 
-### NEEDED FOR SELF-USAGE:
+### Checklist for public release:
 
-- bugfix: the log targets are not getting TargetOutages recorded in their log
-	- this doesn't matter that much; you can just look at the raw pings per target
-
-### NEEDED FOR PUBLIC RELEASE:
-
-- SECURITY: ensure that personal / config / gitignored files are not included in the build
+-[ ] SECURITY: ensure that personal / config / gitignored files are not included in the build
 	- how to deal with .env?
 	- FAIRLY sure that .env values are "frozen" into the pkg build at build time
 	- to let the user use other env vars in perhaps a bundled zip; we can build the relative URL from `process.execPath`
-- SECURITY: sanitize child_process.spawn input properly (extremely important security)
-- remove all temporary / debug / dev comments etc
-- PERSONAL: scour all personal information
-- helpful readme
+-[x] SECURITY: sanitize child_process.spawn input properly (extremely important security)
+	- Never let a third party set either of the two vars
+	- This is currently just to stop the host user accidentally running the wrong command on their command line
+	- Unfortunately, we pretty much need to expose user-set variables (1) the polling interval and (2) the IP string to the "spawn" command (the dangerous part). 
+-[ ] CODE QUALITY: Remove all temporary / debug / dev comments etc
+-[ ] PERSONAL: Scour all personal/private information added while developing
+-[ ] UX: Readme has no inaccurate information
+
+#### Before 1.0.0:
 - test suite
