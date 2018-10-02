@@ -371,26 +371,80 @@ let compressLogToArchive = (filename, archiveDir, logsDir)=>{
 	
 }
 
+// Take all JSON logs in the logs directory and compress them all into one .gz archive
 let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compressAnyJsonLogs)=>{
-	fs.readdir(logsDir, 'utf8', (err, files)=>{
+
+	let onReadDir = (err, files)=>{
 		if (err){
 			throw new Error(err)
 		}
 
+		let allURIsToCompress = []
 		for (let uri of files){
 			// Only compress *our* JSON log files unless user specifies looser approach
-			let usesOurStandardName = path.basename(uri, '.json') === path.standardize(logStandardFilename)
+			let usesOurStandardName = !! path.basename(uri, '.json').match(path.normalize(logStandardFilename))
 			let isJSONFile = path.extname(uri) === '.json'
 			if ( usesOurStandardName || ( compressAnyJsonLogs && isJSONFile ) ){
-				compressLogToArchive(uri, archiveDir, logsDir)
+				console.debug('Compressing file: ' + uri)
+				allURIsToCompress.push(uri)
 			} 
 		}
-	})
 
-	return true
+		// Take the date part of filenames, parse them back into JS Dates, then pack them into a list of
+		// contents so we can time-sort the contents
+		let timesAndContents = []
+		allURIsToCompress.forEach((uri, i)=>{
+			let timeSortStr = uri.slice(0, uri.indexOf(logStandardFilename)).trim()
+			let sortDate = MyUtil.fileSystemDateStrToIsoDate(timeSortStr).getTime()
+			
+			timesAndContents.push([timeSortStr, sortDate, fsReadFilePromise(path.join(logsDir, uri), 'utf8')])
+		})
+
+		// Sort by date (number in ms), then map to just the text contents (as promises)
+		timesAndContents = _.sortBy(timesAndContents, arr => {
+			return arr[1] 
+		})
+
+		let justTheText = timesAndContents.map(val => val[2])
+		let len = timesAndContents.length
+		let finalFilename = `${timesAndContents[0][0]} to ${timesAndContents[len - 1][0]} ${logStandardFilename} - ${len} compressed sessions.json.gz` 
+
+		Promise.all(justTheText).then((arr)=>{
+			let arrToCompress = []
+			arr.forEach((val, i)=>{
+				arrToCompress.push({
+					file: allURIsToCompress[i],
+					// We parse the text content (even though it slows things down) so JSON.stringify() doesn't need to escape the text
+					contents: JSON.parse(val) 
+				})
+			})
+
+			let stringToCompress = JSON.stringify(arrToCompress, null, 2)
+
+			zlib.gzip(stringToCompress, undefined, (err, compressed)=>{
+				if (err){
+					throw Error(err)
+				} else if (compressed){
+					if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
+					let finalFullPath = path.join(archiveDir, finalFilename)
+					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
+						console.info('Wrote compressed logs to file: ' + finalFullPath)					
+						return finalFullPath	
+					}, (err)=>{
+						throw Error(err)
+					})
+				}
+				
+			})
+		})
+	}
+
+	fs.readdir(logsDir, 'utf8', onReadDir)
 }
 
 let deleteAllLogs = (logsDir, summariesDir)=>{	
+
+	console.info('Attempting to delete all logs at:', logsDir, summariesDir)
 	
 	let actuallyDelete = ()=>{
 		del([
