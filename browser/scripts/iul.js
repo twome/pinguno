@@ -14,16 +14,8 @@ export class IUL {
 		this.archiveDir = this.logsDir + '/compressed'
 	}
 
-	writeToLog(){
-
-	}
-
 	get currentLog(){
 		return 'TODO this is the current log'
-	}
-
-	archiveLogSeries(startTime, endTime){
-
 	}
 
 }
