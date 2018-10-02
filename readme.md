@@ -27,6 +27,8 @@ TODO: portable? registry? global config/cache locations egg $APPDATA, ~/.config/
 
 ### Usage
 
+NB. Don't forget to change your OS settings so your computer doesn't fall asleep, or Pingu will be unable to log continuously (Pingu can't override that behaviour). Check out this [cross-browser guide](TODO) on locking your computer without putting it to sleep, if you need to do that.
+
 #### CLI version:
 
 - Mac: open `pingu-cli-macos` with Terminal or another command-line app. 

@@ -1,7 +1,6 @@
 // Built-in modules
 
 // 3rd-party dependencies
-const express = require('express')
 const { DateTime } = require('luxon')
 
 // In-house modules

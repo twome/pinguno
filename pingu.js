@@ -1,5 +1,3 @@
-let pinguFirstRun = true
-
 // Built-in modules
 const { spawn } = require('child_process')
 const fs = require('fs')
@@ -123,8 +121,8 @@ class Pingu {
 		this.opt.configDir = path.join(this.appDir, this.opt.configDir)
 		this.opt.configLastUsedPath = path.join(this.opt.configDir, this.opt.configLastUsedPath)
 		this.opt.logsDir = path.join(this.appDir, this.opt.logsDir)
-		this.opt.summariesDir = path.join(this.opt.configDir, this.opt.summariesDir)
-		this.opt.archiveDir = path.join(this.opt.configDir, this.opt.archiveDir)
+		this.opt.summariesDir = path.join(this.opt.logsDir, this.opt.summariesDir)
+		this.opt.archiveDir = path.join(this.opt.logsDir, this.opt.archiveDir)
 
 
 
@@ -361,7 +359,7 @@ class Pingu {
 		}
 	}
 }
-
-attachExtensions(Pingu) // Attach extensions to Pingu
+ 
+attachExtensions(Pingu) // Attach extensions to Pingu 
 
 exports.Pingu = Pingu

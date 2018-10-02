@@ -20,20 +20,6 @@ const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
 
-// Save this session's active settings/config to a git-ignored log for replicable results
-// NB. will overwrite existing file at this path
-Pingu.prototype.saveSessionConfigToJSON = function(){
-	let settings = this.opt
-	let fileUri = settings.configLastUsedPath
-	let content = JSON.stringify(settings, null, settings.pingLogIndent)
-	return fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
-		return fileUri
-	}, (error)=>{
-		console.error(error)
-		return error
-	})
-}
-
 // Interleave the ping-targets with their individual ping-lists into one shared ping list
 let combineTargetsForExport = (instance)=>{
 	let exporter = new PingsLog({
@@ -340,6 +326,8 @@ let formatSessionAsHumanText = (instance, options)=>{
 }
 
 // Save a human-readable text summary of current session to disk
+// This must be a SUBSET of the JSON data, so that we can fully recreate human-readable summaries from saved or compressed JSON archives
+
 let saveSessionLogHuman = (instance)=>{
 	let formatted = formatSessionAsHumanText(instance, {
 		indentSize: instance.opt.indentSize,
