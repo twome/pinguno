@@ -3,6 +3,7 @@ const { spawn } = require('child_process')
 
 // 3rd-party dependencies
 const netPing = require('net-ping')
+const Address4 = require('ip-address').Address4
 
 // In-house modules
 const { config } = require('./config.js')
@@ -14,35 +15,33 @@ class EngineNative {
 
 	// PRODUCTION TODO: Do this more thoroughly/securely (i.e. read up on it and use a tested 3rd-party lib)
 	static sanitizeSpawnInput(intervalNumber, ipString){
-		let ret = {}
+		let returner = {}
 
-		let pin = intervalNumber
-		let ips = ipString
+		let pin = intervalNumber // User-set polling interval for `ping` command, in milliseconds
+		let ips = ipString // User-set IP (as a string)
 
-		let intervalOk = (pin === Number(pin)) && (typeof pin === 'number')
+		let intervalOk = pin && (pin === Number(pin)) && (typeof pin === 'number')
 		if (intervalOk){
-			ret.intervalNumber = Math.abs(Math.floor(pin))
+			// Make double-sure that pin is a number by casting it, then make sure it's not negative or decimal
+			returner.intervalNumber = Math.abs(Math.floor(Number(pin)))
 		} else {
 			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
 		}
 
 		let nothingButDigitsAndDots = (ips.match(/[^\d\.]+/) === null)
-		let ipOk = (typeof ips === 'string') && nothingButDigitsAndDots
+		let isValidIPAddress = new Address4(ips).isValid()
+		let ipOk = ips && (typeof ips === 'string') && nothingButDigitsAndDots
 		if (ipOk){
-			ret.ipString = ips
+			returner.ipString = ips
 		} else {
-			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
+			throw Error('DANGER: ipString (a target\'s IP), which is used in node\'s command-line call \'spawn\', is not a number')
 		}
 
-		return ret
+		return returner
 	}
 
 	static regPingHandlersInbuilt(instance, pingTarget){
 		console.info(`Registering inbuilt ping handler for target: ${pingTarget.humanName} (${pingTarget.IPV4})`)
-
-		// TODO: hold onto each ICMP as it gets sent out and pair it up with a new Date(); 
-		// attach it to its response/timeout when that comes back.
-		// - How to do this in a stream-like way? Have a stack of ICMPs (w max size) that gets popped from in onResponse?
 
 		let sanitizedSpawnInput = EngineNative.sanitizeSpawnInput(instance.opt.pingIntervalMs, pingTarget.IPV4)
 
@@ -77,7 +76,7 @@ class EngineNative {
 			let errorReqTime = new Date()
 			let errorResTime = new Date()
 			let errorType = RequestError.errorTypes.unknownError
-			// TODO: sort stderr errors into error types before storing
+			// TODO: test more comprehensively for other error types
 			if (dataStr.match(/No route to host/)){
 				errorType = RequestError.errorTypes.destinationUnreachableError
 			}
@@ -191,7 +190,7 @@ class EngineNetPing {
 		res.timeRequestSent = sent // Date - can be undefined if error
 		res.timeResponseReceived = rcvd // Date - can be undefined if error
 
-		// TODO: this needs to account for errors that occur within/deeper than net-ping (try/catch?)
+		// TODO: this needs to betteraccount for errors that occur within/deeper than net-ping (try/catch?) - could help to send a PR to nospaceships/node-net-ping for this
 		if (err){
 			res.failure = true
 			for (let supportedErrorStr of [
@@ -235,7 +234,7 @@ class EngineNetPing {
 						console.error(err)
 
 						res.errorType = PingData.errorTypes.unknownError
-						// PRODUCTION TODO: take this throw out; more important to stay running than identify unhandled errors
+
 						if (process.env.NODE_ENV === 'development'){
 							console.error(err)
 							throw Error('processNetPingResponse - Unhandled error:', err)	
@@ -250,22 +249,21 @@ class EngineNetPing {
 			// Successful response
 			res.failure = false
 			res.roundTripTimeMs = rcvd - sent // num - we only bother to calc if both vals are truthy
-			// TODO: how to get response size in net-ping? seems impossible
-			// TODO: how to get response ttl in net-ping (it's not the same as request ttl)? seems impossible
+			// TODO: how to get response size in net-ping? seems impossible without a PR
+			// TODO: how to get response ttl in net-ping? seems impossible without a PR
 			
 			pingTarget.pingList.push(new PingData(res))
 		}
 
+		// Warn user if the system that pairs up requests with received responses has stopped working 
 		for (let requestIndex in unpairedRequests){
 			if (unpairedRequests[requestIndex].icmpSeq === res.icmpSeq){
 				unpairedRequests.splice(requestIndex, 1)
 			}
 		}
-
-		// TEMP
 		if (unpairedRequests.length > 10){
-			console.debug('=== Unpaired requests piling up...')
-			console.debug(unpairedRequests)
+			console.warn('processNetPingResponse: Unpaired requests piling up...')
+			console.warn(unpairedRequests)
 		}
 
 		return {
