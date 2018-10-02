@@ -38,6 +38,7 @@
     "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon start.js"
   },
   "devDependencies": {
+    "axios": "^0.18.0",
     "cross-env": "^5.2.0",
     "pkg": "^4.3.4"
   }
