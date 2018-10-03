@@ -12,7 +12,7 @@ const del = require('del')
 const prompts = require('prompts')
 
 // In-house modules
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./pinguno.js')
 const { config } = require('./config.js')
 const { MyUtil } = require('./my-util.js')
 const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats.js')
@@ -161,9 +161,9 @@ let formatSessionAsHumanText = (instance, options)=>{
 	ind = indString
 
 	// This will overwrite any file with the same session start time
-	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pingu summary.txt'
+	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
 
-	let template = `Pingu internet connectivity log` +
+	let template = `Pinguno internet connectivity log` +
 	`\nSession started: ${DateTime.fromJSDate(instance.sessionStartTime).toISO()}` +
 	`\nSession ended (approx): ${DateTime.fromJSDate(instance.sessionEndTime).toISO()}` +
 	`\nSession timezone (all displayed times are in this zone): ${DateTime.fromJSDate(instance.sessionStartTime).toFormat('ZZ')}` +
@@ -397,7 +397,7 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	let deletionPromptResponse = prompts({
     	type: 'text',
     	name: 'confirmDeleteResponse',
-    	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
+    	message: 'Please enter the word "delete" to confirm you want to delete all of Pinguno\'s saved lonogs.',
     	validation: inputValidation
 	})
 
@@ -406,7 +406,7 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 
 		if (validated === true){
 			// Give a little moment to allow second thoughts
-			console.warn('\n ------------ \n Deleting all uncompressed pingu logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
+			console.warn('\n ------------ \n Deleting all uncompressed Pinguno logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ no\n ')
 			setTimeout(actuallyDelete, 5000)	
 		} else {
 			console.warn('Failed prompt:', validated)

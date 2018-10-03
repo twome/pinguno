@@ -21,7 +21,7 @@
 			- disconnected
 			- reconnect
 			- pings getting close to timeout (constant sound with slow fade / pitch modulate)
-			- successfully change pingu server
+			- successfully change Pinguno server
 		- simple mute & volume control in tray menu
 
 	- tray mini-window:
@@ -43,14 +43,14 @@
 				- compress all json logs, copy zip path as text clipboard
 				- open this session json log
 
-		- open Pingu logs folder in file browser
+		- open Pinguno logs folder in file browser
 
-		- display the Pingu server url (hide if localhost)
+		- display the Pinguno server url (hide if localhost)
 			- colour/highlight the port separately
 			- click inside the url+port text: swap to using that server's data
 				- on success, refresh the mini-window
 				- if we don't already have saved auth cache/tokens/whatever, slide out a password entry beneath
-			- auto-search for Pingu servers on the local network, else default to default localhost port
+			- auto-search for Pinguno servers on the local network, else default to default localhost port
 				- how can we do this?
 	
 
@@ -82,14 +82,14 @@
 
 - stretch: test DNS by using domain names after testing IPs
 
-- use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/pingu-chosen-settings.json file. 
+- use an optional flag to turn on an interactive settings prompt before running so the user can override the default settings without needing to attach any flags or write in a config file. offer to save selected settings in a local /config/Pinguno-chosen-settings.json file. 
 
 - [lowpriority] reduce the size of the logs somehow; it's really balooning. reduce duplication
 
 - native/inbuilt ping: method to calculate the time that each request would have been sent
 	- pair up ICMPs?
 	- can we get any date from `ping`s output using different (for eg) verbosity settings?
-	- count in parallel using Pingu.pingIntervalMs
+	- count in parallel using Pinguno.pingIntervalMs
 
 - stretch: "print data straight to console" mode
 	- basically same console output as default ping (but more readable)
@@ -155,7 +155,7 @@
 - clearly explain benefits first
 	- harder for ISP to bullshit you
 	- close to zero installation & daily usage effort. just forget about it. doesn't take up CPU, doesn't take up space.
-- live demo from pingu cli running on domain's server
+- live demo from Pinguno cli running on domain's server
 
 ## 3rd-party code changes
 

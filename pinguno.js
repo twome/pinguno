@@ -20,17 +20,17 @@ const { EngineNative, EngineNetPing } = require('./ping-engines.js')
 const { Stats } = require('./stats.js')
 
 // Extensions of this module's main class
-const { attachExtensions } = require('./pingu-ext-fs.js')
+const { attachExtensions } = require('./pinguno-ext-fs.js')
 
-class Pingu {
+class Pinguno {
 	constructor(options){
 		/*
 			Hard-coded app meta-information
 		*/
-		this.appHumanName = 'Pingu' // must be filesystem-compatible
+		this.appHumanName = 'Pinguno' // must be filesystem-compatible
 		this.appHumanSubtitle = 'ISP Uptime Logger'
-		this.appHomepageUrl = new URL('https://twome.name/pingu')
-		this.appSourceRepoUrl = new URL('https://gitlab.com/twome/pingu')
+		this.appHomepageUrl = new URL('https://twome.name/pinguno')
+		this.appSourceRepoUrl = new URL('https://gitlab.com/twome/pinguno')
 
 		/*
 			Options
@@ -70,12 +70,12 @@ class Pingu {
 		]
 
 		// Logging
-		opt.logStandardFilename = 'pingu log'
+		opt.logStandardFilename = 'pinguno log'
 		opt.logsDir = 'logs'
 		opt.summariesDir = 'human-readable' // Human-readable summary .txt files
 		opt.archiveDir = 'compressed'
 		opt.configDir = 'config'
-		opt.configLastUsedPath = 'pingu-last-settings.json'
+		opt.configLastUsedPath = 'pinguno-last-settings.json'
 		opt.luxonDateFormatShortPrecise = 'yyyy-LL-dd HH:mm:ss.SSS' // Custom date output format for Luxon (date library)
 		opt.pingLogIndent = 2 // Number/string: number of space chars to indent JSON log output by
 		opt.wrapHumanLogAtCharLength = false // Number/falsey: number of characters-per-line to hard-wrap log output to
@@ -89,8 +89,8 @@ class Pingu {
 		// If the total uncompressed JSON + compressed archive size is greater than this, start refusing to create new files and kick up a stink
 		opt.neverExceedSizeMiB = 2000 
 
-		// Boolean: use the terminal user's current working directory as the relative base of Pingu-related paths
-		// (instead of the directory of the Pingu app files)
+		// Boolean: use the terminal user's current working directory as the relative base of Pinguno-related paths
+		// (instead of the directory of the Pinguno app files)
 		opt.pathsRelativeToUserCwd = false 
 
 		// Replace default options with passed-in options
@@ -170,13 +170,13 @@ class Pingu {
 
 	tellStatus(){
 		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
-			console.info('Pingu is running from within a pkg-built executable.')
+			console.info('Pinguno is running from within a pkg-built executable.')
 		}
 		console.info(
-			`Pingu's main directory for this session: ${this.appDir}` + 
-			`\nPingu will write logs to ${path.join(this.appDir, this.opt.logsDir)}` + 
-			`\nPingu will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` + 
-			`\nPingu will compress logs archives to ${path.join(this.appDir, this.opt.archiveDir)}\n`
+			`Pinguno's main directory for this session: ${this.appDir}` + 
+			`\nPinguno will write logs to ${path.join(this.appDir, this.opt.logsDir)}` + 
+			`\nPinguno will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` + 
+			`\nPinguno will compress logs archives to ${path.join(this.appDir, this.opt.archiveDir)}\n`
 		)
 		this.tellArchiveSize()
 	}
@@ -263,7 +263,7 @@ class Pingu {
 
 	updateSessionEndTime(oldInstance){
 		// For getting an estimate of the closest session time from sessions that ended prematurely
-		if (oldInstance instanceof Pingu){
+		if (oldInstance instanceof Pinguno){
 			let latest = oldInstance.latestPing()
 			oldInstance.sessionEndTime = latest.timeResponseReceived || latest.timeRequestSent	
 			return oldInstance
@@ -271,7 +271,7 @@ class Pingu {
 			this.sessionEndTime = new Date()
 			this.sessionDirty = true
 		} else {
-			throw Error('updateSessionEndTime: oldInstance provided is not a Pingu instance')
+			throw Error('updateSessionEndTime: oldInstance provided is not a Pinguno instance')
 		}
 	}
 
@@ -352,7 +352,7 @@ class Pingu {
 		// Before we start doing anything, save this session's active settings/config
 		this.saveSessionConfigToJSON((promise)=>{
 			promise.then((val)=>{
-				console.info('Saved Pingu settings to ' + val)
+				console.info('Saved Pinguno settings to ' + val)
 			}, (err)=>{throw Error(err)})	
 		})
 
@@ -362,6 +362,6 @@ class Pingu {
 	}
 }
  
-attachExtensions(Pingu) // Attach extensions to Pingu 
+attachExtensions(Pinguno) // Attach extensions to Pinguno 
 
-exports.Pingu = Pingu
+exports.Pinguno = Pinguno

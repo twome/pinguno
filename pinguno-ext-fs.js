@@ -6,14 +6,14 @@ const path = require('path')
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 
 // In-house
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./Pinguno.js')
 
 // Run in the original module only after the main class has been defined
-let attachExtensions = (Pingu)=>{
+let attachExtensions = (Pinguno)=>{
 	// Save this session's active settings/config to a git-ignored log for replicable results
 	// NB. will overwrite existing file at this path
 	// TODO: Promisify this
-	Pingu.prototype.saveSessionConfigToJSON = function(callback){
+	Pinguno.prototype.saveSessionConfigToJSON = function(callback){
 		let settings = this.opt
 		let fileUri = settings.configLastUsedPath
 		let dirPath = path.dirname(fileUri)

@@ -19,8 +19,8 @@ class Stats {
 	
 	}
 
-	static calcSessionStats(instancePingu){
-		let session = instancePingu
+	static calcSessionStats(instancePinguno){
+		let session = instancePinguno
 		let sessionStats = {}
 
 		// BUG: doesn't handle negatives properly

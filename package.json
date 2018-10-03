@@ -1,11 +1,11 @@
 {
-  "name": "pingu-net-monitor",
+  "name": "pinguno",
   "version": "0.2.0",
   "author": "Tom Kenny",
   "contributors": [
     "Tom Kenny"  
   ],
-  "homepage": "https://gitlab.com/twome/pingu",
+  "homepage": "https://gitlab.com/twome/pinguno",
   "license": "MIT",
   "keywords": "ping, uptime, connectivity",
   "dependencies": {
@@ -25,9 +25,9 @@
     "util": "^0.11.0",
     "yarn": "^1.9.4"
   },
-  "main": "pingu.js",
+  "main": "pinguno.js",
   "bin": {
-    "pingu": "./start.js"
+    "pinguno": "./start.js"
   },
   "pkg": {
     "scripts": [],
