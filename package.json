@@ -1,9 +1,13 @@
 {
-  "name": "pingu-net-monitor",
-  "version": "0.1.0",
+  "name": "pinguno",
+  "version": "0.2.0",
   "author": "Tom Kenny",
-  "homepage": "https://gitlab.com/twome/pingu",
+  "contributors": [
+    "Tom Kenny"  
+  ],
+  "homepage": "https://gitlab.com/twome/pinguno",
   "license": "MIT",
+  "keywords": "ping, uptime, connectivity",
   "dependencies": {
     "del": "^3.0.0",
     "dotenv": "^6.0.0",
@@ -21,8 +25,9 @@
     "util": "^0.11.0",
     "yarn": "^1.9.4"
   },
+  "main": "pinguno.js",
   "bin": {
-    "pingu": "./start.js"
+    "pinguno": "./start.js"
   },
   "pkg": {
     "scripts": [],
@@ -36,7 +41,8 @@
   "scripts": {
     "buildcli": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" pkg . --out-path build --debug",
     "dev": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" node start.js",
-    "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon start.js"
+    "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon start.js",
+    "test": "echo \"No tests available yet.\""
   },
   "devDependencies": {
     "axios": "^0.18.0",

@@ -12,7 +12,7 @@ const del = require('del')
 const prompts = require('prompts')
 
 // In-house modules
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./pinguno.js')
 const { config } = require('./config.js')
 const { MyUtil } = require('./my-util.js')
 const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats.js')
@@ -73,94 +73,6 @@ let combineTargetsForExport = (instance)=>{
 	return exporter
 }
 
-
-
-// TODO: optimise / simplify this
-let readJSONLogIntoSession = (logFileUri)=>{
-
-	let onFileRead = (dataStr)=>{
-		let fileData = JSON.parse(dataStr)
-
-		let newSession = new Pingu(Object.assign(fileData.opt, {
-			activeLogUri: logFileUri
-		}))
-
-		// Cast JSON strings to class instances
-		fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
-		fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
-		fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
-		fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
-		for (let ping of fileData.combinedPingList){
-			ping.timeResponseReceived = MyUtil.utcIsoStringToDateObj(ping.timeResponseReceived)
-		}
-		for (let outage of fileData.outages){
-			outage.startDate = MyUtil.utcIsoStringToDateObj(outage.startDate)
-			outage.endDate = MyUtil.utcIsoStringToDateObj(outage.endDate)
-		}
-		for (let target of fileData.targetList){
-			for (let requestError of target.requestErrorList){
-				requestError.timeResponseReceived = MyUtil.utcIsoStringToDateObj(requestError.timeResponseReceived)
-				requestError.timeRequestSent = MyUtil.utcIsoStringToDateObj(requestError.timeRequestSent)
-			}
-		}
-
-		fileData.combinedPingList = _.sortBy(fileData.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
-
-		newSession.pingTargets = _.cloneDeep(fileData.targetList)
-
-		// ~ separate combined ping list into newSession targets
-		if (fileData.combinedPingList.length >= 1){
-			for (let ping of fileData.combinedPingList){
-				for (let target of newSession.pingTargets){
-					target.pingList = (target.pingList && target.pingList.length >= 1) ? target.pingList : []
-					if (target.IPV4 === ping.targetIPV4){
-						target.pingList.push(ping)
-					}
-				}
-			}	
-		}
-
-		// Recreate RequestErrors from accessors
-		for (let target of newSession.pingTargets){
-			if (target.requestErrorList.length <= 0){ continue }
-			for (let requestError of target.requestErrorList){
-				// Turn error name back into type error
-				requestError.errorType = RequestError.errorTypes[requestError.errorType.accessor]
-			}
-		}
-
-		// Recreate Ping Errors from accessors
-		for (let target of newSession.pingTargets){
-			for (let ping of target.pingList){
-				if (!ping.errorType){ continue }
-				// Turn error name back into type error
-				ping.errorType = RequestError.errorTypes[ping.errorType.accessor]
-			}
-		}
-		
-		// Recreate TargetOutage pings from their ICMP & target
-		// Perf: bad
-		for (let target of newSession.pingTargets){
-			for (let targetOutage of target.targetOutages ){
-				if (targetOutage.pingList.length <= 0){ continue }
-				for (let pingIndex in targetOutage.pingList){
-					let referencedPing = Pingu.getPingFromIcmpTarget(newSession, targetOutage.pingList[pingIndex].icmpSeq, target.IPV4)
-					targetOutage.pingList[pingIndex] = _.cloneDeep(referencedPing)
-				}
-			}
-		}
-
-		newSession.outages = fileData.outages // Or we could just recalculate these outages
-		newSession.sessionStartTime = fileData.sessionStartTime
-	
-		return newSession
-	}
-
-	return fsReadFilePromise(logFileUri, 'utf8').then(onFileRead, (error)=>{
-		throw new Error(error)
-	})
-}
-
 let writeNewSessionLog = (instance)=>{
 	const combinedTargets = combineTargetsForExport(instance)
 	
@@ -168,7 +80,7 @@ let writeNewSessionLog = (instance)=>{
 	const fileCreationDate = new Date()
 	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
 
-	return fs.mkdir(instance.opt.logsDir, undefined, (err)=>{
+	let onMakeDirectory = (err)=>{
 		if (err){ 
 			// We just want to make sure the folder exists so this doesn't matter
 		}
@@ -185,7 +97,9 @@ let writeNewSessionLog = (instance)=>{
 			console.error(error)
 			return error
 		})
-	})
+	}
+
+	return fs.mkdir(instance.opt.logsDir, undefined, onMakeDirectory)
 }
 
 // Read, extend, and overwrite this sessions existing log file
@@ -247,9 +161,9 @@ let formatSessionAsHumanText = (instance, options)=>{
 	ind = indString
 
 	// This will overwrite any file with the same session start time
-	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pingu summary.txt'
+	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
 
-	let template = `Pingu internet connectivity log` +
+	let template = `Pinguno internet connectivity log` +
 	`\nSession started: ${DateTime.fromJSDate(instance.sessionStartTime).toISO()}` +
 	`\nSession ended (approx): ${DateTime.fromJSDate(instance.sessionEndTime).toISO()}` +
 	`\nSession timezone (all displayed times are in this zone): ${DateTime.fromJSDate(instance.sessionStartTime).toFormat('ZZ')}` +
@@ -337,7 +251,7 @@ let saveSessionLogHuman = (instance)=>{
 		wrapAtCharLength: instance.opt.wrapHumanLogAtCharLength
 	})
 
-	fs.mkdir(instance.opt.summariesDir, undefined, (err)=>{
+	let onMakeDirectory = (err)=>{
 		if (err) {
 			// Ignore; just wanted to ensure folder exists here.
 		}
@@ -350,12 +264,14 @@ let saveSessionLogHuman = (instance)=>{
 		}, (error)=>{
 			throw new Error(error)
 		})
-	})
+	}
+
+	fs.mkdir(instance.opt.summariesDir, undefined, onMakeDirectory)
 }
 
 let compressLogToArchive = (filename, archiveDir, logsDir)=>{
-	
-	fs.mkdir(archiveDir, undefined, (err)=>{
+
+	let onMakeDirectory = (err)=>{
 		if (err) {
 			// Ignore; just wanted to ensure folder exists here.
 		}
@@ -367,7 +283,9 @@ let compressLogToArchive = (filename, archiveDir, logsDir)=>{
 		input.pipe(gzip).pipe(output)
 
 		console.info('Compressed "' + filename + '" to gzipped archive.')
-	})
+	}
+	
+	fs.mkdir(archiveDir, undefined, onMakeDirectory)
 	
 }
 
@@ -385,7 +303,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 			let usesOurStandardName = !! path.basename(uri, '.json').match(path.normalize(logStandardFilename))
 			let isJSONFile = path.extname(uri) === '.json'
 			if ( usesOurStandardName || ( compressAnyJsonLogs && isJSONFile ) ){
-				console.debug('Compressing file: ' + uri)
+				if (config.nodeVerbose >= 1){ console.info('Compressing file: ' + uri) }
 				allURIsToCompress.push(uri)
 			} 
 		}
@@ -409,6 +327,26 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 		let len = timesAndContents.length
 		let finalFilename = `${timesAndContents[0][0]} to ${timesAndContents[len - 1][0]} ${logStandardFilename} - ${len} compressed sessions.json.gz` 
 
+		let onCompress = (err, compressed)=>{
+			if (err){
+				throw Error(err)
+			} else if (compressed){
+				if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
+				let finalFullPath = path.join(archiveDir, finalFilename)
+
+				let onMakeDirectory = (err)=>{
+					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
+						console.info('Wrote compressed logs to file: ' + finalFullPath)					
+						return finalFullPath	
+					}, (err)=>{
+						throw Error(err)
+					})
+				}
+
+				fs.mkdir(archiveDir, undefined, onMakeDirectory)
+			}
+		}
+
 		Promise.all(justTheText).then((arr)=>{
 			let arrToCompress = []
 			arr.forEach((val, i)=>{
@@ -421,21 +359,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 
 			let stringToCompress = JSON.stringify(arrToCompress, null, 2)
 
-			zlib.gzip(stringToCompress, undefined, (err, compressed)=>{
-				if (err){
-					throw Error(err)
-				} else if (compressed){
-					if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
-					let finalFullPath = path.join(archiveDir, finalFilename)
-					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
-						console.info('Wrote compressed logs to file: ' + finalFullPath)					
-						return finalFullPath	
-					}, (err)=>{
-						throw Error(err)
-					})
-				}
-				
-			})
+			zlib.gzip(stringToCompress, undefined, onCompress)
 		})
 	}
 
@@ -473,8 +397,8 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	let deletionPromptResponse = prompts({
     	type: 'text',
     	name: 'confirmDeleteResponse',
-    	message: 'Please enter the word "delete" to confirm you want to delete all of Pingu\'s saved logs.',
-    	validation: inputValidation // TODO: Why does this seem to do absolutely nothing?
+    	message: 'Please enter the word "delete" to confirm you want to delete all of Pinguno\'s saved lonogs.',
+    	validation: inputValidation
 	})
 
 	deletionPromptResponse.then((val)=>{
@@ -482,7 +406,7 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 
 		if (validated === true){
 			// Give a little moment to allow second thoughts
-			console.warn('\n ------------ \n Deleting all uncompressed pingu logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ \n ')
+			console.warn('\n ------------ \n Deleting all uncompressed Pinguno logs in 5 seconds \n Press Ctrl+C twice to cancel. \n ------------ no\n ')
 			setTimeout(actuallyDelete, 5000)	
 		} else {
 			console.warn('Failed prompt:', validated)
@@ -499,5 +423,4 @@ exports.compressLogToArchive = compressLogToArchive
 exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
 exports.deleteAllLogs = deleteAllLogs
-exports.readJSONLogIntoSession = readJSONLogIntoSession
 exports.combineTargetsForExport = combineTargetsForExport
