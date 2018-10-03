@@ -144,8 +144,16 @@
 
 - stretch: auto-upgrade or one-click upgrade for non-tech users
 
-
 - implement a stretchable interval (eg shorter interval if we have a bad ping, gradually reduce that over time, reduce interval again upon reconnect )
+
+- reduce pkg binary size by importing only the functions/data we need from dependencies
+	- Lodash:
+		- cloneDeep
+		- concat
+		- sortBy
+		- isEqual
+		- last
+		- mean
 
 ## Project management / organisation / presentation
 

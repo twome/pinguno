@@ -115,6 +115,8 @@ Uses [semantic versioning](https://semver.org/)
 
 Send us a PR or make an issue on GitHub! We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. All help is appreciated :)
 
+Please read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
+
 ### Contributors:
 
 Tom Kenny - [website](https://twome.name)
