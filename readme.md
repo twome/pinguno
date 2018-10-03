@@ -16,11 +16,11 @@ Officially supports:
 - Mac: download [pinguno-macos]() 
 - Windows: download [pinguno.exe]()
 
-The installation is portable and by default will output JSON and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
+This is a "command-line" application, which means it doesn't have a graphical interface and must be run in a "shell" (Terminal on macOS or CMD on Windows). The app is portable (doesn't need to be "installed"; you just run the program where you downloaded it). By default, it'll output JSON (structured data for machines to read, in text) and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
 
 ### Usage
 
-NB. Don't forget to change your OS settings so your computer doesn't fall asleep, or Pinguno will be unable to log continuously (Pinguno can't override that behaviour). 
+NB: Don't forget to change your OS settings so your computer doesn't fall asleep, or Pinguno will be unable to log continuously (Pinguno can't override that behaviour). 
 
 #### CLI version:
 
@@ -119,7 +119,7 @@ Please read the contributor's code of conduct at `docs/conduct.md` if you want t
 
 ### Contributors:
 
-Tom Kenny - [website](https://twome.name)
+Tom Kenny - [website](https://twome.name). This work was done using my spare time, using skills I had learned in employment and in more spare time. I have experienced very little oppression in this industry due to class, gender, age, sexual orientation, ethnicity etc. These are privileges & advantages [not afforded to many working-class and disadvantaged people](https://www.ashedryden.com/blog/the-ethics-of-unpaid-labor-and-the-oss-community). Always keep in mind the social context in which code is written, and what kind of people get to write it.
 
 ## License: MIT
 
