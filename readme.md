@@ -13,8 +13,8 @@ Officially supports:
 
 ### Installation
 
-- Mac: download [pinguno-macos]() 
-- Windows: download [pinguno.exe]()
+- Mac: download [pinguno-macos](/releases/download/v0.2.0/pinguno-macos) 
+- Windows: download [pinguno.exe](/releases/download/v0.2.0/pinguno-win.exe)
 
 The installation is portable and by default will output JSON and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
 
