@@ -91,6 +91,7 @@ We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build execut
 ## Further documentations:
 
 See the /docs folder in this repo for Markdown-formatted documentation.
+	- changelog.md: brief summaries of important changes between releases (commits to the `master` branch)
 	- bugs.md: the full list of known bugs
 	- hacks.md: currently-implemented hacks to be wary of
 	- roadmap.md: future development plans
