@@ -58,9 +58,23 @@ NODE_ENV: 'production' or 'development'
 
 ### Usage as an npm package (for getting Pingu data programmatically)
 
-[Pending publishing to npm]
-`npm install twome/pingu` or `yarn add twome/pingu`
-Pingu (pingu.js) is the main class, and session state is stored as properties of Pingu objects.
+[Pending publishing to npm] `npm install twome/pingu` or `yarn add twome/pingu`
+Pingu (pingu.js) is the main class, and session state is stored as properties of Pingu objects. To start pinging: 
+```
+const Pingu = require('pingu')
+let pingSource = new Pingu()
+pingSource.startPinging([
+	{
+		humanName: 'Google',
+		IPV4: '8.8.8.8'
+	},{
+		humanName: 'CenturyLink', 
+		IPV4: '4.2.2.2'
+	}
+])
+```
+
+You can then get session stats/averages with `pingSource.updateSessionStats()` and access the raw ping data per host/target IP at `pingSource.pingTargets`. See ping-formats.js for the data structure.
 
 ### Building/compiling executables
 
@@ -97,7 +111,7 @@ Uses [semantic versioning](https://semver.org/)
 
 ### Error reporting & contributing
 
-Send us a PR or make an issue on GitHub! All help is appreciated :)
+Send us a PR or make an issue on GitHub! We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. All help is appreciated :)
 
 ### Contributors:
 
