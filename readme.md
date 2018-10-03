@@ -13,8 +13,8 @@ Officially supports:
 
 ### Installation
 
-- Mac: download [pinguno-cli-macos]() 
-- Windows: download [pinguno-cli.exe]()
+- Mac: download [pinguno-macos]() 
+- Windows: download [pinguno.exe]()
 
 The installation is portable and by default will output JSON and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
 
@@ -24,8 +24,8 @@ NB. Don't forget to change your OS settings so your computer doesn't fall asleep
 
 #### CLI version:
 
-- Mac: open `pinguno-cli-macos` with Terminal or another command-line app. 
-- Windows: run `pinguno-cli-win.exe`. It will open a cmd window.
+- Mac: open `pinguno-macos` with Terminal or another command-line app. 
+- Windows: run `pinguno-win.exe`. It will open a cmd window.
 
 Pinguno will begin logging to timestamped files in a directory called 'logs' created next to the executable. `Ctrl+C` to exit. If you want to send logs to your ISP to help troubleshoot your connection, send them all the compressed/zipped files in the local `./logs/compressed/` folder.
 
@@ -75,7 +75,7 @@ pingSource.startPinging([
 ])
 ```
 
-You can then get session stats/averages with `pingSource.updateSessionStats()` and access the raw ping data per host/target IP at `pingSource.pingTargets`. See ping-formats.js for the data structure.
+You could then get session stats/averages with `pingSource.updateSessionStats()` and access the raw ping data per host/target IP at `pingSource.pingTargets`. See ping-formats.js for the data structures we use.
 
 ### Building/compiling executables
 
@@ -99,7 +99,7 @@ See the /docs folder in this repo for Markdown-formatted documentation.
 ## Known bugs & caveats
 
 - The accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine. The accuracy of the `ping` engine is the same as the native `ping` binary.
-- Can't get TTL or byte size of ping responses when using `net-ping` engine (seemingly not supported by it). Use inbuilt/native `ping` binary if you need this info. 
+- Can't get TTL or byte size of ping responses when using `net-ping` engine (seemingly not supported by it), which is used by default on Windows. Use inbuilt/native ping engine (see ping-engines.js) if you need this info - on Windows you will need to use a UNIX-like alternative ping binary in your $PATH. 
 
 - The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
 - Pinguno does not currently test bandwidth, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.

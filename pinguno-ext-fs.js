@@ -6,7 +6,7 @@ const path = require('path')
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 
 // In-house
-const { Pinguno } = require('./Pinguno.js')
+const { Pinguno } = require('./pinguno.js')
 
 // Run in the original module only after the main class has been defined
 let attachExtensions = (Pinguno)=>{

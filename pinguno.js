@@ -348,6 +348,8 @@ class Pinguno {
 		} else {
 			throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
 		}
+
+		console.info('Press Control+C to stop process.')
 		
 		// Before we start doing anything, save this session's active settings/config
 		this.saveSessionConfigToJSON((promise)=>{
