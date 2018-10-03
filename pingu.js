@@ -115,7 +115,7 @@ class Pingu {
 		this.appDir = opt.pathsRelativeToUserCwd ? process.cwd : __dirname
 		if (this.runningInPkgExecutable){
 			// process.execPath will point to the executable's location and *won't* be overriden by pkg to relate to 'snapshot'
-			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : process.execPath
+			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : path.dirname(process.execPath)
 		}
 		// Combine the directory names into proper path strings
 		this.opt.configDir = path.join(this.appDir, this.opt.configDir)
@@ -350,9 +350,11 @@ class Pingu {
 		}
 		
 		// Before we start doing anything, save this session's active settings/config
-		this.saveSessionConfigToJSON().then((val)=>{
-			console.info('Saved Pingu settings to ' + val)
-		}, (err)=>{throw Error(err)})
+		this.saveSessionConfigToJSON((promise)=>{
+			promise.then((val)=>{
+				console.info('Saved Pingu settings to ' + val)
+			}, (err)=>{throw Error(err)})	
+		})
 
 		for ( let pingTarget of pingTargets ){				
 			registerEngineFn(this, pingTarget)

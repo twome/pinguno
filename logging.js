@@ -80,7 +80,7 @@ let writeNewSessionLog = (instance)=>{
 	const fileCreationDate = new Date()
 	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
 
-	return fs.mkdir(instance.opt.logsDir, undefined, (err)=>{
+	let onMakeDirectory = (err)=>{
 		if (err){ 
 			// We just want to make sure the folder exists so this doesn't matter
 		}
@@ -97,7 +97,9 @@ let writeNewSessionLog = (instance)=>{
 			console.error(error)
 			return error
 		})
-	})
+	}
+
+	return fs.mkdir(instance.opt.logsDir, undefined, onMakeDirectory)
 }
 
 // Read, extend, and overwrite this sessions existing log file
@@ -249,7 +251,7 @@ let saveSessionLogHuman = (instance)=>{
 		wrapAtCharLength: instance.opt.wrapHumanLogAtCharLength
 	})
 
-	fs.mkdir(instance.opt.summariesDir, undefined, (err)=>{
+	let onMakeDirectory = (err)=>{
 		if (err) {
 			// Ignore; just wanted to ensure folder exists here.
 		}
@@ -262,12 +264,14 @@ let saveSessionLogHuman = (instance)=>{
 		}, (error)=>{
 			throw new Error(error)
 		})
-	})
+	}
+
+	fs.mkdir(instance.opt.summariesDir, undefined, onMakeDirectory)
 }
 
 let compressLogToArchive = (filename, archiveDir, logsDir)=>{
-	
-	fs.mkdir(archiveDir, undefined, (err)=>{
+
+	let onMakeDirectory = (err)=>{
 		if (err) {
 			// Ignore; just wanted to ensure folder exists here.
 		}
@@ -279,7 +283,9 @@ let compressLogToArchive = (filename, archiveDir, logsDir)=>{
 		input.pipe(gzip).pipe(output)
 
 		console.info('Compressed "' + filename + '" to gzipped archive.')
-	})
+	}
+	
+	fs.mkdir(archiveDir, undefined, onMakeDirectory)
 	
 }
 
@@ -321,6 +327,26 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 		let len = timesAndContents.length
 		let finalFilename = `${timesAndContents[0][0]} to ${timesAndContents[len - 1][0]} ${logStandardFilename} - ${len} compressed sessions.json.gz` 
 
+		let onCompress = (err, compressed)=>{
+			if (err){
+				throw Error(err)
+			} else if (compressed){
+				if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
+				let finalFullPath = path.join(archiveDir, finalFilename)
+
+				let onMakeDirectory = (err)=>{
+					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
+						console.info('Wrote compressed logs to file: ' + finalFullPath)					
+						return finalFullPath	
+					}, (err)=>{
+						throw Error(err)
+					})
+				}
+
+				fs.mkdir(archiveDir, undefined, onMakeDirectory)
+			}
+		}
+
 		Promise.all(justTheText).then((arr)=>{
 			let arrToCompress = []
 			arr.forEach((val, i)=>{
@@ -333,21 +359,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 
 			let stringToCompress = JSON.stringify(arrToCompress, null, 2)
 
-			zlib.gzip(stringToCompress, undefined, (err, compressed)=>{
-				if (err){
-					throw Error(err)
-				} else if (compressed){
-					if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
-					let finalFullPath = path.join(archiveDir, finalFilename)
-					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
-						console.info('Wrote compressed logs to file: ' + finalFullPath)					
-						return finalFullPath	
-					}, (err)=>{
-						throw Error(err)
-					})
-				}
-				
-			})
+			zlib.gzip(stringToCompress, undefined, onCompress)
 		})
 	}
 
@@ -411,5 +423,4 @@ exports.compressLogToArchive = compressLogToArchive
 exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
 exports.deleteAllLogs = deleteAllLogs
-exports.readJSONLogIntoSession = readJSONLogIntoSession
 exports.combineTargetsForExport = combineTargetsForExport
