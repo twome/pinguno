@@ -18,7 +18,6 @@
     "lodash": "^4.17.10",
     "luxon": "^1.4.1",
     "net-ping": "^1.2.3",
-    "prettyjson": "^1.2.1",
     "prompts": "^1.1.1",
     "simple-statistics": "^6.1.0",
     "toxiproxy-node-client": "^2.0.6",
@@ -35,10 +34,12 @@
   },
   "nodemonConfig": {
     "ignore": [
-      "logs/*"
+      "logs/*",
+      "config/pinguno-last-settings.json"
     ]
   },
   "scripts": {
+    "compressall": "node action_compress-all-logs.js",
     "buildcli": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" pkg . --out-path build --debug",
     "dev": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" node start.js",
     "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon start.js",
