@@ -17,8 +17,13 @@ NB: Don't forget to change your OS settings so your computer doesn't fall asleep
 
 #### Using the binaries:
 
-- Mac: open `pinguno-macos` with Terminal or another command-line app.
-- Windows: run `pinguno-win.exe`. It will open a cmd window.
+##### Mac:
+- Download [pinguno-macos](/releases/download/v0.2.0/pinguno-macos) 
+- Open `pinguno-macos` with Terminal or another command-line app.
+
+##### Windows:
+- Download [pinguno.exe](/releases/download/v0.2.0/pinguno-win.exe)
+- Run `pinguno-win.exe`. It will open a cmd window.
 
 #### Using Node + the source code:
 
