@@ -28,8 +28,11 @@ NB: Don't forget to change your OS settings so your computer doesn't fall asleep
 #### Using Node + the source code:
 
 [Install Node.js v10.11.0](https://nodejs.org/en/download/) or above if you don't have it.
+
 **[Windows only]** This project depends on `node-gyp`, so you may need to install `node-gyp`'s dependencies with `npm install --global windows-build-tools`
+
 Clone this repo locally: `git clone git@github.com:twome/pinguno.git`
+
 Run `node start` from the package directory. 
 
 To compress all the current logs into a gzipped archive, run `npm run compressall`. 
@@ -48,7 +51,7 @@ Pinguno will begin pinging & logging, and will run indefinitely until you press 
 ### Uninstallation
 
 - Binaries: Delete the binary and the 'config' and 'logs' folders in the same directory as it.
-- Node + source code: 
+- Node + source code: Delete the package folder
 
 That's it!
 
@@ -62,9 +65,10 @@ const Pinguno = require('pinguno')
 let instance = new Pinguno()
 ```
 
-#### Pinguno.prototype.startPinging(*Array* targets [, *PingEngineEnum* engine])
+#### Pinguno.prototype.startPinging(*Array* **targets** [, *PingEngineEnum* **engine**])
 
-This will start one of the pinging "engines" (such as a wrapper around the inbuilt OS `ping` command, or the `node-net-ping` package). 
+This will start one of the pinging "engines" (such as a wrapper around the inbuilt OS `ping` command, or the `node-net-ping` package). "Targets" must be specified as objects with the properties `humanName` and `IPV4`, both strings.
+
 Current engines available are *NodeNetPing* and *InbuiltSpawn*; both are properties of `Pinguno.pingEngineEnum`. Pinguno will default to InbuiltSpawn on macOS/UNIX-like machines, and NodeNetPing on Windows.
 
 ```
@@ -90,7 +94,7 @@ Contains all the raw structured data for the pings we've made during this Pingun
 ### Building/compiling executables
 
 We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build executables. 
-- Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the --dev dependency `pkg` defined in package.json.
+- Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the development-dependency `pkg` defined in package.json.
 - Alternatively, install `pkg` globally with `npm install -g pkg` or `yarn global add pkg` and run it with your own settings.
 
 ## Further documentations:
@@ -104,26 +108,39 @@ See the `docs` folder in this repo for Markdown-formatted documentation.
 
 ## Known bugs & caveats
 
-- The accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine. The accuracy of the `ping` engine is the same as the native `ping` binary.
-- We can't get TTL or byte size of ping responses when using `net-ping` engine (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
+- Currently only supports IPv4 (IPv6 support is a high short-term roadmap priority)
+- The **accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine**. The accuracy of the `ping` engine is the same as the native `ping` binary.
+- We ***can't get TTL or byte size of ping responses when using `net-ping` engine** (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
 - The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
-- Pinguno does not currently test bandwidth, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
-- We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally force your ISP to provide better service or get a refund etc. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
+- Pinguno **does not currently test bandwidth**, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
+- We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally pressure your ISP to provide better service or get compensation. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
 
 ### Error reporting & contributing
 
-Uses [semantic versioning](https://semver.org/)
+We use [semantic versioning](https://semver.org/) for releases (tags on the 'master' branch).
 
 Send us a PR or make an issue on GitHub! 
 
 - We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. 
+- Test data on a wide variety of network conditions is very valuable.
 
-All help is appreciated :) 
+Development roadmap is currently All help is appreciated :) 
 Read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
 
 ### Contributors:
 
 Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from?](https://gist.github.com/twome/1fded3a4534043ab705a0ae2b8ee6ab6)
+
+### Similar projects:
+
+#### Free / open source:
+
+- [watchmen](https://github.com/iloire/watchmen) by Iván Loire & contributors: Web GUI, multiple server support, mature project, developer-focused. Pinguno has slightly different goals: to be a very simple and low-maintenance tray/menubar app for non-technical users to get information/transparency about their personal/physical internet connection (not their server fleet) over long periods of time. If you're looking for more professional DevOps monitoring, watchmen is more feature-rich.
+- [node-monitor](https://github.com/qawemlilo/node-monitor#readme) and [node-ping](https://github.com/qawemlilo/node-ping) by Qawelesizwe Mlilo: CLI, website monitoring, event-focused. These are focused more on automatically alerting website maintainers when connection status changes.
+
+#### Paid / closed source:
+
+- [Net Uptime Monitor](https://netuptimemonitor.com/) by Becker Software LLC. $10 USD for permanent license, as of 2018-10-04. Windows-only, GUI, focused on non-technical users. Similar in design goals to Pinguno.
 
 ## License: MIT
 
