@@ -49,5 +49,14 @@
     "axios": "^0.18.0",
     "cross-env": "^5.2.0",
     "pkg": "^4.3.4"
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true
+    },
+    "extends": "eslint:recommended",
+    "rules": {
+      
+    }
   }
 }
