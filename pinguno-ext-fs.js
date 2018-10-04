@@ -15,7 +15,7 @@ let attachExtensions = (Pinguno)=>{
 	// TODO: Promisify this
 	Pinguno.prototype.saveSessionConfigToJSON = function(callback){
 		let settings = this.opt
-		let fileUri = settings.configLastUsedPath
+		let fileUri = this.configLastUsedPath
 		let dirPath = path.dirname(fileUri)
 		let content = JSON.stringify(settings, null, settings.pingLogIndent)
 
