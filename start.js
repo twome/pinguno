@@ -12,17 +12,17 @@ const {
 	saveSessionLogJSON,
 	readJSONLogIntoSession
 } = require('./logging.js')
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./pinguno.js')
 const { Stats } = require('./stats.js')
 
 if (config.nodeVerbose >= 2){
-	console.info('  -----\nStarting Pingu\n  -----') // verbose 2
+	console.info('  -----\nStarting Pinguno\n  -----') // verbose 2
 	console.info(`Process PID: ${process.pid}`) // verbose 2
 	console.info(`process.cwd: ${process.cwd()}`) // verbose 2
 	console.info(`process.execPath: ${process.execPath}`) // verbose 2
 }
 
-let app = new Pingu()
+let app = new Pinguno()
 
 if (config.nodeVerbose >= 2){
 	app.tellStatus()
@@ -45,7 +45,7 @@ let updateOutagesTick = setInterval(()=>{
 let writeToFileTick = setInterval(()=>{
 	Promise.resolve(saveSessionLogJSON(app)).then((val)=>{
 		// TEMP
-		// Testing reading from file into a new Pingu session
+		// Testing reading from file into a new Pinguno session
 		/*console.debug('WriteToFile outcome:', val)
 		if (typeof val === 'string'){
 			readJSONLogIntoSession(app.activeLogUri).then((newSessionFromRead)=>{

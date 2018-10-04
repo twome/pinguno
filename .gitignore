@@ -1,9 +1,9 @@
 # Security
-## Env vars that contain passwords etc
+## Env vars that contain passwords, are context-dependent etc
 .env
 config/
 
-# Large build files 
+# Large & context-dependent build files 
 build/
 
 # Windows
@@ -16,15 +16,10 @@ Desktop.ini
 ## Image thumbnail cache
 .DS_Store
 
-# Sublime Text 2
+# Sublime Text
 ## User-specific editor settings
 *.sublime-project
 *.sublime-workspace
-
-# Bower
-## Resource repository
-bower_components/
-test/bower_components
 
 # Yarn
 ## Error log
@@ -35,15 +30,8 @@ yarn-error.log
 node_modules/
 npm-debug.log
 
-# grunt
-## Temporary files
-.tmp/
-## Processed/minified output files, which change depending upon dev/prod settings
-dist/
-
 # A folder specifically for ignored scrap
 ignored/
-
 
 # Node server files
 ## Ping logs

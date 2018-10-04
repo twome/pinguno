@@ -7,9 +7,9 @@ console.info('RUNNING: action_compress-all-logs.js')
 // (none)
 
 // In-house modules
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./pinguno.js')
 const { compressAllLogsToArchive } = require('./logging.js')
 
-let app = new Pingu()
+let app = new Pinguno()
 
 compressAllLogsToArchive(app.opt.logsDir, app.opt.archiveDir, app.opt.logStandardFilename, false)

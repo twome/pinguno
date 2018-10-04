@@ -7,9 +7,9 @@ console.info('RUNNING: action_delete-all-logs.js')
 // (none)
 
 // In-house modules
-const { Pingu } = require('./pingu.js')
+const { Pinguno } = require('./pinguno.js')
 const { deleteAllLogs } = require('./logging.js')
 
-let app = new Pingu()
+let app = new Pinguno()
 
 deleteAllLogs(app.opt.logsDir, app.opt.summariesDir)
