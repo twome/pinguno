@@ -20,6 +20,97 @@ const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
 
+// TODO: optimise / simplify this
+let readJSONLogIntoSession = (logFileUri)=>{
+
+	let onFileRead = (dataStr)=>{
+		let fileData = JSON.parse(dataStr)
+
+		let newSession = new Pinguno(Object.assign(fileData.opt, {
+			activeLogUri: logFileUri
+		}))
+
+		// Cast JSON strings to class instances
+		fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
+		fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
+		fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
+		fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
+		for (let ping of fileData.combinedPingList){
+			ping.timeResponseReceived = MyUtil.utcIsoStringToDateObj(ping.timeResponseReceived)
+		}
+		for (let outage of fileData.outages){
+			outage.startDate = MyUtil.utcIsoStringToDateObj(outage.startDate)
+			outage.endDate = MyUtil.utcIsoStringToDateObj(outage.endDate)
+		}
+		for (let target of fileData.targetList){
+			for (let requestError of target.requestErrorList){
+				requestError.timeResponseReceived = MyUtil.utcIsoStringToDateObj(requestError.timeResponseReceived)
+				requestError.timeRequestSent = MyUtil.utcIsoStringToDateObj(requestError.timeRequestSent)
+			}
+		}
+
+		fileData.combinedPingList = _.sortBy(fileData.combinedPingList, ['icmpSeq', 'targetIPV4', 'timeResponseReceived'])
+
+		newSession.pingTargets = _.cloneDeep(fileData.targetList)
+
+		// ~ separate combined ping list into newSession targets
+		if (fileData.combinedPingList.length >= 1){
+			for (let ping of fileData.combinedPingList){
+				for (let target of newSession.pingTargets){
+					target.pingList = (target.pingList && target.pingList.length >= 1) ? target.pingList : []
+					if (target.IPV4 === ping.targetIPV4){
+						target.pingList.push(ping)
+					}
+				}
+			}	
+		}
+
+		// Recreate RequestErrors from accessors
+		for (let target of newSession.pingTargets){
+			if (target.requestErrorList.length <= 0){ continue }
+			for (let requestError of target.requestErrorList){
+				// Turn error name back into type error
+				requestError.errorType = RequestError.errorTypes[requestError.errorType.accessor]
+			}
+		}
+
+		// Recreate Ping Errors from accessors
+		for (let target of newSession.pingTargets){
+			for (let ping of target.pingList){
+				if (!ping.errorType){ continue }
+				// Turn error name back into type error
+				ping.errorType = RequestError.errorTypes[ping.errorType.accessor]
+			}
+		}
+		
+		// Recreate TargetOutage pings from their ICMP & target
+		// Perf: bad
+		for (let target of newSession.pingTargets){
+			for (let targetOutage of target.targetOutages ){
+				if (targetOutage.pingList.length <= 0){ continue }
+				for (let pingIndex in targetOutage.pingList){
+					let referencedPing = Pinguno.getPingFromIcmpTarget(newSession, targetOutage.pingList[pingIndex].icmpSeq, target.IPV4)
+					targetOutage.pingList[pingIndex] = _.cloneDeep(referencedPing)
+				}
+			}
+		}
+
+		// newSession.outages = fileData.outages 
+		newSession.updateOutages(newSession.pingTargets, newSession.targetList) // Recalculate these outages
+		newSession.updateSessionStats()
+		newSession.updateGlobalConnectionStatus()
+
+		newSession.sessionStartTime = fileData.sessionStartTime
+		newSession.sessionEndTime = fileData.sessionEndTime
+	
+		return newSession
+	}
+
+	return fsReadFilePromise(logFileUri, 'utf8').then(onFileRead, (error)=>{
+		throw new Error(error)
+	})
+}
+
 // Interleave the ping-targets with their individual ping-lists into one shared ping list
 let combineTargetsForExport = (instance)=>{
 	let exporter = new PingsLog({
@@ -85,7 +176,7 @@ let writeNewSessionLog = (instance)=>{
 			// We just want to make sure the folder exists so this doesn't matter
 		}
 
-		const fileUri = path.join(instance.opt.logsDir, filename)
+		const fileUri = path.join(instance.logsDir, filename)
 		// Keep track of this session's log so we can come back and update it
 		instance.activeLogUri = fileUri
 
@@ -99,7 +190,7 @@ let writeNewSessionLog = (instance)=>{
 		})
 	}
 
-	return fs.mkdir(instance.opt.logsDir, undefined, onMakeDirectory)
+	return fs.mkdir(instance.logsDir, undefined, onMakeDirectory)
 }
 
 // Read, extend, and overwrite this sessions existing log file
@@ -161,7 +252,7 @@ let formatSessionAsHumanText = (instance, options)=>{
 	ind = indString
 
 	// This will overwrite any file with the same session start time
-	let summaryUri = options.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
+	let summaryUri = instance.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
 
 	let template = `Pinguno internet connectivity log` +
 	`\nSession started: ${DateTime.fromJSDate(instance.sessionStartTime).toISO()}` +
@@ -245,7 +336,7 @@ let formatSessionAsHumanText = (instance, options)=>{
 let saveSessionLogHuman = (instance)=>{
 	let formatted = formatSessionAsHumanText(instance, {
 		indentSize: instance.opt.indentSize,
-		summariesDir: instance.opt.summariesDir,
+		summariesDir: instance.summariesDir,
 		badLatencyThresholdMs: instance.opt.badLatencyThresholdMs,
 		pingIntervalMs: instance.opt.pingIntervalMs,
 		wrapAtCharLength: instance.opt.wrapHumanLogAtCharLength
@@ -266,7 +357,7 @@ let saveSessionLogHuman = (instance)=>{
 		})
 	}
 
-	fs.mkdir(instance.opt.summariesDir, undefined, onMakeDirectory)
+	fs.mkdir(instance.summariesDir, undefined, onMakeDirectory)
 }
 
 let compressLogToArchive = (filename, archiveDir, logsDir)=>{
@@ -424,3 +515,4 @@ exports.saveSessionLogHuman = saveSessionLogHuman
 exports.saveSessionLogJSON = saveSessionLogJSON
 exports.deleteAllLogs = deleteAllLogs
 exports.combineTargetsForExport = combineTargetsForExport
+exports.readJSONLogIntoSession = readJSONLogIntoSession

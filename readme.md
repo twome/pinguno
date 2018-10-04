@@ -97,6 +97,16 @@ We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build execut
 - Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the development-dependency `pkg` defined in package.json.
 - Alternatively, install `pkg` globally with `npm install -g pkg` or `yarn global add pkg` and run it with your own settings.
 
+## Caveats
+
+- Currently only supports IPv4 (IPv6 support is a high short-term roadmap priority)
+- The **accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine**. The accuracy of the `ping` engine is the same as the native `ping` binary.
+- We ***can't get TTL or byte size of ping responses when using `net-ping` engine** (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
+- The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
+- Pinguno **does not currently test bandwidth**, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
+- We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally pressure your ISP to provide better service or get compensation. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
+- Servers may detect that a specific IP address is repeatedly sending them ICMP packets, and they may choose to respond to this at different points in their network in different ways (such as with a CDN cache), which will impact statistics such as TTL and latency.
+
 ## Further documentations:
 
 See the `docs` folder in this repo for Markdown-formatted documentation.
@@ -106,16 +116,7 @@ See the `docs` folder in this repo for Markdown-formatted documentation.
 - **hacks.md**: currently-implemented hacks to be wary of
 - **roadmap.md**: future development plans - Pinguno is planned to be a very simple menubar/tray app for non-technical users.
 
-## Known bugs & caveats
-
-- Currently only supports IPv4 (IPv6 support is a high short-term roadmap priority)
-- The **accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine**. The accuracy of the `ping` engine is the same as the native `ping` binary.
-- We ***can't get TTL or byte size of ping responses when using `net-ping` engine** (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
-- The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
-- Pinguno **does not currently test bandwidth**, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
-- We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally pressure your ISP to provide better service or get compensation. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
-
-### Error reporting & contributing
+## Error reporting & contributing
 
 We use [semantic versioning](https://semver.org/) for releases (tags on the 'master' branch).
 
@@ -127,20 +128,32 @@ Send us a PR or make an issue on GitHub!
 Development roadmap is currently All help is appreciated :) 
 Read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
 
-### Contributors:
+## Contributors:
 
 Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from?](https://gist.github.com/twome/1fded3a4534043ab705a0ae2b8ee6ab6)
 
-### Similar projects:
+## Similar projects:
 
-#### Free / open source:
+### Free / open source:
 
 - [watchmen](https://github.com/iloire/watchmen) by Iván Loire & contributors: Web GUI, multiple server support, mature project, developer-focused. Pinguno has slightly different goals: to be a very simple and low-maintenance tray/menubar app for non-technical users to get information/transparency about their personal/physical internet connection (not their server fleet) over long periods of time. If you're looking for more professional DevOps monitoring, watchmen is more feature-rich.
 - [node-monitor](https://github.com/qawemlilo/node-monitor#readme) and [node-ping](https://github.com/qawemlilo/node-ping) by Qawelesizwe Mlilo: CLI, website monitoring, event-focused. These are focused more on automatically alerting website maintainers when connection status changes.
 
-#### Paid / closed source:
+### Paid / closed source:
 
 - [Net Uptime Monitor](https://netuptimemonitor.com/) by Becker Software LLC. $10 USD for permanent license, as of 2018-10-04. Windows-only, GUI, focused on non-technical users. Similar in design goals to Pinguno.
+
+## User privacy disclosure
+
+- Pinguno stores your OS username & the full (absolute) URIs of its own folder. These are stored in the logs and config files it generates. It needs these paths in order to read and write from the filesystem.
+- Pinguno does not "phone home" (automatically send any information over the internet to its developers or anyone else).
+
+Pingu may, in future, store the following information in its logs (we will do our best to update the disclosure when functionality changes):
+
+- Internal IP address
+- Current public IP address
+- Info about your current ISP
+- Info about network adapters
 
 ## License: MIT
 

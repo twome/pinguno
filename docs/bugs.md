@@ -3,6 +3,7 @@
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
 - readJSONIntoSession is not correctly placing combinedList pings into targets
+- readJSONintosession or updatetargetconnectionstatus/updateglobalconnectionstatus is not properly setting last good/bad ping
 
 - [test, mac, nativeping, breaking] after running for long enough on native ping, we stop getting "new" pings (newer than the active log file's) for some reason -- check if this is still happening
 

@@ -12,4 +12,4 @@ const { compressAllLogsToArchive } = require('./logging.js')
 
 let app = new Pinguno()
 
-compressAllLogsToArchive(app.opt.logsDir, app.opt.archiveDir, app.opt.logStandardFilename, false)
+compressAllLogsToArchive(app.logsDir, app.archiveDir, app.opt.logStandardFilename, false)

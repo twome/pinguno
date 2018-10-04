@@ -12,4 +12,4 @@ const { deleteAllLogs } = require('./logging.js')
 
 let app = new Pinguno()
 
-deleteAllLogs(app.opt.logsDir, app.opt.summariesDir)
+deleteAllLogs(app.logsDir, app.summariesDir)

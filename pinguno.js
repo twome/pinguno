@@ -12,7 +12,7 @@ const netPing = require('net-ping')
 
 // In-house modules
 const { config } = require('./config.js')
-const { fullOutagesAcrossTargets } = require('./outages.js')
+const { fullOutagesAcrossTargets, isBadResponse } = require('./outages.js')
 const { Enum } = require('./enum.js')
 const { MyUtil } = require('./my-util.js')
 const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
@@ -48,7 +48,7 @@ class Pinguno {
 		// NB: Currently using default timeout limit times
 		opt.pingIntervalMs = process.env.NODE_ENV === 'development' ? 1000 : 3000
 		opt.badLatencyThresholdMs = 250
-		// NB: ttl currently only used by 'net-ping'
+		// NB: TTL currently only used by 'net-ping'
 		opt.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
 		
 		opt.exportSessionToTextSummaryIntervalMs = process.env.NODE_ENV === 'development' ? 4000 :10000
@@ -108,7 +108,7 @@ class Pinguno {
 		this.runningInPkgExecutable = !!(process.pkg && (process.pkg.entrypoint || snapshotIsFirstFolder))
 
 		/*
-				## Path resolution
+			## Path resolution
 		*/
 		this.appPath = __filename
 
@@ -118,13 +118,11 @@ class Pinguno {
 			this.appDir = opt.pathsRelativeToUserCwd ? __dirname : path.dirname(process.execPath)
 		}
 		// Combine the directory names into proper path strings
-		this.opt.configDir = path.join(this.appDir, this.opt.configDir)
-		this.opt.configLastUsedPath = path.join(this.opt.configDir, this.opt.configLastUsedPath)
-		this.opt.logsDir = path.join(this.appDir, this.opt.logsDir)
-		this.opt.summariesDir = path.join(this.opt.logsDir, this.opt.summariesDir)
-		this.opt.archiveDir = path.join(this.opt.logsDir, this.opt.archiveDir)
-
-
+		this.configDir = path.join(this.appDir, opt.configDir)
+		this.configLastUsedPath = path.join(opt.configDir, opt.configLastUsedPath)
+		this.logsDir = path.join(this.appDir, opt.logsDir)
+		this.summariesDir = path.join(opt.logsDir, opt.summariesDir)
+		this.archiveDir = path.join(opt.logsDir, opt.archiveDir)
 
 		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
 
@@ -144,9 +142,9 @@ class Pinguno {
 		// Has this session's state changed since it was last saved?
 		this.sessionDirty = false
 
-		this.lastFailure = null // Date
+		this.lastDateFailed = null // Date
 		this.lastDateConnected = null // Date
-		this.internetConnected = null // boolean
+		this.internetConnected = this.connectionState.PENDING_RESPONSE // this.connectionState
 		this.firstPingSent = false
 		this.outages = []
 
@@ -174,18 +172,18 @@ class Pinguno {
 		}
 		console.info(
 			`Pinguno's main directory for this session: ${this.appDir}` + 
-			`\nPinguno will write logs to ${path.join(this.appDir, this.opt.logsDir)}` + 
-			`\nPinguno will write human-readable summaries to ${path.join(this.appDir, this.opt.summariesDir)}` + 
-			`\nPinguno will compress logs archives to ${path.join(this.appDir, this.opt.archiveDir)}\n`
+			`\nPinguno will write logs to ${path.join(this.appDir, this.logsDir)}` + 
+			`\nPinguno will write human-readable summaries to ${path.join(this.appDir, this.summariesDir)}` + 
+			`\nPinguno will compress logs archives to ${path.join(this.appDir, this.archiveDir)}\n`
 		)
 		this.tellArchiveSize()
 	}
 
-	getArchiveSize(callback){
-		if (! fs.existsSync(this.opt.logsDir)){
+	getArchiveSizeMiB(callback){
+		if (! fs.existsSync(this.logsDir)){
 			return false
 		}
-		getFolderSize(this.opt.logsDir, (err, size)=>{
+		getFolderSize(this.logsDir, (err, size)=>{
 			if (err) { throw err }
 			let sizeInMiB = (size / 1024 / 1024).toFixed(2)
 			callback(sizeInMiB)
@@ -193,7 +191,7 @@ class Pinguno {
 	}
 
 	tellArchiveSize(){
-		this.getArchiveSize((sizeInMiB)=>{
+		this.getArchiveSizeMiB((sizeInMiB)=>{
 			if ( sizeInMiB ){
 				console.info(`Archive size: ${sizeInMiB} MiB`)
 			} else {
@@ -202,13 +200,59 @@ class Pinguno {
 		})
 	}
 
-	updateInternetConnectionStatus(){
-		this.updateTargetsConnectionStatus()
+	updateTargetConnectionStatus(target){
+		let targetLatestPing = this.latestPing(target)
+		if (targetLatestPing === undefined){
+			// console.debug('target has no latest ping')
+			target.connected = this.connectionState.PENDING_RESPONSE
+			target.lastDateConnected = null
+			target.lastDateFailed = null
+			return null
+		} 
 
-		// If at least one target responds, we assume we have a working general internet connection
-		for (let target of this.pingTargets){
+		let latestGoodPing = this.latestPing(target, true)
+		let latestBadPing = this.latestPing(target, false)
+		// console.debug('target latest ping', targetLatestPing)
+		// console.debug('target latestGoodPing', latestGoodPing)
+		// console.debug('target latestBadPing', latestBadPing)
+		if ( isBadResponse(targetLatestPing, this.opt.badLatencyThresholdMs) ){
+			target.connected = this.connectionState.DISCONNECTED
+			target.lastDateConnected = latestGoodPing && latestGoodPing.timeResponseReceived
+			target.lastDateFailed = latestBadPing && latestBadPing.timeResponseReceived
+			return false
+		}
+
+		// Can assume we had a connection at some point by this stage in the function
+		let targetLastConnectedTimeMs = targetLatestPing.timeResponseReceived.getTime()
+		if ( targetLastConnectedTimeMs - new Date().getTime() <= this.opt.timeoutLimit ){
+			target.connected = this.connectionState.CONNECTED
+			target.lastDateConnected = targetLatestPing.timeResponseReceived
+			target.lastDateFailed = latestBadPing && latestBadPing.timeResponseReceived
+			return true
+		}
+	}
+
+	updateGlobalConnectionStatus(){
+		let isXLaterThanY = (x, y, dateProp)=>{
+			if (!x[dateProp] || !y[dateProp]){ return null }
+			return Math.sign(x[dateProp] - y[dateProp]) >= 0 
+		}
+
+		for (let target of this.pingTargets){	
+			let targetConnected = this.updateTargetConnectionStatus(target)
+			// console.debug('targetConnected', targetConnected)
+			
+			if (isXLaterThanY(target, this, 'lastDateConnected')){
+				// console.debug('target has later last connect than global')
+				this.lastDateConnected = target.lastDateConnected
+			}
+			if (isXLaterThanY(target, this, 'lastDateFailed')){
+				// console.debug('target has later last fail than global')
+				this.lastDateFailed = target.lastDateFailed
+			}
+
+			// If at least one target responds, we assume we have a working general internet connection
 			if (target.connected === this.connectionState.CONNECTED){
-				this.lastDateConnected = new Date()
 				return this.internetConnected = this.connectionState.CONNECTED
 			}
 		}
@@ -242,25 +286,6 @@ class Pinguno {
 		return this.outages
 	}
 
-	updateTargetsConnectionStatus(){
-		for (let target of this.pingTargets){
-			let latestPing = this.latestPing(target)
-
-			let receivedAnyResponse = latestPing && (typeof latestPing.roundTripTimeMs === 'number' )
-			let responseWithinThreshold = latestPing && (latestPing.roundTripTimeMs <= this.opt.badLatencyThresholdMs)
-
-			if (receivedAnyResponse && responseWithinThreshold){
-				this.lastDateConnected = new Date()
-				return target.connected = this.connectionState.CONNECTED
-			} else if ( latestPing && !latestPing.failure ){
-				return target.connected = this.connectionState.PENDING_RESPONSE
-			} else {
-				this.lastFailure = new Date()
-				return target.connected = this.connectionState.DISCONNECTED
-			}
-		}
-	}
-
 	updateSessionEndTime(oldInstance){
 		// For getting an estimate of the closest session time from sessions that ended prematurely
 		if (oldInstance instanceof Pinguno){
@@ -275,20 +300,33 @@ class Pinguno {
 		}
 	}
 
-	latestPing(target){
+	latestPing(target, iterateUntilGoodPing){
+		let latestEachTarget = []
+
+		let latestPingOfTarget = (target)=>{
+			let sortedPings = _.sortBy(target.pingList, p => p.icmpSeq)
+
+			var i = target.pingList.length - 1
+			if (typeof iterateUntilGoodPing === 'boolean'){
+				for (; i > 0; i = i - 1){
+					if (isBadResponse(sortedPings[i]) === !iterateUntilGoodPing){
+						return sortedPings[i]
+					}
+				}
+				return undefined // No ping that fits our demand for "good" or "bad"
+			}
+
+			return sortedPings[i]
+		}
+
 		if (target){
-			return target.pingList[target.pingList.length - 1]	
+			return latestPingOfTarget(target)	
 		} else {
-			console.debug('latestPing - No target specified so finding the latest ping from any target')
-
-			let latestPerTarget = []
-			
 			for (let target in this.targets ){
-				let sorted = _.sortBy(target.pingList, p => p.icmpSeq)
-				latestPerTarget.push(_.last(sorted))
-			}	
+				latestEachTarget.push(latestPingOfTarget(target)) 
+			}
 
-			return _.last(_.sortBy(latestPerTarget, p => p.icmpSeq))
+			return _.last(_.sortBy(latestEachTarget, p => p.icmpSeq))
 		}
 	}
 

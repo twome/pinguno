@@ -264,8 +264,8 @@ class Server {
 		pinger.startPinging(pinger.pingTargets)
 
 		let connectionStatusTick = setInterval(()=>{
-			pinger.updateInternetConnectionStatus()
-			console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateInternetConnectionStatus().humanName)
+			pinger.updateGlobalConnectionStatus()
+			console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName)
 		}, pinger.opt.connectionStatusIntervalMs)
 
 		let updateOutagesTick = setInterval(()=>{	

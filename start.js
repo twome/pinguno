@@ -2,6 +2,9 @@
 
 // 3rd-party dependencies
 const { DateTime } = require('luxon')
+const _ = {
+	debounce: require('lodash/debounce')
+}
 
 // In-house modules
 const { config } = require('./config.js')
@@ -34,8 +37,8 @@ app.startPinging(
 )
 
 let connectionStatusTick = setInterval(()=>{
-	app.updateInternetConnectionStatus()
-	console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + app.updateInternetConnectionStatus().humanName)
+	app.updateGlobalConnectionStatus()
+	console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + app.updateGlobalConnectionStatus().humanName)
 }, app.opt.connectionStatusIntervalMs)
 
 let updateOutagesTick = setInterval(()=>{	
@@ -45,15 +48,17 @@ let updateOutagesTick = setInterval(()=>{
 let writeToFileTick = setInterval(()=>{
 	Promise.resolve(saveSessionLogJSON(app)).then((val)=>{
 		// TEMP
-		// Testing reading from file into a new Pinguno session
-		/*console.debug('WriteToFile outcome:', val)
 		if (typeof val === 'string'){
-			readJSONLogIntoSession(app.activeLogUri).then((newSessionFromRead)=>{
-				console.debug('readJSONLogIntoSession - newSessionFromRead:', !!newSessionFromRead)
-			},(err)=>{
-				console.debug('readJSONLogIntoSession - error:', err)
-			})
-		}*/
+			let respondToRead = (newSessionFromRead)=>{
+				// console.debug(newSessionFromRead)
+			}
+
+			readJSONLogIntoSession(app.activeLogUri)
+				.then(respondToRead)
+				.catch((err)=>{
+					console.debug('readJSONLogIntoSession - error:', err)
+				})
+		}
 	}, (err)=>{
 		console.error(err)
 	})
@@ -74,15 +79,14 @@ let statsTick = setInterval(()=>{
 	console.info(app.sessionStats)
 }, app.opt.updateSessionStatsIntervalMs)
 
-// Periodically compress all loose JSON logs to a single gzipped archive
-// let compressLogToArchiveTick = setInterval(()=>{
-// 	compressLogToArchive(MyUtil.filenameFromUri(app.activeLogUri), app.opt.archiveDir, app.opt.logsDir)
-// }, 20 * 1000)
-
-// let compressAllLogsToArchiveTick = setInterval(()=>{
-// 	compressAllLogsToArchive(app.opt.logsDir, app.opt.archiveDir, app.opt.logStandardFilename, app.opt.compressAnyJsonLogs)
-// }, 5 * 1000)
-
+// Compress all loose JSON logs to a single gzipped archive if the folder has grown excessively large
+app.getArchiveSizeMiB((sizeMiB)=>{
+	console.warn(`Logs directory size: ${sizeMiB}MiB`)
+	if (sizeMiB >= app.opt.maxUncompressedSizeMiB){
+		console.warn(`Logs directory size exceeds ${app.opt.maxUncompressedSizeMiB}MiB, compressing all logs...`)
+		compressAllLogsToArchive(app.logsDir, app.archiveDir, app.opt.logStandardFilename, app.opt.compressAnyJsonLogs)
+	}	
+})
 
 // TEMP: USING PRE-COOKED DATA
 // let updateOutagesTick = setInterval(()=>{
