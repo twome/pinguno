@@ -76,9 +76,8 @@
 	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
 		- could relay these instructions to users looking for that
 
-- name compressed archives with date range 
-	- give options to restrict to size (10MB) and time-interval (30 days)
-		- how to know size beforehand?
+- compressed archives
+	- run automatically when we hit directory size (50MB) and time-interval (28 days
 
 - stretch: test DNS by using domain names after testing IPs
 
@@ -157,17 +156,17 @@
 
 ## Project management / organisation / presentation
 
-- Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
 - Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)
 
-### promo website
+### Promotional website
 
 - clearly explain benefits first
 	- harder for ISP to bullshit you
 	- close to zero installation & daily usage effort. just forget about it. doesn't take up CPU, doesn't take up space.
 - live demo from Pinguno cli running on domain's server
+	- open in popup iframe exactly like a menubar Electron window?
 
-## 3rd-party code changes
+## 3rd-party code propositions
 
 - proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
 - support getting TTL & response size for response pings
@@ -178,13 +177,16 @@
 	- how to deal with .env?
 	- FAIRLY sure that .env values are "frozen" into the pkg build at build time
 	- to let the user use other env vars in perhaps a bundled zip; we can build the relative URL from `process.execPath`
--[x] SECURITY: sanitize child_process.spawn input properly (extremely important security)
+-[ ] SECURITY: sanitize child_process.spawn input properly (extremely important security)
 	- Never let a third party set either of the two vars
 	- This is currently just to stop the host user accidentally running the wrong command on their command line
 	- Unfortunately, we pretty much need to expose user-set variables (1) the polling interval and (2) the IP string to the "spawn" command (the dangerous part). 
--[ ] CODE QUALITY: Remove all temporary / debug / dev comments etc
--[ ] PERSONAL: Scour all personal/private information added while developing
--[ ] UX: Readme has no inaccurate information
+-[ ] CODE QUALITY: Remove all TEMP / console.debug / dev comments etc. TODOs are fine if it makes sense and reveal intent.
+-[ ] CODE QUALITY: Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
+-[ ] CODE QUALITY: Remove all unnecessary dependencies to reduce install time / size.
+-[ ] PRIVACY: Scour all personal/private information added while developing.
+-
+-[ ] UX: Ensure readme has no serious inaccurate information.
 
 #### Before 1.0.0:
 - test suite
