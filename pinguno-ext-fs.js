@@ -21,7 +21,7 @@ let attachExtensions = (Pinguno)=>{
 
 		let onMakeDirectory = (err)=>{
 			if (err){
-				console.debug(`Failed to make directory ${dirPath} error:`, err)
+				if (err.errno !== -17){ console.debug(`Failed to make directory ${dirPath} error:`, err)}
 			}
 			let prom = fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
 				return fileUri

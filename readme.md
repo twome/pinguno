@@ -1,70 +1,69 @@
 # Pinguno - a personal internet uptime logger
 
-## System requirements
+Pinguno is an app that continually "pings" a set of IP addresses and logs all the data in both human-readable and structured (JSON) formats.  If you have troubles with the quality of your internet connection, you can use Pinguno's timestamped data to get better tech support (and hopefully a little more transparency) from your ISP, because you can identify all the exact times when your internet dropped. Pinguno is cross-platform, portable, and has a command-line interface.
 
-Officially supports:
-- Windows 10, 64-bit only
-- macOS Sierra 10.12.6, 64-bit only
+System requirements:
 
-- [Developers only] Node v10.11.0 and up
-- [Unix-based systems only] `ping` binary accessible on the $PATH (can fall back to less accurate included 'ping'-like package)
+- Windows 10 and up, 64-bit only
+- macOS Sierra 10.12.6 and up, 64-bit only
+- **[Developers only]** Node v10.11.0 and up
+- **[Unix-based systems only]** `ping` binary accessible on the $PATH (a less accurate fallback is provided)
 
-## How to use (regular people):
-
-### Installation
-
-- Mac: download [pinguno-macos]() 
-- Windows: download [pinguno.exe]()
-
-This is a "command-line" application, which means it doesn't have a graphical interface and must be run in a "shell" (Terminal on macOS or CMD on Windows). The app is portable (doesn't need to be "installed"; you just run the program where you downloaded it). By default, it'll output JSON (structured data for machines to read, in text) and human-readable text log files to `./logs`, creating that directory anew if needed. Apart from that, no other files/directory will be modified by the CLI executable.
+By default, it'll output JSON and human-readable text log files to a `logs` directory created next to the executable, and will store its last-used configuration in a `config` directory created next to the executable. Apart from that, no other files/directories will be modified by the app.
 
 ### Usage
 
 NB: Don't forget to change your OS settings so your computer doesn't fall asleep, or Pinguno will be unable to log continuously (Pinguno can't override that behaviour). 
 
-#### CLI version:
+#### Using the binaries:
 
-- Mac: open `pinguno-macos` with Terminal or another command-line app. 
+- Mac: open `pinguno-macos` with Terminal or another command-line app.
 - Windows: run `pinguno-win.exe`. It will open a cmd window.
 
-Pinguno will begin logging to timestamped files in a directory called 'logs' created next to the executable. `Ctrl+C` to exit. If you want to send logs to your ISP to help troubleshoot your connection, send them all the compressed/zipped files in the local `./logs/compressed/` folder.
+#### Using Node + the source code:
+
+[Install Node.js v10.11.0](https://nodejs.org/en/download/) or above if you don't have it.
+**[Windows only]** This project depends on `node-gyp`, so you may need to install `node-gyp`'s dependencies with `npm install --global windows-build-tools`
+Clone this repo locally: `git clone git@github.com:twome/pinguno.git`
+Run `node start` from the package directory. 
+
+To compress all the current logs into a gzipped archive, run `npm run compressall`. 
+
+Pinguno's settings are handled through environment variables rather than command-line flags (for now, at least). Pinguno will check for a `.env` file in the project root. These are the currently supported settings:
+
+- NODE_VERBOSE: 0-9 (verbosity of console output)
+- NODE_ENV: 'production' or 'development' 
+
+If you encounter an error related to "ICU", you may need to have some environment variables (listed in init-env-vars.sh) present in the shell, so that Node knows where to look for "ICU data" (locale data, inbuilt in browsers). Run `. init-env-vars.sh` for each shell session, or you can use the `npm run ...` shortcuts in package.json which include the env vars.
+
+---
+
+Pinguno will begin pinging & logging, and will run indefinitely until you press `Control+C` to exit.
 
 ### Uninstallation
 
-Manually:
-	- Delete binaries
-	- Delete log locations
-	- Done!
+- Binaries: Delete the binary and the 'config' and 'logs' folders in the same directory as it.
+- Node + source code: 
 
-## How to use (developers):
+That's it!
 
-### Installation
+### Using Pinguno programmatically
 
-NB. This repo currently has version-tracked development materials included; use the [binary releases](TODO) if you're looking to save space.
+**Note - this is pending publishing to npm**. `npm install twome/pinguno` or `yarn add twome/pinguno`
+ "Pinguno" is the main operative class, and logging session state is stored as properties of Pinguno instances.
 
-[Install Node.js v10.11.0](https://nodejs.org/en/download/) or above if you don't have it.
-Clone this repo locally: `git clone git@github.com:twome/pinguno.git`
-[Windows only] This project depends on `node-gyp`, so you may need to install `node-gyp`'s dependencies with `npm install --global windows-build-tools`
-
-### Usage as an end-user CLI app
-
-NB. We need to keep some environment variables (listed in init-env-vars.sh) in the shell so Node knows where to look for ICU (locale data, inbuilt in browsers). Run `. init-env-vars.sh` for each shell session, or you can use the `npm run ...` shortcuts in package.json which include the env vars.
-
-Run `node start.js` to start a Pinguno session.
-Supported environment variables (can use a .env file in project root):
-```
-NODE_VERBOSE: 0-9 (verbosity of console output)
-NODE_ENV: 'production' or 'development' 
-```
-
-### Usage as an npm package (for getting Pinguno data programmatically)
-
-[Pending publishing to npm] `npm install twome/pinguno` or `yarn add twome/pinguno`
-Pinguno (pinguno.js) is the main class, and session state is stored as properties of Pinguno objects. To start pinging: 
 ```
 const Pinguno = require('pinguno')
-let pingSource = new Pinguno()
-pingSource.startPinging([
+let instance = new Pinguno()
+```
+
+#### Pinguno.prototype.startPinging(*Array* targets [, *PingEngineEnum* engine])
+
+This will start one of the pinging "engines" (such as a wrapper around the inbuilt OS `ping` command, or the `node-net-ping` package). 
+Current engines available are *NodeNetPing* and *InbuiltSpawn*; both are properties of `Pinguno.pingEngineEnum`. Pinguno will default to InbuiltSpawn on macOS/UNIX-like machines, and NodeNetPing on Windows.
+
+```
+instance.startPinging([
 	{
 		humanName: 'Google',
 		IPV4: '8.8.8.8'
@@ -75,7 +74,13 @@ pingSource.startPinging([
 ])
 ```
 
-You could then get session stats/averages with `pingSource.updateSessionStats()` and access the raw ping data per host/target IP at `pingSource.pingTargets`. See ping-formats.js for the data structures we use.
+#### Pinguno.prototype.updateSessionStats()
+
+Returns an object describing average connection statistics per target IP, such as uptime, mean latency (round-trip-time) etc.
+
+#### Pinguno.prototype.pingTargets 
+
+Contains all the raw structured data for the pings we've made during this Pinguno session, organised per target IP. See `ping-formats.js` for the data structures we use.
 
 ### Building/compiling executables
 
@@ -83,47 +88,41 @@ We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build execut
 - Run `npm run buildcli` or `yarn run buildcli` to run the multiplatform build script with the --dev dependency `pkg` defined in package.json.
 - Alternatively, install `pkg` globally with `npm install -g pkg` or `yarn global add pkg` and run it with your own settings.
 
-### Git branch format
-
-- master: Latest working version for public use. `develop` must pass existing tests/QA before `master` merges it in.
-- develop: Latest development version. Does not need to work; merge feature branches in once the main gist of the feature is fleshed out.
-
 ## Further documentations:
 
-See the /docs folder in this repo for Markdown-formatted documentation.
-	- changelog.md: brief summaries of important changes between releases (commits to the `master` branch)
-	- bugs.md: the full list of known bugs
-	- hacks.md: currently-implemented hacks to be wary of
-	- roadmap.md: future development plans
+See the `docs` folder in this repo for Markdown-formatted documentation.
+
+- **changelog.md**: brief summaries of important changes between releases (commits to the `master` branch)
+- **bugs.md**: the full list of known bugs
+- **hacks.md**: currently-implemented hacks to be wary of
+- **roadmap.md**: future development plans - Pinguno is planned to be a very simple menubar/tray app for non-technical users.
 
 ## Known bugs & caveats
 
 - The accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine. The accuracy of the `ping` engine is the same as the native `ping` binary.
-- Can't get TTL or byte size of ping responses when using `net-ping` engine (seemingly not supported by it), which is used by default on Windows. Use inbuilt/native ping engine (see ping-engines.js) if you need this info - on Windows you will need to use a UNIX-like alternative ping binary in your $PATH. 
-
+- We can't get TTL or byte size of ping responses when using `net-ping` engine (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
 - The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
 - Pinguno does not currently test bandwidth, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
 - We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally force your ISP to provide better service or get a refund etc. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.
 
-## Administration things
-
-### Version system
+### Error reporting & contributing
 
 Uses [semantic versioning](https://semver.org/)
 
-### Error reporting & contributing
+Send us a PR or make an issue on GitHub! 
 
-Send us a PR or make an issue on GitHub! We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. All help is appreciated :)
+- We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. 
 
-Please read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
+All help is appreciated :) 
+Read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
 
 ### Contributors:
 
-Tom Kenny - [website](https://twome.name). This work was done using my spare time, using skills I had learned in employment and in more spare time. I have experienced very little oppression in this industry due to class, gender, age, sexual orientation, ethnicity etc. These are privileges & advantages [not afforded to many working-class and disadvantaged people](https://www.ashedryden.com/blog/the-ethics-of-unpaid-labor-and-the-oss-community). Always keep in mind the social context in which code is written, and what kind of people get to write it.
+Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from?](https://gist.github.com/twome/1fded3a4534043ab705a0ae2b8ee6ab6)
 
 ## License: MIT
 
 **Non-legally-binding plain English**:
 > You can use Pinguno for anything (including commercial uses), as long as you don't remove Pinguno's MIT license from whatever copies you make of Pinguno (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty, nor can you hold Pinguno's authors liable for anything Pinguno does. It's free, so if someone's charging you money for basically the same thing you're probably getting ripped off!
 
-See file '[LICENSE](LICENSE)' for full legally-binding details.
+See 'LICENSE' file for full legally-binding details.
