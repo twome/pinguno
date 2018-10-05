@@ -30,7 +30,7 @@ class EngineNative {
 
 		let nothingButDigitsAndDots = (ips.match(/[^\d\.]+/) === null)
 		let isValidIPAddress = new Address4(ips).isValid()
-		let ipOk = ips && (typeof ips === 'string') && nothingButDigitsAndDots
+		let ipOk = isValidIPAddress && ips && (typeof ips === 'string') && nothingButDigitsAndDots
 		if (ipOk){
 			returner.ipString = ips
 		} else {
@@ -62,7 +62,7 @@ class EngineNative {
 		pingProcess.stdout.on('data', (data)=>{
 			let dataStr = data.toString()
 			let pingAsStructure = EngineNative.macOSPingTextToStructure(dataStr, new Date())
-			pingTarget.pingList.push(new PingData(pingAsStructure))
+			pingTarget.pingList.push(new PingData(pingAsStructure))	
 			instance.sessionDirty = true
 		})
 
