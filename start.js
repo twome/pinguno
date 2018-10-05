@@ -10,13 +10,11 @@ const _ = {
 const { config } = require('./config.js')
 const { 
 	compressAllLogsToArchive, 
-	compressLogToArchive, 
 	saveSessionLogHuman,
 	saveSessionLogJSON,
 	readJSONLogIntoSession
 } = require('./logging.js')
 const { Pinguno } = require('./pinguno.js')
-const { Stats } = require('./stats.js')
 
 if (config.nodeVerbose >= 2){
 	console.info('  -----\nStarting Pinguno\n  -----') // verbose 2

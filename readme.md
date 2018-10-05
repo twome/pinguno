@@ -1,13 +1,13 @@
 # Pinguno - a personal internet uptime logger
 
-Pinguno is an app that continually "pings" a set of IP addresses and logs all the data in both human-readable and structured (JSON) formats.  If you have troubles with the quality of your internet connection, you can use Pinguno's timestamped data to get better tech support (and hopefully a little more transparency) from your ISP, because you can identify all the exact times when your internet dropped. Pinguno is cross-platform, portable, and has a command-line interface.
+Pinguno is an app that continually "pings" a set of IP addresses and logs all the data in both human-readable and structured (JSON) formats.  If you have troubles with the quality of your internet connection, you can use Pinguno's timestamped data to get better tech support (and hopefully a little more transparency) from your ISP, because you can identify all the exact times when your internet dropped. Pinguno is cross-platform, portable, runs on Node.js, and has a command-line interface,
 
 System requirements:
 
 - Windows 10 and up, 64-bit only
 - macOS Sierra 10.12.6 and up, 64-bit only
-- **[Developers only]** Node v10.11.0 and up
-- **[Unix-based systems only]** `ping` binary accessible on the $PATH (a less accurate fallback is provided)
+- **[Developers only]** Node.js v10.11.0 and up
+- **[Unix-based systems only]** `ping` binary accessible on the $PATH (you almost certainly have this, and a less accurate fallback is provided)
 
 By default, it'll output JSON and human-readable text log files to a `logs` directory created next to the executable, and will store its last-used configuration in a `config` directory created next to the executable. Apart from that, no other files/directories will be modified by the app.
 
@@ -101,7 +101,7 @@ We use the [`pkg`](https://github.com/zeit/pkg) package & binary to build execut
 
 - Currently only supports IPv4 (IPv6 support is a high short-term roadmap priority)
 - The **accuracy of the pings' RTT in milliseconds is currently unknown when using the `net-ping` engine**. The accuracy of the `ping` engine is the same as the native `ping` binary.
-- We ***can't get TTL or byte size of ping responses when using `net-ping` engine** (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
+- We **can't get TTL or byte size of ping responses when using `net-ping` engine** (that information is seemingly not supported by it), which is used by default on Windows. Use the inbuilt/native ping engine if you need this info - on Windows, you will need to use a UNIX-like alternative ping binary in your $PATH. 
 - The ICMP 'ping' format was only designed to check if you can contact a given host, not necessarily to prove that you can connect to the internet, or that all of that host server's functions are working correctly. In most situations, though, being able to ping several unrelated high-availability servers with a low latency (also know as "round-trip time" or RTT) should indicate that you probably have a solid internet connection.
 - Pinguno **does not currently test bandwidth**, nor can it tell if something else is consuming lots of bandwidth on your local network (which would normally increase the latency you'd see from all external pings). Use Pinguno data from when all network applications are off & your local network has no-one else using it for the best accuracy.
 - We have not tested if Pinguno or native `ping` binary output is useful or admissible evidence in a legal setting. Ultimately, without cryptographic methods of proving which computers saw/wrote what, it would be relatively simple for a very computer-literate person to "doctor"/forge the output of Pinguno. This means it may be hard for you to use Pinguno to legally pressure your ISP to provide better service or get compensation. At the very least, it could help your ISP to identify the precise times and causes of your internet outages, or stop your ISP from "gaslighting" you by lying to you that the fault is on your end -- in which case, you'd instead have the info you need to look for a different ISP, or attempt to publicise your issue to apply marketing/social pressure on your ISP to help you.

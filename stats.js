@@ -6,7 +6,6 @@ const { _ } = require('lodash')
 const simpleStatistics = require('simple-statistics')
 
 // In-house modules
-const { config } = require('./config.js')
 const { isBadResponse } = require('./outages.js')
 
 // TODO: better way of managing user configs for stats

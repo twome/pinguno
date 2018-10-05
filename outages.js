@@ -5,17 +5,16 @@
 const { _ } = require('lodash')
 
 // In-house modules
-const { config } = require('./config.js')
 const { Outage, TargetOutage } = require('./ping-formats.js')
 
 
 let isBadResponse = (ping, latencyAccuracyMargin)=>{
- 	return ping.failure || (ping.errorType || ping.roundTripTimeMs > latencyAccuracyMargin)
+	return ping.failure || (ping.errorType || ping.roundTripTimeMs > latencyAccuracyMargin)
 }
 
 let	isRoughlyWithinTimeframe = (dateToTest, timeframeStart, timeframeEnd, leniencyMs)=>{
 	for (let param of [dateToTest, timeframeStart, timeframeEnd]){
-		if ( (! param instanceof Date) || (! typeof param.getTime === 'function') ){
+		if ( !(param instanceof Date) || !(typeof param.getTime === 'function') ){
 			throw Error('isRoughlyWithinTimeframe - param ' + param + 'is not a Date object')
 		}
 	}

@@ -5,7 +5,6 @@ const util = require('util')
 const path = require('path')
 
 // 3rd-party dependencies
-const getFolderSize = require('get-folder-size')
 const { DateTime } = require('luxon')
 const { _ } = require('lodash')
 const del = require('del')
@@ -15,7 +14,7 @@ const prompts = require('prompts')
 const { Pinguno } = require('./pinguno.js')
 const { config } = require('./config.js')
 const { MyUtil } = require('./my-util.js')
-const { Outage, TargetOutage, PingsLog, RequestError } = require('./ping-formats.js')
+const { PingsLog, RequestError } = require('./ping-formats.js')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
@@ -402,7 +401,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 		// Take the date part of filenames, parse them back into JS Dates, then pack them into a list of
 		// contents so we can time-sort the contents
 		let timesAndContents = []
-		allURIsToCompress.forEach((uri, i)=>{
+		allURIsToCompress.forEach((uri)=>{
 			let timeSortStr = uri.slice(0, uri.indexOf(logStandardFilename)).trim()
 			let sortDate = MyUtil.fileSystemDateStrToIsoDate(timeSortStr).getTime()
 			
@@ -426,7 +425,10 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 				let finalFullPath = path.join(archiveDir, finalFilename)
 
 				let onMakeDirectory = (err)=>{
-					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then((val)=>{
+					if (err){ 
+						// Do nothing
+					}
+					return fsWriteFilePromise(finalFullPath, compressed, 'utf8').then(()=>{
 						console.info('Wrote compressed logs to file: ' + finalFullPath)					
 						return finalFullPath	
 					}, (err)=>{
@@ -486,10 +488,10 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	// TODO: maybe just switch to a simple y/N confirm?
 	// Require the user to manually confirm deletion
 	let deletionPromptResponse = prompts({
-    	type: 'text',
-    	name: 'confirmDeleteResponse',
-    	message: 'Please enter the word "delete" to confirm you want to delete all of Pinguno\'s saved lonogs.',
-    	validation: inputValidation
+		type: 'text',
+		name: 'confirmDeleteResponse',
+		message: 'Please enter the word "delete" to confirm you want to delete all of Pinguno\'s saved lonogs.',
+		validation: inputValidation
 	})
 
 	deletionPromptResponse.then((val)=>{

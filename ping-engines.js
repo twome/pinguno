@@ -61,9 +61,9 @@ class EngineNative {
 
 		pingProcess.stdout.on('data', (data)=>{
 			let dataStr = data.toString()
-	  		let pingAsStructure = EngineNative.macOSPingTextToStructure(dataStr, new Date())
-		  	pingTarget.pingList.push(new PingData(pingAsStructure))	
-		  	instance.sessionDirty = true
+			let pingAsStructure = EngineNative.macOSPingTextToStructure(dataStr, new Date())
+			pingTarget.pingList.push(new PingData(pingAsStructure))
+			instance.sessionDirty = true
 		})
 
 		pingProcess.stderr.on('data', (data)=>{
@@ -86,11 +86,11 @@ class EngineNative {
 		})
 
 		pingProcess.on('close', (code)=>{
-		  	console.info(`Child process (ping) closed with code ${code}`)
+			console.info(`Child process (ping) closed with code ${code}`)
 		})
 
 		pingProcess.on('exit', (code)=>{
-		  	console.info(`Child process (ping) exited with code ${code}`)
+			console.info(`Child process (ping) exited with code ${code}`)
 		})
 
 		return true

@@ -1,21 +1,16 @@
 // Built-in modules
-const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
-const zlib = require('zlib')
 const os = require('os')
 
 // 3rd-party dependencies
 const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
-const netPing = require('net-ping')
 
 // In-house modules
 const { config } = require('./config.js')
 const { fullOutagesAcrossTargets, isBadResponse } = require('./outages.js')
 const { Enum } = require('./enum.js')
-const { MyUtil } = require('./my-util.js')
-const { PingData, RequestError, Outage, TargetOutage, PingsLog } = require('./ping-formats.js')
 const { EngineNative, EngineNetPing } = require('./ping-engines.js')
 const { Stats } = require('./stats.js')
 

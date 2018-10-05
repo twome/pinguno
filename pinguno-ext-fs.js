@@ -5,9 +5,6 @@ const path = require('path')
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 
-// In-house
-const { Pinguno } = require('./pinguno.js')
-
 // Run in the original module only after the main class has been defined
 let attachExtensions = (Pinguno)=>{
 	// Save this session's active settings/config to a git-ignored log for replicable results
@@ -23,7 +20,7 @@ let attachExtensions = (Pinguno)=>{
 			if (err){
 				if (err.errno !== -17){ console.debug(`Failed to make directory ${dirPath} error:`, err)}
 			}
-			let prom = fsWriteFilePromise(fileUri, content, 'utf8').then((file)=>{
+			let prom = fsWriteFilePromise(fileUri, content, 'utf8').then(()=>{
 				return fileUri
 			}, (error)=>{
 				console.error('Error encountered when saving this session\'s settings:', error)

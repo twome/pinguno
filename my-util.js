@@ -62,7 +62,7 @@ class MyUtil {
 			} 
 			let liveClass = classList[value._class]
 			if ( classList.includes(liveClass) ){
-				return reconstituteClassFromSimpleParse(liveClass, liveClass.revivalPropTypes, value)
+				return MyUtil.reconstituteClassFromSimpleParse(liveClass, liveClass.revivalPropTypes, value)
 			} else {
 				return value
 			}
@@ -82,7 +82,7 @@ class MyUtil {
 				// We can specify a 'reviveFn' instead of a 'type' if we need a customised revival function for this particular property
 				ret[val.propKey] = val.reviveFn(simpleParseObj[val.propKey])
 			} else {
-				ret[val.propKey] = reconstituteTypeFromSimpleParse(val.typeClass, simpleParseObj[val.propKey]) 	
+				ret[val.propKey] = MyUtil.reconstituteTypeFromSimpleParse(val.typeClass, simpleParseObj[val.propKey]) 	
 			}
 		})
 		return ret
