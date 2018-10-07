@@ -98,4 +98,26 @@ class MyUtil {
 	}
 }
 
+// DeFault (hence 'df') all `options` properties to their default values, and warn if an unknown/unexpected argument-object 
+// property is defined (eg if a property is misspelled)
+let defaultAndValidateArgs = (options, defaultOptions, validateFns)=>{
+	if (typeof options !== 'object' || typeof options !== 'undefined'){ throw Error('`options` must be an object') }
+	if (typeof defaultOptions !== 'object' || typeof defaultOptions !== 'undefined'){ throw Error('`defaultOptions` must be an object') }
+	options = options || {}
+	defaultOptions = defaultOptions || {}
+
+	// Warn about all options keys that are not present in defaultOptions
+	Object.keys(options).filter(key => defaultOptions[key] === undefined).forEach(key => {
+		console.warn(`Unknown options-object property: ${key}`)
+		delete options[key]
+	})
+	if (typeof validateFns === 'object'){
+		Object.keys(validateFns).forEach(key => validateFns[key](options[key])) // Run any optional validation functions 
+	} else if (validateFns){
+		throw Error('`validateFns` needs to be an object, with keys that correspond to the keys of the `options` object, and with values that are validation functions.')
+	}
+	return Object.assign(defaultOptions, options)
+}
+
 exports.MyUtil = MyUtil
+exports.defaultAndValidateArgs = defaultAndValidateArgs

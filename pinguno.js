@@ -17,6 +17,12 @@ const { Stats } = require('./stats.js')
 // Extensions of this module's main class
 const { attachExtensions } = require('./pinguno-ext-fs.js')
 
+// Convenience / shorthands
+let inDev = process.env.NODE_ENV === 'development'
+
+// Option enums
+let connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
+
 class Pinguno {
 	constructor(options){
 		/*
@@ -41,17 +47,17 @@ class Pinguno {
 		opt.pingPacketSizeBytes = 56 // macOS inbuilt ping default 
 		opt.timeoutLimit = 2000 // Linux default is 2 x average RTT
 		// NB: Currently using default timeout limit times
-		opt.pingIntervalMs = process.env.NODE_ENV === 'development' ? 1000 : 3000
+		opt.pingIntervalMs = inDev ? 1000 : 3000
 		opt.badLatencyThresholdMs = 250
 		// NB: TTL currently only used by 'net-ping'
 		opt.pingOutgoingTtlHops = 128 // Max number of hops a packet can go through before a router should delete it 
 		
-		opt.exportSessionToTextSummaryIntervalMs = process.env.NODE_ENV === 'development' ? 4000 :10000
-		opt.updateOutagesIntervalMs = process.env.NODE_ENV === 'development' ? 500 : 2000
-		opt.connectionStatusIntervalMs = process.env.NODE_ENV === 'development' ? 2000 : 3000
+		opt.exportSessionToTextSummaryIntervalMs = inDev ? 4000 :10000
+		opt.updateOutagesIntervalMs = inDev ? 500 : 2000
+		opt.connectionStatusIntervalMs = inDev ? 2000 : 3000
 		opt.writeToFileIntervalMs = 2000
-		opt.updateSessionEndTimeIntervalMs = process.env.NODE_ENV === 'development' ? 1000 : 5000
-		opt.updateSessionStatsIntervalMs = process.env.NODE_ENV === 'development' ? 10000 : 20000
+		opt.updateSessionEndTimeIntervalMs = inDev ? 1000 : 5000
+		opt.updateSessionStatsIntervalMs = inDev ? 10000 : 20000
 
 		opt.desiredPingTargets = [
 			{
@@ -119,8 +125,6 @@ class Pinguno {
 		this.summariesDir = path.join(opt.logsDir, opt.summariesDir)
 		this.archiveDir = path.join(opt.logsDir, opt.archiveDir)
 
-		this.connectionState = new Enum(['CONNECTED', 'DISCONNECTED', 'PENDING_RESPONSE'])
-
 		this.pingTargets = _.cloneDeep(opt.desiredPingTargets)
 		for (let target of this.pingTargets){
 			target = Object.assign(target, {
@@ -139,7 +143,7 @@ class Pinguno {
 
 		this.lastDateFailed = null // Date
 		this.lastDateConnected = null // Date
-		this.internetConnected = this.connectionState.PENDING_RESPONSE // this.connectionState
+		this.internetConnected = connectionState.PENDING_RESPONSE // connectionState
 		this.firstPingSent = false
 		this.outages = []
 
@@ -198,8 +202,7 @@ class Pinguno {
 	updateTargetConnectionStatus(target){
 		let targetLatestPing = this.latestPing(target)
 		if (targetLatestPing === undefined){
-			// console.debug('target has no latest ping')
-			target.connected = this.connectionState.PENDING_RESPONSE
+			target.connected = connectionState.PENDING_RESPONSE
 			target.lastDateConnected = null
 			target.lastDateFailed = null
 			return null
@@ -207,11 +210,8 @@ class Pinguno {
 
 		let latestGoodPing = this.latestPing(target, true)
 		let latestBadPing = this.latestPing(target, false)
-		// console.debug('target latest ping', targetLatestPing)
-		// console.debug('target latestGoodPing', latestGoodPing)
-		// console.debug('target latestBadPing', latestBadPing)
 		if ( isBadResponse(targetLatestPing, this.opt.badLatencyThresholdMs) ){
-			target.connected = this.connectionState.DISCONNECTED
+			target.connected = connectionState.DISCONNECTED
 			target.lastDateConnected = latestGoodPing && latestGoodPing.timeResponseReceived
 			target.lastDateFailed = latestBadPing && latestBadPing.timeResponseReceived
 			return false
@@ -220,7 +220,7 @@ class Pinguno {
 		// Can assume we had a connection at some point by this stage in the function
 		let targetLastConnectedTimeMs = targetLatestPing.timeResponseReceived.getTime()
 		if ( targetLastConnectedTimeMs - new Date().getTime() <= this.opt.timeoutLimit ){
-			target.connected = this.connectionState.CONNECTED
+			target.connected = connectionState.CONNECTED
 			target.lastDateConnected = targetLatestPing.timeResponseReceived
 			target.lastDateFailed = latestBadPing && latestBadPing.timeResponseReceived
 			return true
@@ -234,29 +234,25 @@ class Pinguno {
 		}
 
 		for (let target of this.pingTargets){	
-			let targetConnected = this.updateTargetConnectionStatus(target)
-			// console.debug('targetConnected', targetConnected)
+			this.updateTargetConnectionStatus(target)
 			
 			if (isXLaterThanY(target, this, 'lastDateConnected')){
-				// console.debug('target has later last connect than global')
 				this.lastDateConnected = target.lastDateConnected
 			}
 			if (isXLaterThanY(target, this, 'lastDateFailed')){
-				// console.debug('target has later last fail than global')
 				this.lastDateFailed = target.lastDateFailed
 			}
 
 			// If at least one target responds, we assume we have a working general internet connection
-			if (target.connected === this.connectionState.CONNECTED){
-				return this.internetConnected = this.connectionState.CONNECTED
+			if (target.connected === connectionState.CONNECTED){
+				return this.internetConnected = connectionState.CONNECTED
 			}
 		}
 
-		return this.internetConnected = this.connectionState.DISCONNECTED
+		return this.internetConnected = connectionState.DISCONNECTED
 	}
 
 	updateOutages(combinedPingList, targetList){
-		// TODO: safety-check inputs
 		let pingLogTargets
 
 		if (combinedPingList && combinedPingList.length && targetList && targetList.length ){
@@ -295,12 +291,12 @@ class Pinguno {
 		}
 	}
 
+	// If we specify a target, this is the latest ping within that target. 
+	// If we specify "iterateUntilGoodPing" as true or false, then find the latest *good* or *bad* ping, respectively.
 	latestPing(target, iterateUntilGoodPing){
 		let latestEachTarget = []
-
 		let latestPingOfTarget = (target)=>{
 			let sortedPings = _.sortBy(target.pingList, p => p.icmpSeq)
-
 			var i = target.pingList.length - 1
 			if (typeof iterateUntilGoodPing === 'boolean'){
 				for (; i > 0; i = i - 1){
@@ -310,7 +306,6 @@ class Pinguno {
 				}
 				return undefined // No ping that fits our demand for "good" or "bad"
 			}
-
 			return sortedPings[i]
 		}
 
@@ -320,7 +315,6 @@ class Pinguno {
 			for (let target in this.targets ){
 				latestEachTarget.push(latestPingOfTarget(target)) 
 			}
-
 			return _.last(_.sortBy(latestEachTarget, p => p.icmpSeq))
 		}
 	}
@@ -382,7 +376,7 @@ class Pinguno {
 			throw Error('startPinging - unknown \'ping\' engine selected: ' + selectedPingEngine)
 		}
 
-		console.info('Press Control+C to stop process.')
+		if (!inDev) console.info('Press Control+C to stop process.')
 		
 		// Before we start doing anything, save this session's active settings/config
 		this.saveSessionConfigToJSON((promise)=>{
@@ -397,6 +391,6 @@ class Pinguno {
 	}
 }
  
-attachExtensions(Pinguno) // Attach extensions to Pinguno 
+attachExtensions(Pinguno) // Attach class def extensions from pinguno-ext-fs.js to Pinguno 
 
-exports.Pinguno = Pinguno
+exports = { Pinguno, connectionState }

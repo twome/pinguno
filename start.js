@@ -36,7 +36,8 @@ app.startPinging(
 
 let connectionStatusTick = setInterval(()=>{
 	app.updateGlobalConnectionStatus()
-	console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + app.updateGlobalConnectionStatus().humanName)
+	let stdoutTimeFormat = config.nodeVerbose >= 2 ? 'yyyy-LL-dd HH:mm:ss.SSS' : 'yyyy-LL-dd HH:mm:ss'
+	console.log(DateTime.local().toFormat(stdoutTimeFormat) + ' Internet connected?: ' + app.updateGlobalConnectionStatus().humanName)
 }, app.opt.connectionStatusIntervalMs)
 
 let updateOutagesTick = setInterval(()=>{	
