@@ -98,8 +98,22 @@ class MyUtil {
 	}
 }
 
-// DeFault (hence 'df') all `options` properties to their default values, and warn if an unknown/unexpected argument-object 
-// property is defined (eg if a property is misspelled)
+/*
+	DeFault (hence 'df') all `options` properties to their default values, and warn if an 
+	unknown/unexpected argument-object property is defined (eg if a property is misspelled)
+
+	This can be used within the parameter definition of a function, like so:
+	let df = defaultAndValidateArgs
+	let fn = (optionsObj, opt = df(optionsObj, {
+		color: 'green'
+	},{
+		color: (value)=>{
+			
+		}
+	}))=>{
+		
+	}
+*/
 let defaultAndValidateArgs = (options, defaultOptions, validateFns)=>{
 	if (typeof options !== 'object' || typeof options !== 'undefined'){ throw Error('`options` must be an object') }
 	if (typeof defaultOptions !== 'object' || typeof defaultOptions !== 'undefined'){ throw Error('`defaultOptions` must be an object') }
@@ -112,7 +126,14 @@ let defaultAndValidateArgs = (options, defaultOptions, validateFns)=>{
 		delete options[key]
 	})
 	if (typeof validateFns === 'object'){
-		Object.keys(validateFns).forEach(key => validateFns[key](options[key])) // Run any optional validation functions 
+		Object.keys(validateFns).forEach(key => {
+			let validationResult = validateFns[key](options[key])
+			if (validationResult instanceof Error){
+				throw validationResult
+			} else if (!validationResult){
+				throw Error(`Argument for ${key} failed to validate & the validation fn returned a non-Error type: ${validationResult}`)
+			}
+		}) // Run any optional validation functions 
 	} else if (validateFns){
 		throw Error('`validateFns` needs to be an object, with keys that correspond to the keys of the `options` object, and with values that are validation functions.')
 	}
