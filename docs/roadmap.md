@@ -1,6 +1,9 @@
-## To do / roadmap:
+# To do / roadmap:
 
 ## GUI
+
+- figure if there's any future-proof / shimmy way to import node-style modules like ES modules using window.fetch or something
+	- using globals really sucks
 
 - create mock dataset for UI designing with
 	- add a delay in the server to simulate spotty/slow/async data
@@ -13,16 +16,6 @@
 
 	- cmd+click tray icon for simple list (faster, no webkit load, less bug-prone)
 		- will need native code (we need anyway to create tray icon)
-
-	- optional: sounds play when events occur
-		- high-quality, non-intrusive default sound effects
-		- drag a .mp3 or .ogg into /sound-effects and rename to specific sound
-		- events (mostly we just want these for asynchronous or user-absent events):
-			- disconnected
-			- reconnect
-			- pings getting close to timeout (constant sound with slow fade / pitch modulate)
-			- successfully change Pinguno server
-		- simple mute & volume control in tray menu
 
 	- tray mini-window:
 		- scrollable space for recent fulloutages list
@@ -52,6 +45,16 @@
 				- if we don't already have saved auth cache/tokens/whatever, slide out a password entry beneath
 			- auto-search for Pinguno servers on the local network, else default to default localhost port
 				- how can we do this?
+
+	- optional: sounds play when events occur
+		- high-quality, non-intrusive default sound effects
+		- drag a .mp3 or .ogg into /sound-effects and rename to specific sound
+		- events (mostly we just want these for asynchronous or user-absent events):
+			- disconnected
+			- reconnect
+			- pings getting close to timeout (constant sound with slow fade / pitch modulate)
+			- successfully change Pinguno server
+		- simple mute & volume control in tray menu
 	
 
 - figure out if it's worth using electron instead of simply opening a browser tab
@@ -66,7 +69,14 @@
 
 ### Misc
 
+- fn to find latest failure that also searches requestFailures (as well as pings/responses)
+
+- add option to save config/ shit to ~/.config/pinguno and logs to ~/whereverthehellstandardlogdirectoriesare/ 
+- probably rename logs and config dirs to pinguno-logs and pinguno-config to reduce risk of overwriting/clashing with other stuff in same dir
+
 - [highpriority] learn how to process and use command-line arguments in Node to allow options
+	OR 
+	fully specify all env vars you can use to customise
 
 - [highpriority] make a web front-end to display collected data & adjust settings (ideally w/o restart)
 	- needs server API for getting data and receiving commands
@@ -90,7 +100,7 @@
 	- can we get any date from `ping`s output using different (for eg) verbosity settings?
 	- count in parallel using Pinguno.pingIntervalMs
 
-- stretch: "print data straight to console" mode
+- "print data straight to console" mode
 	- basically same console output as default ping (but more readable)
 	- for techy live monitoring
 
@@ -100,10 +110,8 @@
 
 - stretch: phantomJS-like spider to log in and crawl router's web interface (get DSL/analogue line readings when modem-ISP net connection is down to see whether to blame modem's ability, the line, or the ISP's provisions/availability)
 
-- stretch: native mini-displays for Mac & Windows menubar/tray
-
 - stretch: write to some kind of DB
-	- probably a lot faster and less CPU/memory cost than JSON files
+	- probably a lot faster and less CPU/memory/storage cost than JSON files
 	- what kind of scheme?
 
 - stretch: also do an ookla-style real bandwidth test
@@ -171,8 +179,9 @@
 - proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
 - support getting TTL & response size for response pings
 
-### Checklist for public release:
+## Checklist for public release:
 
+-[ ] CODE QUALITY: Perform a 
 -[ ] SECURITY: ensure that personal / config / gitignored files are not included in the build
 	- how to deal with .env?
 	- FAIRLY sure that .env values are "frozen" into the pkg build at build time
@@ -181,12 +190,13 @@
 	- Never let a third party set either of the two vars
 	- This is currently just to stop the host user accidentally running the wrong command on their command line
 	- Unfortunately, we pretty much need to expose user-set variables (1) the polling interval and (2) the IP string to the "spawn" command (the dangerous part). 
+-[ ] PRIVACY: Scour all personal/private information added while developing.
+-[ ] PRIVACY: Make sure no sensitive user information will be stored or transmitted without user & dev consent
 -[ ] CODE QUALITY: Remove all TEMP / console.debug / dev comments etc. TODOs are fine if it makes sense and reveal intent.
 -[ ] CODE QUALITY: Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
 -[ ] CODE QUALITY: Remove all unnecessary dependencies to reduce install time / size.
--[ ] PRIVACY: Scour all personal/private information added while developing.
--
 -[ ] UX: Ensure readme has no serious inaccurate information.
 
-#### Before 1.0.0:
+### Before 1.0.0:
 - test suite
+- stable server API

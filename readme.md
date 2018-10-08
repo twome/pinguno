@@ -1,6 +1,6 @@
 # Pinguno - a personal internet uptime logger
 
-Pinguno is an app that continually "pings" a set of IP addresses and logs all the data in both human-readable and structured (JSON) formats.  If you have troubles with the quality of your internet connection, you can use Pinguno's timestamped data to get better tech support (and hopefully a little more transparency) from your ISP, because you can identify all the exact times when your internet dropped. Pinguno is cross-platform, portable, runs on Node.js, and has a command-line interface,
+Pinguno is an app that continually "pings" a set of IP addresses and logs all the data in both human-readable and structured (JSON) formats.  If you have troubles with the quality of your internet connection, you can use Pinguno's timestamped data to get better tech support (and hopefully a little more transparency) from your ISP, because you can identify all the exact times when your internet dropped. Pinguno is cross-platform, portable, runs on Node.js (included in the app download), and has a command-line interface.
 
 System requirements:
 
@@ -9,11 +9,11 @@ System requirements:
 - **[Developers only]** Node.js v10.11.0 and up
 - **[Unix-based systems only]** `ping` binary accessible on the $PATH (you almost certainly have this, and a less accurate fallback is provided)
 
-By default, it'll output JSON and human-readable text log files to a `logs` directory created next to the executable, and will store its last-used configuration in a `config` directory created next to the executable. Apart from that, no other files/directories will be modified by the app.
+By default, it'll output [JSON](https://en.wikipedia.org/wiki/JSON) and human-readable text log files to a `logs` directory created next to the executable, and will store its last-used configuration settings in a `config` directory created next to the executable. Apart from that, no other files/directories will be modified by the app.
 
 ### Usage
 
-NB: Don't forget to change your OS settings so your computer doesn't fall asleep, or Pinguno will be unable to log continuously (Pinguno can't override that behaviour). 
+NB: If you want to monitor your internet connection 24/7, don't forget to change your OS settings so your computer doesn't fall asleep; Pinguno can't run while the computer's in sleep/hibernation. 
 
 #### Using the binaries:
 
@@ -42,7 +42,7 @@ Pinguno's settings are handled through environment variables rather than command
 - NODE_VERBOSE: 0-9 (verbosity of console output)
 - NODE_ENV: 'production' or 'development' 
 
-If you encounter an error related to "ICU", you may need to have some environment variables (listed in init-env-vars.sh) present in the shell, so that Node knows where to look for "ICU data" (locale data, inbuilt in browsers). Run `. init-env-vars.sh` for each shell session, or you can use the `npm run ...` shortcuts in package.json which include the env vars.
+If you encounter an error related to "ICU", you may need to have some environment variables (listed in init-env-vars.sh) present in the shell, so that Node knows where to look for "ICU data" (locale data, inbuilt in browsers). Run `. init-env-vars.sh` for each shell session, or you can use the `npm run …` shortcuts in package.json which include the env vars.
 
 ---
 
