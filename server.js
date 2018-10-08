@@ -2,18 +2,27 @@
 const fs = require('fs')
 const util = require('util')
 const os = require('os')
+const path = require('path')
 
 // 3rd-party dependencies
 const express = require('express')
 const axios = require('axios')
+const opn = require('opn')
 const { DateTime } = require('luxon')
+const nodemon = require('nodemon')
+const bodyParser = require('body-parser')
 
 // In-house modules
 const { config } = require('./config.js')
 const { Enum } = require('./enum.js')
-const { Pingu } = require('./pinguno.js')// Built-in modules
+const { Pinguno } = require('./pinguno.js')
+const { df: defaultAndValidateArgs } = require('./my-util.js')
+const { getLocalIP } = require('./my-util-network.js')
 
 const fsReadFilePromise = util.promisify(fs.readFile)
+
+// Convenience / shorthands
+let inDev = process.env.NODE_ENV === 'development'
 
 // Whether we expect our client content to be used by 
 // NB. ideally, this shouldn't matter at all.
@@ -26,42 +35,103 @@ class Server {
 		clientModes: clientModes,
 		clientMode: clientModes.browser,
 		availableOnLAN: false,
-		port: 1918
+		apiPath: 'api/1',
+		preferredProtocol: 'http://',
+		port: 1919
 	}){
 		this.opt = {...options} // Bind constructor options to the instance
 
 		// State properties
-		this.serverRunning = false
-		this.pingerRunning = false
+		this.activeLocalIP = getLocalIP()[0].address.trim()
+		this.serverURL = new URL('http://' + this.activeLocalIP)
+		this.serverURL.port = this.opt.port.toString()
+		this.serverURL.protocol = this.opt.preferredProtocol
+		this.latestAPIPath = this.opt.apiPath
+
+		this.serverRunning = false			
 
 		this.exp = express()
 		let e = this.exp
 
 		this.pinger = this.startPinger()
+		this.appDir = this.pinger.appDir
+
+		// TEMP dev only
+		// this.registerStdinKeybinds()
+
+		// TEMP dev only 
+		// This is used for live-reloading (informing client that the code powering the client is obsolete, so refresh the URL to 
+		// update the client app
+		this.clientCodeObsoleted = inDev ? true : null
+		
+		// Allow us to parse request (could be any format) into text on req.body
+		e.use(bodyParser.text())
 
 		// Routes
-		e.get('/mock-session', (req, res)=>{ 
-			console.debug('GET request received')
-
+		/*
+			API routes
+		*/
+		e.get('/' + this.latestAPIPath + '/' + 'mock-session', (req, res)=>{ 
 			let respond = ()=>{
-				fsReadFilePromise('../dev-materials/test-data_frequent-disconnects.json', 'utf8').then((val)=>{
-					// console.debug(val)
-					// res.send(val)	
-					res.send('Hello Wurld!')	
+				fsReadFilePromise(path.join(this.appDir, '/dev-materials/test-data_frequent-disconnects.json'), 'utf8').then((val)=>{
+					res.send(val)	
 				}, (err)=>{
 					console.error('file read error:')
 					console.error(err)
 				})
 			}
 
+			setTimeout(respond, 100)
+		})
+		e.get('/' + this.latestAPIPath + '/' + 'live-session', (req, res)=>{ 
+			let respond = ()=>{
+				res.send(JSON.stringify(this.pinger))	
+			}
 			setTimeout(respond, 1)
 		})
+		e.get('/' + this.latestAPIPath + '/' + 'util/client-code-obsoleted', (req, res)=>{ 
+			let sendBody = this.clientCodeObsoleted.toString() //TEMP
+			res.send(sendBody)
+		})
+		e.put('/' + this.latestAPIPath + '/' + 'util/client-code-obsoleted', (req, res)=>{ 
+			res.send('OK (this should be a 200)')
+			console.debug('Browser client code changed, sending refresh message...')
+			if (req.body === 'false'){
+				this.clientCodeObsoleted = false
+			}
+		})
+
+
+		/*
+			Static data routes
+		*/
+		e.use('/', express.static(path.join(this.appDir, 'browser', 'public'))) // Serve brower/public/ files as if they were at domain root
+		
+		// TEMP dev only
+		e.use('/nm', express.static(path.join(this.appDir, /*'browser', */'node_modules'))) // Serve node_modules/ files as if they were at /nm/
 
 		e.get('/', (req, res)=>{ 
 			console.debug('GET request received')
 
 			let respond = ()=>{
-				res.send(JSON.stringify(this.pinger.sessionStats))	
+
+				var options = {
+					root: path.join(this.appDir, 'browser', 'public'),
+					dotfiles: 'deny',
+					headers: {
+						'x-timestamp': Date.now(),
+						'x-sent': true
+					}
+				}
+
+				let fileName = 'index.html'
+				res.sendFile(fileName, options, (err)=>{
+					if (err) {
+						throw Error(err)
+					} else {
+						console.log('Sent:', fileName)
+					}
+				})
 			}
 
 			setTimeout(respond, 1)
@@ -73,48 +143,13 @@ class Server {
 		})
 	}
 
-	// Credit https://stackoverflow.com/a/8440736/1129420
-	getLocalIp(){
-		let netInterfaces = os.networkInterfaces()
+	startServer(){
+		console.info('Current local (LAN) IP address: ', this.activeLocalIP)
 
-		let finalAddresses = []
-
-		Object.keys(netInterfaces).forEach((ifname)=>{
-			let alias = 0
-
-			netInterfaces[ifname].forEach((netInterface)=>{
-				if (netInterface.family !== 'IPv4' || netInterface.internal !== false) {
-			    	// Skip over internal (i.e. 127.0.0.1) and non-IPV4 addresses
-			    	return
-			    }
-
-			    if (alias >= 1) {
-			      	// This single netInterface has multiple IPV4 addresses
-			      	finalAddresses.push({
-			      		ifname, 
-			      		alias, 
-			      		address: netInterface.address
-			      	})
-			    } else {
-			      	// This netInterface has only one IPV4 address
-			      	finalAddresses.push({
-			      		ifname,
-			      		address: netInterface.address
-			      	})
-			    }
-
-				alias += 1
-			})
+		this.exp.listen(this.opt.port, this.opt.availableOnLAN ? this.activeLocalIP : '127.0.0.1', ()=>{
+			console.info(`Pinguno server listening at: ${this.opt.availableOnLAN ? this.activeLocalIP : '127.0.0.1'}:${this.opt.port}`)
+			this.serverRunning = true
 		})
-
-		return finalAddresses
-	}
-
-	start(){
-		this.exp.listen(this.opt.port, ()=>{
-			console.info(`Listening on port ${this.opt.port}`)
-		})
-		this.serverRunning = true
 	}
 
 	startPinger(){
@@ -122,8 +157,8 @@ class Server {
 		pinger.startPinging(pinger.pingTargets)
 
 		let connectionStatusTick = setInterval(()=>{
-			pinger.updateInternetConnectionStatus()
-			console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateInternetConnectionStatus().humanName)
+			pinger.updateGlobalConnectionStatus()
+			console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName)
 		}, pinger.opt.connectionStatusIntervalMs)
 
 		let updateOutagesTick = setInterval(()=>{	
@@ -136,15 +171,26 @@ class Server {
 
 		let statsTick = setInterval(()=>{
 			pinger.updateSessionStats()
-			console.info(pinger.sessionStats)
 		}, pinger.opt.updateSessionStatsIntervalMs)
 
-		console.debug('started pinger')
+		this.pingerRunning = true
 		return pinger
 	}
 }
 
 let app = new Server()
-app.start()
+app.startServer()
 
-exports.Server = Server
+// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
+nodemon({
+	watch: [
+		'browser/public/'
+	],
+	ext: 'js json html css scss png gif jpg jpeg'
+})
+nodemon.on('restart', (files)=>{
+	app.clientCodeObsoleted = true
+	console.log('App restarted due to: ', files)
+})
+
+exports = { Server, clientModes }

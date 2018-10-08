@@ -393,4 +393,4 @@ class Pinguno {
  
 attachExtensions(Pinguno) // Attach class def extensions from pinguno-ext-fs.js to Pinguno 
 
-exports = { Pinguno, connectionState }
+module.exports = { Pinguno, connectionState }

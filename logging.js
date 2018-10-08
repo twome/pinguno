@@ -511,10 +511,12 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	})
 }
 
-exports.compressAllLogsToArchive = compressAllLogsToArchive
-exports.compressLogToArchive = compressLogToArchive
-exports.saveSessionLogHuman = saveSessionLogHuman
-exports.saveSessionLogJSON = saveSessionLogJSON
-exports.deleteAllLogs = deleteAllLogs
-exports.combineTargetsForExport = combineTargetsForExport
-exports.readJSONLogIntoSession = readJSONLogIntoSession
+module.exports = {
+	compressAllLogsToArchive,
+	compressLogToArchive,
+	saveSessionLogHuman,
+	saveSessionLogJSON,
+	deleteAllLogs,
+	combineTargetsForExport,
+	readJSONLogIntoSession
+}

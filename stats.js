@@ -28,7 +28,7 @@ class Stats {
 				throw Error(`toNearestMultipleOf - inputs need to be numbers`)
 			}
 
-			// TODO: properly handle negativity
+			// TODO: properly handle negativity (can we try simply flexing on the haters?)
 			let inputIsNegative = input < 0
 			input = Math.abs(input)
 

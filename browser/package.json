@@ -1,0 +1,27 @@
+{
+  "name": "pinguno-browser-client",
+  "license": "MIT",
+  "eslintConfig": {
+    "env": {
+      "es6": true,
+      "browser": true
+    },
+    "parserOptions": {
+      "sourceType": "module",
+      "ecmaVersion": 2018
+    },
+    "extends": "eslint:recommended",
+    "rules": {
+      "no-unused-vars": 0,
+      "no-console": 0
+    },
+    "globals": {
+      "_": false,
+      "renderjson": false
+    }
+  },
+  "dependencies": {
+    "modern-normalize": "^0.5.0",
+    "renderjson": "^1.4.0"
+  }
+}
