@@ -108,13 +108,10 @@ class Server {
 		e.use('/', express.static(path.join(this.appDir, 'browser', 'public'))) // Serve brower/public/ files as if they were at domain root
 		
 		// TEMP dev only
-		e.use('/nm', express.static(path.join(this.appDir, /*'browser', */'node_modules'))) // Serve node_modules/ files as if they were at /nm/
+		e.use('/nm', express.static(path.join(this.appDir, 'browser', 'node_modules'))) // Serve node_modules/ files as if they were at /nm/
 
 		e.get('/', (req, res)=>{ 
-			console.debug('GET request received')
-
 			let respond = ()=>{
-
 				var options = {
 					root: path.join(this.appDir, 'browser', 'public'),
 					dotfiles: 'deny',

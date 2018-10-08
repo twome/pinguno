@@ -1943,11 +1943,6 @@ mkdirp@^0.5.0, mkdirp@^0.5.1:
   dependencies:
     minimist "0.0.8"
 
-modern-normalize@^0.5.0:
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/modern-normalize/-/modern-normalize-0.5.0.tgz#7f75bb7319c6ae708d716658dc8d9c9760274887"
-  integrity sha512-U1geaHG9Grp3a60djDV2JvSVKiDFhuZrhUHoQHusfjtGqbgGunI3HHw7hHtQ2ls2y0et3+Lpcf2hOSS1W8JUdg==
-
 ms@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
@@ -2575,11 +2570,6 @@ remove-trailing-separator@^1.0.1:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/remove-trailing-separator/-/remove-trailing-separator-1.1.0.tgz#c24bce2a283adad5bc3f58e0d48249b92379d8ef"
   integrity sha1-wkvOKig62tW8P1jg1IJJuSN52O8=
-
-renderjson@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/renderjson/-/renderjson-1.4.0.tgz#d944644521ac5ef977ee524a6a05b76a2a945144"
-  integrity sha512-R0IZoxjWQP4XMJjLkPjNKSwjDyl20EiLohyu1Os7AvIvO4F4Vtar1N6IjJLPLjDN7OYOXTsqtIVJupQnQMvYQw==
 
 repeat-element@^1.1.2:
   version "1.1.3"
