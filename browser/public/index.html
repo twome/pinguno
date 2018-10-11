@@ -10,98 +10,120 @@
 	<script type="module" src="/scripts/main.bundle.js"></script>
 </head>
 <body>
-
-	<div class="app">
-		<div class="tray-icon">Tray icon</div>	
-		<h1>Pinguno</h1>
-		<div class="uptime">Uptime: {42.0%}</div>
-		<div class="accordion">
-			<div class="recent-outages">
-				<div class="single-filter">All targets
-					<div class="single-filter__filters">
-						<span js-recent-outages-target="{8.8.8.8}" class="single-filter__filters">{Google (8.8.8.8)}</span>
-						<span js-recent-outages-target="{4.2.2.2}" class="single-filter__filters">{Temp Name (4.2.2.2)}</span>
-						<span class="single-filter__filters"></span>
-					</div>
-				</div>
-				<div class="recent-outages__outages">
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-					<span class="recent-outages__outage">{individual outage data}</span>
-				</div>
-			</div>
-			<div class="all-pings">
-				<div class="single-filter">All targets
-					<div class="single-filter__filters">
-						<span js-recent-outages-target="{8.8.8.8}" class="single-filter__filters">{Google (8.8.8.8)}</span>
-						<span js-recent-outages-target="{4.2.2.2}" class="single-filter__filters">{Temp Name (4.2.2.2)}</span>
-						<span class="single-filter__filters"></span>
-					</div>
-				</div>
-				<div class="all-pings__pings">
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-					<span class="all-pings__ping">{individual ping data}</span>
-				</div>
-			</div>
-		</div>
-		<div class="latency-graph">
-			{Multiline latency graph]
-		</div>
-		<div class="js-copy-log-human button">
-			Copy human log
-			<div class="more-options-btn">
-				&hellip;
-				<div class="more-options__list">
-					<button class="js-open-log-human">Open human log in text editor</button>
-				</div>
-			</div>
-		</div>
-		<div class="js-copy-log-json button">
-			Copy JSON log
-			<div class="more-options-btn">
-				&hellip;
-				<div class="more-options__list">
-					<button class="js-open-log-json">Open JSON log in text editor</button>
-					<button class="js-open-log-json-this-session">Open this session's JSON log in text editor</button>
-					<button class="js-compress-all-logs">Compress all JSON logs, copy zip file's path</button>
-				</div>
-			</div>
-		</div>
-		<div class="js-open-logs-dir button">
-			Open logs directory
-		</div>
-		<div class="pinguno-server-url">
-			<div class="pinguno-server-url__description">Data from Pinguno server at:</div>
-			<span class="pinguno-server-url__protocol">
-				{http://}
-			</span>
-			<span class="pinguno-server-url__hostname">
-				{localhost}
-			</span>
-			<span class="pinguno-server-url__port">
-				{1919}
-			</span>
-		</div>
+	<div class="global-indicators">
+		<div class="indicator" data-indicator-type="browserClientCodeLoading">Loading...</div>
+		<div class="indicator" data-indicator-type="waitingForServerResponse">Waiting for JSON data from server...</div>	
 	</div>
-	
+	<div class="native-app-preview">
+		<div class="tray-icon">
+			<img src="/favicon.ico">
+		</div>	
+		<div id="vue-app" class="app mac-menubar-sim">
+			
+			<header class="app__header">
+				<div class="short-stat" data-stat-type="lowestUptime">
+					Uptime: 
+					<span class="short-stat__value">
+						${42.0}
+					</span><div class="superscript">%</div>
+				</div>
+				<div class="short-stat" data-stat-type="lowestMeanGoodRTT">
+					Lowest mean good latency: 
+					<span class="short-stat__value">
+						${191.9}
+					</span><div class="superscript">ms</div>
+				</div>
+			</header>
+			<div class="accordion">
+				<div class="recent-outages">
+					<div class="single-filter">All targets
+						<div class="single-filter__filters">
+							<span js-recent-outages-target="{8.8.8.8}" class="single-filter__filters">{Google (8.8.8.8)}</span>
+							<span js-recent-outages-target="{4.2.2.2}" class="single-filter__filters">{Temp Name (4.2.2.2)}</span>
+							<span class="single-filter__filters"></span>
+						</div>
+					</div>
+					<div class="recent-outages__outages">
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+						<span class="recent-outages__outage">{individual outage data}</span>
+					</div>
+				</div>
+				<div class="all-pings">
+					<div class="single-filter">All targets
+						<div class="single-filter__filters">
+							<span js-recent-outages-target="{8.8.8.8}" class="single-filter__filters">{Google (8.8.8.8)}</span>
+							<span js-recent-outages-target="{4.2.2.2}" class="single-filter__filters">{Temp Name (4.2.2.2)}</span>
+							<span class="single-filter__filters"></span>
+						</div>
+					</div>
+					<div class="all-pings__pings">
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+						<span class="all-pings__ping">{individual ping data}</span>
+					</div>
+				</div>
+			</div>
+			<div class="latency-graph">
+				{Multiline latency graph]
+			</div>
+			<div class="js-copy-log-human button">
+				Copy human log
+				<div class="more-options-btn js-more-options-btn">
+					<button class="more-options-btn__list-toggle">
+						&hellip;
+					</button>
+					<div class="more-options-btn__list hidden">
+						<button class="js-open-log-human">Open human log in text editor</button>
+					</div>
+				</div>
+			</div>
+			<div class="js-copy-log-json button">
+				Copy JSON log
+				<div class="more-options-btn js-more-options-btn">
+					<button class="more-options-btn__list-toggle">
+						&hellip;
+					</button>
+					<div class="more-options-btn__list hidden">
+						<button class="js-open-log-json">Open JSON log in text editor</button>
+						<button class="js-open-log-json-this-session">Open this session's JSON log in text editor</button>
+						<button class="js-compress-all-logs">Compress all JSON logs, copy zip file's path</button>
+					</div>
+				</div>
+			</div>
+			<button class="js-open-logs-dir button">
+				Open logs directory
+			</button>
+			<div class="pinguno-server-url">
+				<div class="pinguno-server-url__description">Data from Pinguno server at:</div>
+				<span class="pinguno-server-url__protocol">
+					{http://}
+				</span>
+				<span class="pinguno-server-url__hostname">
+					{localhost}
+				</span>
+				<span class="pinguno-server-url__port">
+					{1919}
+				</span>
+			</div>
+			<h1 class="app__title">Pinguno</h1>
+		</div> <!-- app -->
+		
+	</div> <!-- preview -->
 
-	<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
-	tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-	quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-	consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-	cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
-	proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+	<p class="instructions">
+		Pinguno is running on a local server, and this web page is retrieving information from that server's API to display that data in the component above.
+	</p>
 
 	<div class="json-output">
 		<button class="js-toggle-live-pinging">Stop pinging</button>
