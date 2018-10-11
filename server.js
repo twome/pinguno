@@ -18,6 +18,7 @@ const { Enum } = require('./enum.js')
 const { Pinguno } = require('./pinguno.js')
 const { df: defaultAndValidateArgs } = require('./my-util.js')
 const { getLocalIP } = require('./my-util-network.js')
+const { liveReloadMiddleWare, fileWatcherStart, clientCodeLastModifiedStatusRoute } = require('./live-reload-custom-server.esm.js')
 
 const fsReadFilePromise = util.promisify(fs.readFile)
 
@@ -56,13 +57,12 @@ class Server {
 		this.pinger = this.startPinger()
 		this.appDir = this.pinger.appDir
 
-		// TEMP dev only
-		// this.registerStdinKeybinds()
-
-		// TEMP dev only 
-		// This is used for live-reloading (informing client that the code powering the client is obsolete, so refresh the URL to 
-		// update the client app
-		this.clientCodeObsoleted = inDev ? true : null
+		/*
+			Development-only routes
+		*/
+		if (inDev){
+			e.get(clientCodeLastModifiedStatusRoute, liveReloadMiddleWare)
+		}
 		
 		// Allow us to parse request (could be any format) into text on req.body
 		e.use(bodyParser.text())
@@ -178,16 +178,7 @@ class Server {
 let app = new Server()
 app.startServer()
 
-// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
-nodemon({
-	watch: [
-		'browser/public/'
-	],
-	ext: 'js json html css scss png gif jpg jpeg'
-})
-nodemon.on('restart', (files)=>{
-	app.clientCodeObsoleted = true
-	console.log('App restarted due to: ', files)
-})
+// TEMP DEV only
+if (inDev) fileWatcherStart()
 
 exports = { Server, clientModes }
