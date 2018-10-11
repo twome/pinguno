@@ -108,5 +108,5 @@ process.on('SIGINT', handlePOSIXSignal)
 
 process.on('exit', (code)=>{
 	// Everything returned asynchronously will be ignored before the program exits
-	console.info(`start.js - About to exit with code: ${code}`)
+	console.info(`cli.js - About to exit with code: ${code}`)
 })

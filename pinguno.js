@@ -278,8 +278,7 @@ class Pinguno {
 	}
 
 	updateSessionEndTime(oldInstance){
-		// For getting an estimate of the closest session time from sessions that ended prematurely
-		if (oldInstance instanceof Pinguno){
+		if (oldInstance instanceof Pinguno){ // For getting an estimate of the closest session time from sessions that ended prematurely
 			let latest = oldInstance.latestPing()
 			oldInstance.sessionEndTime = latest.timeResponseReceived || latest.timeRequestSent	
 			return oldInstance
@@ -317,6 +316,13 @@ class Pinguno {
 			}
 			return _.last(_.sortBy(latestEachTarget, p => p.icmpSeq))
 		}
+	}
+
+	updateEntireState(){
+		this.updateSessionEndTime()
+		this.updateOutages()
+		this.updateGlobalConnectionStatus()
+		this.updateSessionStats()
 	}
 
 	separatePingListIntoTargets(pingList, targetList){

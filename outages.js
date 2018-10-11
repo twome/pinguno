@@ -1,10 +1,7 @@
-// Built-in modules
-// const { spawn } = require('child_process')
-
-// 3rd-party dependencies
+// 3rd-party
 const { _ } = require('lodash')
 
-// In-house modules
+// In-house
 const { Outage, TargetOutage } = require('./ping-formats.js')
 
 
