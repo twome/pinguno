@@ -2,6 +2,10 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
+- have to repeatedly hit Ctrl+C to properly exit (chokidar/nodemon/process.spawn subprocesses?)
+
+- does uptime calculate the time-span of each ping/failure? it needs to do that rather than just assuming every ping covers the same amount of up/downtime
+
 - readJSONIntoSession is not correctly placing combinedList pings into targets
 - readJSONintosession or updatetargetconnectionstatus/updateglobalconnectionstatus is not properly setting last good/bad ping
 

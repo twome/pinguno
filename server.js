@@ -85,22 +85,13 @@ class Server {
 		})
 		e.get('/' + this.latestAPIPath + '/' + 'live-session', (req, res)=>{ 
 			let respond = ()=>{
+				let stateBefore = new Date()
+				this.pinger.updateEntireState()
+				if (config.nodeVerbose >= 2) console.info(`State update took ${new Date() - stateBefore}ms`)
 				res.send(JSON.stringify(this.pinger))	
 			}
 			setTimeout(respond, 1)
 		})
-		e.get('/' + this.latestAPIPath + '/' + 'util/client-code-obsoleted', (req, res)=>{ 
-			let sendBody = this.clientCodeObsoleted.toString() //TEMP
-			res.send(sendBody)
-		})
-		e.put('/' + this.latestAPIPath + '/' + 'util/client-code-obsoleted', (req, res)=>{ 
-			res.send('OK (this should be a 200)')
-			console.debug('Browser client code changed, sending refresh message...')
-			if (req.body === 'false'){
-				this.clientCodeObsoleted = false
-			}
-		})
-
 
 		/*
 			Static data routes
@@ -110,32 +101,7 @@ class Server {
 		// TEMP dev only
 		e.use('/nm', express.static(path.join(this.appDir, 'browser', 'node_modules'))) // Serve node_modules/ files as if they were at /nm/
 
-		e.get('/', (req, res)=>{ 
-			let respond = ()=>{
-				var options = {
-					root: path.join(this.appDir, 'browser', 'public'),
-					dotfiles: 'deny',
-					headers: {
-						'x-timestamp': Date.now(),
-						'x-sent': true
-					}
-				}
-
-				let fileName = 'index.html'
-				res.sendFile(fileName, options, (err)=>{
-					if (err) {
-						throw Error(err)
-					} else {
-						console.log('Sent:', fileName)
-					}
-				})
-			}
-
-			setTimeout(respond, 1)
-		})
-
 		e.post('/', function (req, res) {
-			console.debug('request received')
 			res.send('Got a POST request')
 		})
 	}
@@ -155,7 +121,7 @@ class Server {
 
 		let connectionStatusTick = setInterval(()=>{
 			pinger.updateGlobalConnectionStatus()
-			console.log(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName)
+			console.info(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName)
 		}, pinger.opt.connectionStatusIntervalMs)
 
 		let updateOutagesTick = setInterval(()=>{	

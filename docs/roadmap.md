@@ -1,12 +1,19 @@
 # To do / roadmap:
 
+1. auto-run on boot
+1. run for extreme long term; need to save off sessions and start new ones automatically 
+1. run headless (prefpane? service? process?)
+
 ## GUI
 
-- figure if there's any future-proof / shimmy way to import node-style modules like ES modules using window.fetch or something
+- learn Vue and render session data with it
+
+- set up a Sass development build system
+
+- browser: figure if there's any future-proof / shim-y way to import non-standard (CommonJS, AMD etc) modules through the ESM syntax by using window.fetch or something
 	- using globals really sucks
 
-- create mock dataset for UI designing with
-	- add a delay in the server to simulate spotty/slow/async data
+- sketch/visual exploration of layout before investing more effort in html structure
 
 - design blueprint:
 	- tray icon colour / fullness indicators for when 
@@ -18,14 +25,14 @@
 		- will need native code (we need anyway to create tray icon)
 
 	- tray mini-window:
+		- mouse-over stats preview besides uptime thingo
+
 		- scrollable space for recent fulloutages list
 			- default view is all targets; can filter to 1 targetoutage
 		- scrollable space for individual ping/failure log
 			- default view is all targets; can filter to 1
 
 		- multiline (per target) latency graph (mousewheel to zoom timescale, shift+mw to time-scrub, cmd+mw to zoom latency-scale (vertical), cmd+shift+mw to scroll latency)
-
-		- prominent uptime
 
 		- button: copy session human log to text clipboard
 			- ellipsis: 
@@ -55,36 +62,44 @@
 			- pings getting close to timeout (constant sound with slow fade / pitch modulate)
 			- successfully change Pinguno server
 		- simple mute & volume control in tray menu
-	
-
-- figure out if it's worth using electron instead of simply opening a browser tab
-	- pros: tiny, neat, frameless window for rendering next to tray icon?
 
 - focus on designing for the mini-window (a kind of quasi-"mobile-first"), and just centre it in huge space / widen the scrollable or graph areas to fill empty space. then we also get hand-screen browsers UI for free
+
+- create mock dataset for UI designing with
+	- add a delay in the server to simulate spotty/slow/async data
+		- module for this
+
+## Native / OS code
 
 - "invisible" mode - when executed by "run on boot" lists, run without tray icon visible to save clutter
 	- clearly tell user which process(es) to look for in Activity Monitor / `ps -e` if they can't get access to a GUI for it due to a bug
 	- any time user manually opens program, invisble mode deactivated
 	- obviously there's a button to go into invisible mode again in the UI
 
-### Misc
+- [highpriority] run cli as service / auto-run on boot 
+	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
+		- could relay these instructions to users looking for that
+
+## Misc
+
+- process HTML comments eg: buildMarker`{dev: 'start'}}` in order to template new index files
+
+- use quasi-random port. have an order of default ports to test for availability first, then give up and try random ones
+	- there *has* to be a community module for this, right?
+
+- for users with an always-on computer: pinguno should prominently display (and make easy to copy) the ping-server's local IP & suggest to bookmark / save as native-webapp (app manifest eg home app icon on phone), so users can easily check, for eg, on phone over wifi
+	- if server is running on same computer (ie localhost works)
+
+- node: import all packages as ESM through `esm` package: https://github.com/standard-things/esm
 
 - fn to find latest failure that also searches requestFailures (as well as pings/responses)
 
 - add option to save config/ shit to ~/.config/pinguno and logs to ~/whereverthehellstandardlogdirectoriesare/ 
 - probably rename logs and config dirs to pinguno-logs and pinguno-config to reduce risk of overwriting/clashing with other stuff in same dir
 
-- [highpriority] learn how to process and use command-line arguments in Node to allow options
+- learn how to process and use command-line arguments in Node to allow options
 	OR 
 	fully specify all env vars you can use to customise
-
-- [highpriority] make a web front-end to display collected data & adjust settings (ideally w/o restart)
-	- needs server API for getting data and receiving commands
-	- possible to make low-resource-cost Webkit GUI that only consumes resources when visible (when user is changing options etc), separated from Node server logging?
-
-- [highpriority] run cli as service / auto-run on boot 
-	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
-		- could relay these instructions to users looking for that
 
 - compressed archives
 	- run automatically when we hit directory size (50MB) and time-interval (28 days
@@ -162,14 +177,20 @@
 		- last
 		- mean
 
+- [lowpriority] move from SCSS to PostCSS for more flexibility + easier things like autoprefixing
+
 ## Project management / organisation / presentation
 
 - Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)
+
 
 ### Promotional website
 
 - clearly explain benefits first
 	- harder for ISP to bullshit you
+	- ISP support workers also have an interest in getting more accurate data about outages on the user's side, too
+		- helpdesk could send customer a link to Pinguno, and with user consent Pinguno could automatically send outages to ISP's server so helpdesk can see that data directly
+		- user could specify e.g. 'send this data for one month'
 	- close to zero installation & daily usage effort. just forget about it. doesn't take up CPU, doesn't take up space.
 - live demo from Pinguno cli running on domain's server
 	- open in popup iframe exactly like a menubar Electron window?
@@ -181,7 +202,6 @@
 
 ## Checklist for public release:
 
--[ ] CODE QUALITY: Perform a 
 -[ ] SECURITY: ensure that personal / config / gitignored files are not included in the build
 	- how to deal with .env?
 	- FAIRLY sure that .env values are "frozen" into the pkg build at build time
@@ -192,9 +212,13 @@
 	- Unfortunately, we pretty much need to expose user-set variables (1) the polling interval and (2) the IP string to the "spawn" command (the dangerous part). 
 -[ ] PRIVACY: Scour all personal/private information added while developing.
 -[ ] PRIVACY: Make sure no sensitive user information will be stored or transmitted without user & dev consent
+-[ ] PERFORMANCE: Concatenate browser code into single compressed files
+-[ ] PERFORMANCE: Production-process `browser/public` into `browser/dist`
+-[ ] CODE QUALITY: Perform code lints with production settings
 -[ ] CODE QUALITY: Remove all TEMP / console.debug / dev comments etc. TODOs are fine if it makes sense and reveal intent.
 -[ ] CODE QUALITY: Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
 -[ ] CODE QUALITY: Remove all unnecessary dependencies to reduce install time / size.
+-[ ] CODE QUALITY: Check that single-line, single statement 'if' statements are not wrapped in block curlies
 -[ ] UX: Ensure readme has no serious inaccurate information.
 
 ### Before 1.0.0:
