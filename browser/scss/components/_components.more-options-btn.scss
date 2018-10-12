@@ -1,16 +1,16 @@
-.more-options-btn {
+.c-more-options-btn {
 	position: relative;
 	display: inline-block;
 }
-.more-options-btn button {
+.c-more-options-btn button {
 	display: block;
 }
 
-.more-options-btn__list-toggle {
+.c-more-options-btn__list-toggle {
 	border: 1px solid red;
 }
 
-.more-options-btn__list {
+.c-more-options-btn__list {
 	position: absolute;
 	top: 100%
 }

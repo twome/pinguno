@@ -13,12 +13,12 @@ class MoreOptionsBtn {
 			}
 		}, true)
 
-		let toggleBtnEl = this.el.querySelector('.more-options-btn__list-toggle')
+		let toggleBtnEl = this.el.querySelector('.c-more-options-btn__list-toggle')
 		toggleBtnEl.addEventListener('click', e => {
 			this.toggleOpen()
 		})
 
-		let eachListEl = this.el.querySelectorAll('.more-options-btn__list button')
+		let eachListEl = this.el.querySelectorAll('.c-more-options-btn__list button')
 		for (let el of eachListEl){
 			el.addEventListener('click', e => {
 				this.close()
@@ -27,8 +27,8 @@ class MoreOptionsBtn {
 	}
 
 	toggleOpen(){
-		let listEl = this.el.querySelector('.more-options-btn__list')
-		if (listEl.classList.contains('hidden')){
+		let listEl = this.el.querySelector('.c-more-options-btn__list')
+		if (listEl.classList.contains('u-hidden')){
 			this.open()
 		} else {
 			this.close()
@@ -36,13 +36,13 @@ class MoreOptionsBtn {
 	}
 
 	open(){
-		let listEl = this.el.querySelector('.more-options-btn__list')
-		listEl.classList.remove('hidden')
+		let listEl = this.el.querySelector('.c-more-options-btn__list')
+		listEl.classList.remove('u-hidden')
 	}
 
 	close(){
-		let listEl = this.el.querySelector('.more-options-btn__list')
-		listEl.classList.add('hidden')
+		let listEl = this.el.querySelector('.c-more-options-btn__list')
+		listEl.classList.add('u-hidden')
 	}
 
 	/* Standard features */

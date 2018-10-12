@@ -1,0 +1,21 @@
+.c-short-stat {
+	display: inline-block;
+	color: hsla(0,0%,0%,0.5);
+	font-size: 0.8rem;
+}
+.c-short-stat__value {
+	color: hsla(0,0%,10%,1);;
+	font-size: 1.2rem;
+}
+.c-short-stat__value--good {
+	color: hsla(120,80%,60%,1);
+}
+.c-short-stat__value--bad {
+	color: hsla(0,80%,40%,1);
+}
+.c-short-stat__value--warn {
+	background: red; /*TODO*/
+}
+.c-short-stat .superscript {
+	color: hsla(0,0%,30%,1);
+}

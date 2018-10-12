@@ -2,6 +2,13 @@
 # yarn lockfile v1
 
 
+inuitcss@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/inuitcss/-/inuitcss-6.0.0.tgz#164a2557736a29a9874f99c6165174d996ea6a53"
+  integrity sha512-FnyXNy2WSzSli4INmgtrsFwkzDljabK583AoC7KZutB6m8bVrAzjZ7jadro4N4RcqQRpMlW88NwgHIWgD7CDrg==
+  dependencies:
+    sass-mq "^3.3.2"
+
 lodash-es@^4.17.11:
   version "4.17.11"
   resolved "https://registry.yarnpkg.com/lodash-es/-/lodash-es-4.17.11.tgz#145ab4a7ac5c5e52a3531fb4f310255a152b4be0"
@@ -21,6 +28,11 @@ renderjson@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/renderjson/-/renderjson-1.4.0.tgz#d944644521ac5ef977ee524a6a05b76a2a945144"
   integrity sha512-R0IZoxjWQP4XMJjLkPjNKSwjDyl20EiLohyu1Os7AvIvO4F4Vtar1N6IjJLPLjDN7OYOXTsqtIVJupQnQMvYQw==
+
+sass-mq@^3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/sass-mq/-/sass-mq-3.3.2.tgz#3472e04c31a432bcd55b3b604edc72ae9a4def1a"
+  integrity sha1-NHLgTDGkMrzVWztgTtxyrppN7xo=
 
 vue@^2.5.17:
   version "2.5.17"

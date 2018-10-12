@@ -5,6 +5,9 @@ config/
 
 # Large & context-dependent build files 
 build/
+browser/dist
+browser/public/styles
+browser/public/scripts
 
 # Windows
 ## Image thumbnail cache

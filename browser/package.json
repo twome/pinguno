@@ -15,10 +15,10 @@
       "no-unused-vars": 0,
       "no-console": 0
     },
-    "globals": {
-    }
+    "globals": {}
   },
   "dependencies": {
+    "inuitcss": "^6.0.0",
     "lodash-es": "^4.17.11",
     "luxon": "^1.4.3",
     "modern-normalize": "^0.5.0",

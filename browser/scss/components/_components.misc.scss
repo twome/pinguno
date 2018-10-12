@@ -1,0 +1,62 @@
+/* 
+	Objects & tiny components
+
+	These should be sorted into objects & components as soon as that makes sense.
+*/
+
+.global-indicators {
+	padding: 0.5em;
+	position: fixed;
+	top: 0;
+}
+.indicator { /* TEMP */
+	font-size: 0.9rem;
+	color: hsla(0,100%,20%,1); 
+	padding: 0.2em;
+	font-family: monospace;
+	background-color: hsla(0,100%,70%,0.8);
+}
+
+.native-app-preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 2em auto;
+}
+
+// TEMP just to simulate running in menubar miniwindow
+.app {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	max-width: 60em;
+	
+	font-size: 16px;
+	font-family: sans-serif;
+}
+.app__header {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	width: 100%;
+}
+.app__title {
+	font-size: 0.7rem;
+}
+
+.tray-icon {
+	display: inline-block;
+}
+.tray-icon img {
+	width: 1.6em;
+	height: 1.6em;
+	border-radius: 999999px;
+	border: 1px solid hsla(0,0%,20%,1);
+	filter: saturate(0%) contrast(200%);
+}
+
+.mac-menubar-sim {
+	border: 1px solid hsla(0,0%,0%,0.15);
+	box-shadow: 0px 3px 10px 0 hsla(0,0%,0%,0.15);
+	border-radius: 5px;
+}

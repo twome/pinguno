@@ -1,0 +1,10 @@
+.c-button {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	border: 1px solid blue;
+	border-radius: 5px;
+	padding: 0.1em 0.4em;
+
+	cursor: pointer;
+}

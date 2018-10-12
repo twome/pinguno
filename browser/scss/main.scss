@@ -1,120 +1,110 @@
-@import "vendor/modern-normalize";
+/* 
+	CONTENTS
 
-body {
-	font-family: sans-serif;
-}
+	Settings: Global variables, site-wide settings, config switches, etc.
+	Tools: Site-wide mixins and functions.
+	Generic: Low-specificity, far-reaching rulesets (e.g. resets).
+	Elements: Unclassed HTML elements (e.g. a {}, blockquote {}, address {}).
+	Objects: (e.g. .o-layout) Objects, abstractions, and design patterns .
+	Components: (e.g. .c-carousel) Discrete, complete chunks of UI. This is the one layer that inuitcss doesn’t provide code for, as this is completely your terrain.
+	Utilities: (e.g. .u-hidden) High-specificity, very explicit selectors. Overrides and helper classes.
+*/
+/* 
+	SETTINGS
 
-@import "helpers";
+	Config...............Project-level configuration and feature switches.
+	Core.................inuitcss’ core and setup settings.
+	Global...............Project-wide variables and settings.
+ */
+@import "settings/settings.config";
+$inuit-global-font-size:   12px; // Because this is running in a menubar, space is at a premium
+@import "settings/settings.core";
+@import "settings/settings.global";
 
 /* 
-	Blocks 
-*/
-.global-indicators {
-	padding: 0.5em;
-	position: fixed;
-	top: 0;
-}
-.indicator { /* TEMP */
-	font-size: 0.9rem;
-	color: hsla(0,100%,20%,1); 
-	padding: 0.2em;
-	font-family: monospace;
-	background-color: hsla(0,100%,70%,0.8);
-}
+	TOOLS
 
-.native-app-preview {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	margin: 2em auto;
-}
-
-.app {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	max-width: 60em;
-	
-	font-size: 16px;
-	font-family: sans-serif;
-}
-
-.app__header {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	width: 100%;
-}
-
-.app__title {
-	font-size: 0.7rem;
-}
-
-.tray-icon {
-	display: inline-block;
-}
-.tray-icon img {
-	width: 1.6em;
-	height: 1.6em;
-	border-radius: 999999px;
-	border: 1px solid hsla(0,0%,20%,1);
-	filter: saturate(0%) contrast(200%);
-}
-
-.short-stat {
-	display: inline-block;
-	color: hsla(0,0%,0%,0.5);
-	font-size: 0.8rem;
-}
-.short-stat__value {
-	color: hsla(0,0%,10%,1);;
-	font-size: 1.2rem;
-}
-.short-stat__value--good {
-	color: hsla(120,80%,60%,1);
-}
-.short-stat__value--bad {
-	color: hsla(0,80%,40%,1);
-}
-.short-stat__value--warn {
-	background: red; /*TODO*/
-}
-.short-stat .superscript {
-	color: hsla(0,0%,30%,1);
-}
-
-.mac-menubar-sim {
-	border: 1px solid hsla(0,0%,0%,0.15);
-	box-shadow: 0px 3px 10px 0 hsla(0,0%,0%,0.15);
-	border-radius: 5px;
-}
-
-.json-output {
-	background-color: hsla(100, 70%, 80%, 1);
-	font-family: sans-serif;
-}
-
-.button {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	border: 1px solid blue;
-	border-radius: 5px;
-	padding: 0.1em 0.4em;
-
-	cursor: pointer;
-}
-
+	Font-size............A mixin which guarantees baseline-friendly line-heights.
+	Clearfix.............Micro clearfix mixin.
+	Hidden...............Mixin for hiding elements.
+	Sass MQ..............inuitcss’ default media query manager.
+ */
+@import "../node_modules/inuitcss/tools/tools.font-size";
+// @import "../node_modules/inuitcss/tools/tools.clearfix";
+@import "../node_modules/inuitcss/tools/tools.hidden";
+// @import "node_modules/sass-mq/mq";
 
 /* 
-	Components
-*/
-@import "component.more-options-btn";
+	GENERIC
 
-/* Vendor */
-/*
-	TODO dev only: renderjson should only be used for dev testing
-*/
-.renderjson {
-	font-family: monospace;
-}
+	Box-sizing...........Better default `box-sizing`.
+	modern-normalize.....Eliminate differences in browser style defaults (the standards don't specify these, so we use our own "standard")
+	Shared...............Sensibly and tersely share some global commonalities (particularly useful when managing vertical rhythm).
+ */
+@import "../node_modules/inuitcss/generic/generic.box-sizing";
+@import "../node_modules/inuitcss/generic/generic.shared";
+@import "vendor/generic.modern-normalize";
+
+// ELEMENTS
+@import "../node_modules/inuitcss/elements/elements.page";
+@import "../node_modules/inuitcss/elements/elements.headings";
+@import "../node_modules/inuitcss/elements/elements.images";
+@import "../node_modules/inuitcss/elements/elements.tables";
+@import "elements/elements.page-more";
+
+/* 
+	OBJECTS
+	Wrapper..............Page constraint object.
+	Layout...............Generic layout module.
+	Media................Image- and text-like content side by side. The poster-child of OOCSS.
+	Flag.................Table-layout-based advancement on the Media object.
+	List-bare............Lists with no bullets or indents.
+	List-inline..........A list whose items all site in a line.
+	Box..................Simple boxing abstraction.
+	Block................Image-on-top-of-text object.
+	Ratio................A container for maintaining aspect ratio of content.
+	Crop.................Provide a cropping context for media (images, etc.).
+	Table................Classes for manipulating `table`s.
+	Pack.................Pack items into available horizontal space.
+ */
+// @import "../node_modules/inuitcss/objects/objects.wrapper";
+// @import "../node_modules/inuitcss/objects/objects.layout";
+// @import "../node_modules/inuitcss/objects/objects.media";
+// @import "../node_modules/inuitcss/objects/objects.flag";
+// @import "../node_modules/inuitcss/objects/objects.list-bare";
+// @import "../node_modules/inuitcss/objects/objects.list-inline";
+// @import "../node_modules/inuitcss/objects/objects.box";
+// @import "../node_modules/inuitcss/objects/objects.block";
+// @import "../node_modules/inuitcss/objects/objects.ratio";
+// @import "../node_modules/inuitcss/objects/objects.crop";
+// @import "../node_modules/inuitcss/objects/objects.table";
+// @import "../node_modules/inuitcss/objects/objects.pack";
+@import "objects/objects.superscript";
+
+// COMPONENTS
+@import "components/components.more-options-btn";
+@import "components/components.short-stat";
+@import "components/components.renderjson";
+@import "components/components.button";
+
+/* 
+	UTILITIES
+	Widths...............Simple width helper classes.
+	Headings.............Reassigning our heading styles to helper classes.
+	Spacings.............Nudge bits of the DOM around with these spacing classes.
+	Responsive-Spacings..Enhances the function of normal spacings for responsive usage.
+	Print................Reset-like styles taken from the HTML5 Boilerplate.
+	Hide.................Helper classes to hide content
+ */
+// Be aware that enabling offsets produces a large chunk of classes which might
+// bloat your CSS, depending of the amount of breakpoints you defined.
+// Only set this to `true` if you are absolutely sure about what you are doing.
+// $inuit-offsets: true;
+// @import "../node_modules/inuitcss/utilities/utilities.widths";
+@import "../node_modules/inuitcss/utilities/utilities.headings";
+// @import "../node_modules/inuitcss/utilities/utilities.spacings";
+// @import "../node_modules/inuitcss/utilities/utilities.responsive-spacings";
+// @import "../node_modules/inuitcss/utilities/utilities.print";
+@import "../node_modules/inuitcss/utilities/utilities.hide";
+@import "utilities/utilities.hide-more";
+@import "utilities/utilities.flex";

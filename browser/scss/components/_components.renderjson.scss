@@ -1,0 +1,12 @@
+/* VENDOR */
+/*
+	TODO dev only: renderjson should only be used for dev testing
+*/
+// Class name determined by vendor library; cannot control in HTML
+.renderjson { 
+	font-family: monospace;
+}
+.c-json-output {
+	background-color: hsla(100, 70%, 80%, 1);
+	font-family: sans-serif;
+}
