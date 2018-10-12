@@ -179,6 +179,16 @@
 
 - [lowpriority] move from SCSS to PostCSS for more flexibility + easier things like autoprefixing
 
+- [lowpriority] gulp pkg: Somehow feed ICU data into exec's env without throwing an error
+	- check if we even need to do this (do we use ICU data in any instance of Luxon (DateTime)?)
+```
+	let iCUDir = p(__dirname, 'node_modules/full-icu')
+	env: {
+		NODE_ICU_DATA: iCUDir
+	}
+```
+
+
 ## Project management / organisation / presentation
 
 - Icons for all formats (multi-res macOS, Win, and Unix in-OS icons, high-res website logo, systray icon, B+W menubar icons)

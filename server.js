@@ -9,8 +9,8 @@ const express = require('express')
 const axios = require('axios')
 const opn = require('opn')
 const { DateTime } = require('luxon')
-const nodemon = require('nodemon')
 const bodyParser = require('body-parser')
+const chokidar = require('chokidar')
 
 // In-house modules
 const { config } = require('./config.js')
@@ -18,7 +18,7 @@ const { Enum } = require('./enum.js')
 const { Pinguno } = require('./pinguno.js')
 const { df: defaultAndValidateArgs } = require('./my-util.js')
 const { getLocalIP } = require('./my-util-network.js')
-const { liveReloadMiddleWare, fileWatcherStart, clientCodeLastModifiedStatusRoute } = require('./live-reload-custom-server.esm.js')
+const { clientCodeLastModifiedStatusRoute } = require('./live-reload-custom-server.esm.js')
 
 const fsReadFilePromise = util.promisify(fs.readFile)
 
@@ -28,6 +28,8 @@ let inDev = process.env.NODE_ENV === 'development'
 // Whether we expect our client content to be used by 
 // NB. ideally, this shouldn't matter at all.
 let clientModes = new Enum(['browser', 'electron'])
+
+let clientCodeLastModified = inDev ? new Date() : null
 
 class Server {
 	// Accept one argument (an options object) and destructure specified properties (which we name in the default parameter) from that argument into the properties
@@ -61,7 +63,13 @@ class Server {
 			Development-only routes
 		*/
 		if (inDev){
-			e.get(clientCodeLastModifiedStatusRoute, liveReloadMiddleWare)
+			console.debug(clientCodeLastModifiedStatusRoute)
+			e.get(clientCodeLastModifiedStatusRoute, (req, res, next)=>{
+				let sendBody = clientCodeLastModified
+				sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
+				let status = sendBody ? 200 : 204 // OK : No content
+				res.status(status).send(sendBody)
+			})
 		}
 		
 		// Allow us to parse request (could be any format) into text on req.body
@@ -76,12 +84,10 @@ class Server {
 				fsReadFilePromise(path.join(this.appDir, '/dev-materials/test-data_frequent-disconnects.json'), 'utf8').then((val)=>{
 					res.send(val)	
 				}, (err)=>{
-					console.error('file read error:')
 					console.error(err)
 				})
 			}
-
-			setTimeout(respond, 100)
+			setTimeout(respond, 1)
 		})
 		e.get('/' + this.latestAPIPath + '/' + 'live-session', (req, res)=>{ 
 			let respond = ()=>{
@@ -92,6 +98,13 @@ class Server {
 			}
 			setTimeout(respond, 1)
 		})
+		e.get('/' + this.latestAPIPath + '/' + 'actions' + '/' + 'open-current-log-json', (req, res)=>{ 
+			if (this.pinger.activeLogURI){
+				opn(this.pinger.activeLogURI).then((val)=>{
+					res.send(val)
+				})	
+			}
+		})
 
 		/*
 			Static data routes
@@ -100,10 +113,6 @@ class Server {
 		
 		// TEMP dev only
 		e.use('/nm', express.static(path.join(this.appDir, 'browser', 'node_modules'))) // Serve node_modules/ files as if they were at /nm/
-
-		e.post('/', function (req, res) {
-			res.send('Got a POST request')
-		})
 	}
 
 	startServer(){
@@ -121,7 +130,8 @@ class Server {
 
 		let connectionStatusTick = setInterval(()=>{
 			pinger.updateGlobalConnectionStatus()
-			console.info(DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName)
+			let stdoutConnectionMessage = DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName
+			if (config.nodeVerbose >= 2) console.info(stdoutConnectionMessage)
 		}, pinger.opt.connectionStatusIntervalMs)
 
 		let updateOutagesTick = setInterval(()=>{	
@@ -145,6 +155,25 @@ let app = new Server()
 app.startServer()
 
 // TEMP DEV only
+let fileWatcherStart = ()=>{
+	// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
+	let fileWatcher = chokidar.watch([
+		'browser/public/**/*.{js,json,html,css,scss,png,gif,jpg,jpeg}'
+	],{
+		ignored: /(^|[\/\\])\../, // Ignore .dotfiles
+		persistent: true
+	})
+	
+	let onBrowserFileModified = path => {
+		console.info('Browser client will refresh due to change in: ' + path)
+		clientCodeLastModified = new Date()
+	}
+
+	// Don't print to console for new added files or we get a surge of them on app launch
+	fileWatcher.on('add', ()=>{ clientCodeLastModified = new Date() }) 
+		.on('change', onBrowserFileModified)
+		.on('unlink', onBrowserFileModified)	
+}
 if (inDev) fileWatcherStart()
 
 exports = { Server, clientModes }

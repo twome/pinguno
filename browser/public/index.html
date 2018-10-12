@@ -77,43 +77,44 @@
 			<div class="latency-graph">
 				{Multiline latency graph]
 			</div>
-			<div class="js-copy-log-human button">
+			<div class="js-copy-log-human c-button">
 				Copy human log
-				<div class="more-options-btn js-more-options-btn">
-					<button class="more-options-btn__list-toggle">
+				<div class="c-more-options-btn js-more-options-btn">
+					<button class="c-more-options-btn__list-toggle">
 						&hellip;
 					</button>
-					<div class="more-options-btn__list hidden">
+					<div class="c-more-options-btn__list hidden">
 						<button class="js-open-log-human">Open human log in text editor</button>
 					</div>
 				</div>
 			</div>
-			<div class="js-copy-log-json button">
+			<div class="js-copy-log-json c-button">
 				Copy JSON log
-				<div class="more-options-btn js-more-options-btn">
-					<button class="more-options-btn__list-toggle">
+				<div class="c-more-options-btn js-more-options-btn">
+					<button class="c-more-options-btn__list-toggle">
 						&hellip;
 					</button>
-					<div class="more-options-btn__list hidden">
-						<button class="js-open-log-json">Open JSON log in text editor</button>
-						<button class="js-open-log-json-this-session">Open this session's JSON log in text editor</button>
-						<button class="js-compress-all-logs">Compress all JSON logs, copy zip file's path</button>
+					<div class="c-more-options-btn__list hidden">
+						<button v-for="button in exportButtons" v-bind:class="button.name">{{button.description}}</button>
 					</div>
 				</div>
 			</div>
-			<button class="js-open-logs-dir button">
-				Open logs directory
+			<button v-on:click="openCurrentLogJSON" class="js-open-logs-dir c-button">
+				TEMP Open current log
 			</button>
+			<button class="js-open-logs-dir c-button">
+				Open logs directory
+			</c-button>
 			<div class="pinguno-server-url">
-				<div class="pinguno-server-url__description">Data from Pinguno server at:</div>
+				<div class="pinguno-server-url__description">Data from Pinguno server at: {{activeServer.protocol}}{{activeServer.hostname}}:{{activeServer.port}}</div>
 				<span class="pinguno-server-url__protocol">
-					{http://}
+					<input class="js-server-protocol" type="text" name="server-protocol" v-model="activeServer.protocol">
 				</span>
 				<span class="pinguno-server-url__hostname">
-					{localhost}
+					<input class="js-server-hostname" type="text" name="server-hostname" v-model="activeServer.hostname">
 				</span>
 				<span class="pinguno-server-url__port">
-					{1919}
+					<input class="js-server-port" type="text" name="server-port" v-model="activeServer.port">
 				</span>
 			</div>
 			<h1 class="app__title">Pinguno</h1>
@@ -125,7 +126,7 @@
 		Pinguno is running on a local server, and this web page is retrieving information from that server's API to display that data in the component above.
 	</p>
 
-	<div class="json-output">
+	<div class="c-json-output">
 		<button class="js-toggle-live-pinging">Stop pinging</button>
 	</div>
 

@@ -42,18 +42,10 @@
     "scripts": [],
     "assets": []
   },
-  "nodemonConfig": {
-    "ignore": [
-      "logs/*",
-      "config/pinguno-last-settings.json",
-      "browser/*"
-    ]
-  },
   "scripts": {
-    "compressall": "node action_compress-all-logs.js",
-    "buildcli": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" pkg . --out-path build --debug",
-    "dev": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" node cli.js",
-    "devmon": "cross-env NODE_ICU_DATA=\\\"$(pwd)/node_modules/full-icu\\\" nodemon cli.js",
+    "compress-all-logs": "node action_compress-all-logs.js",
+    "build": "gulp build",
+    "dev": "gulp dev",
     "test": "echo \"No tests available yet.\""
   },
   "devDependencies": {
@@ -62,13 +54,13 @@
     "eslint": "^5.6.1",
     "gulp": "^4.0.0",
     "gulp-concat": "^2.6.1",
+    "gulp-debug": "^4.0.0",
     "gulp-eslint": "^5.0.0",
     "gulp-rename": "^1.4.0",
     "gulp-sass": "^4.0.1",
     "gulp-sourcemaps": "^2.6.4",
     "gulp-uglify": "^3.0.1",
     "html-webpack-plugin": "^3.2.0",
-    "nodemon": "^1.18.4",
     "pkg": "^4.3.4",
     "webpack": "^4.20.2"
   },

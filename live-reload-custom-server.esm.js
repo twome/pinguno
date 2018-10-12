@@ -12,7 +12,7 @@ let clientCodeLastModifiedStatusRoute = '/dev/client-code-last-modified'
 let portClueRoute = '/dev/live-reload-port-clue'
 let defaultLiveReloadPort = '1919'
 
-let expressMiddleware = (req, res, next)=>{
+let liveReloadMiddleware = (req, res, next)=>{
 	let sendBody = clientCodeLastModified
 	sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
 	let status = sendBody ? 200 : 204 // OK : No content
@@ -47,7 +47,7 @@ let liveReloadServerStart = (port, activeLocalIP)=>{
 		throw Error('Live reload: incompatible port provided:', port)
 	}
 	let e = express()
-	e.get(clientCodeLastModifiedStatusRoute, expressMiddleware) // Development-only route
+	e.get(clientCodeLastModifiedStatusRoute, liveReloadMiddleware) // Development-only route
 	e.listen(port, activeLocalIP ? activeLocalIP : '127.0.0.1', (err)=>{
 		if (err) throw Error(err)
 		// Server ready function
@@ -56,7 +56,7 @@ let liveReloadServerStart = (port, activeLocalIP)=>{
 }
 
 module.exports = { 
-	liveReloadMiddleware: expressMiddleware,
+	liveReloadMiddleware,
 	fileWatcherStart,
 	liveReloadServerStart, 
 	clientCodeLastModifiedStatusRoute,

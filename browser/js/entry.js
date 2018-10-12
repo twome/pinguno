@@ -3,15 +3,11 @@ import cloneDeep from '../node_modules/lodash-es/cloneDeep.js'
 let _ = { cloneDeep }
 for (let key of Object.keys(_)){ if (typeof window[key] === 'function') delete window[key] } // Clean lodash methods off the global scope
 import Vue from '../node_modules/vue/dist/vue.esm.js'
-// TODO does this actuall work? renderjson is exported in AMD & CommonJS
-import { renderjson } from '../node_modules/renderjson/renderjson.js'
-
-console.debug('renderjson...')
-console.debug(renderjson)
+import renderjson from '../node_modules/renderjson/renderjson.js'
 
 // In-house
 import { PingunoSession } from './pinguno-session.esm.js'
-import { MoreOptionsBtn } from './more-options-btn.esm.js' // Side-effects
+import { MoreOptionsBtn } from './components/more-options-btn.esm.js' // Side-effects
 
 // Convenience / shorthands
 let d = document
@@ -27,12 +23,6 @@ let opt = {
 }
 
 // State
-let vue = new Vue({
-	el: '#vue-app',
-	data: {
-		lowestUptime: 69.69
-	}
-})
 let vm = {} // TEMP Legacy / backup viewmodel (instead of Vue)
 let fetchTimer = {}
 let cachedVm = {} // TODO use iDB to save most recent view
@@ -55,6 +45,41 @@ for (let customEl of customEls){
 		customElInstances.set(customEl, instancesForElType)
 	})	
 }
+
+let vue = new Vue({
+	el: '#vue-app',
+	data: {
+		lowestUptime: 69.69,
+		exportButtons: {
+			'js-open-log-json': {
+				name: `js-open-log-json`,
+				description: `Open JSON log in text editor`
+			},
+			'js-open-log-json-this-session': {
+				name: `js-open-log-json-this-session`,
+				description: `Open this session's JSON log in text editor`
+			},
+			'js-compress-all-logs': {
+				name: `js-compress-all-logs`,
+				description: `Compress all JSON logs, copy zip file's path`
+			}
+		},
+		activeServer: {
+			hostname: 'localhost',
+			port: '1919'
+		}
+	},
+	methods: {
+		openCurrentLogJSON: ()=>{
+			fetch('/api/1/actions/open-current-log-json', {
+				method: 'GET'
+			}).then((res)=>{
+				console.debug('fetch open current log json')
+				console.debug(res)
+			})
+		}
+	}
+})
 
 let fetchAndParse = (jsonUrl)=>{
 	return fetch(jsonUrl).then((res)=>{
@@ -81,11 +106,11 @@ let updateIndicators = ()=>{
 
 let onFetchedSession = session =>{
 	fetchTimer.end = new Date()
-	console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
+	// console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
 
 	liveSession = new PingunoSession(session)
-	vue.lowestUptime = liveSession.getLowestUptime()
-	vue.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
+	vm.lowestUptime = liveSession.getLowestUptime()
+	vm.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
 	simpleJSONRender(session)
 }
 
@@ -151,4 +176,3 @@ renderVmTick = setInterval(renderVm, 1000)
 renderVm()
 registerInputHandlers()
 registerDataPolls()
-console.debug('main.js kicked off')

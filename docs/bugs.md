@@ -2,6 +2,8 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
+- [dev-only, gulp] errors in webpack-stream are stopping watch:js from running continuously
+
 - have to repeatedly hit Ctrl+C to properly exit (chokidar/nodemon/process.spawn subprocesses?)
 
 - does uptime calculate the time-span of each ping/failure? it needs to do that rather than just assuming every ping covers the same amount of up/downtime
