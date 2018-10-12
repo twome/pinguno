@@ -29,8 +29,6 @@ let inDev = process.env.NODE_ENV === 'development'
 // NB. ideally, this shouldn't matter at all.
 let clientModes = new Enum(['browser', 'electron'])
 
-let clientCodeLastModified = inDev ? new Date() : null
-
 class Server {
 	// Accept one argument (an options object) and destructure specified properties (which we name in the default parameter) from that argument into the properties
 	// Any argument properties that don't use the name we expect are ignored, and any undefiend expected properties are defaulted
@@ -59,19 +57,8 @@ class Server {
 		this.pinger = this.startPinger()
 		this.appDir = this.pinger.appDir
 
-		/*
-			Development-only routes
-		*/
-		if (inDev){
-			console.debug(clientCodeLastModifiedStatusRoute)
-			e.get(clientCodeLastModifiedStatusRoute, (req, res, next)=>{
-				let sendBody = clientCodeLastModified
-				sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
-				let status = sendBody ? 200 : 204 // OK : No content
-				res.status(status).send(sendBody)
-			})
-		}
-		
+		this.clientCodeLastModified = inDev ? new Date() : null
+
 		// Allow us to parse request (could be any format) into text on req.body
 		e.use(bodyParser.text())
 
@@ -113,6 +100,18 @@ class Server {
 		
 		// TEMP dev only
 		e.use('/nm', express.static(path.join(this.appDir, 'browser', 'node_modules'))) // Serve node_modules/ files as if they were at /nm/
+
+		/*
+			Development-only routes
+		*/
+		if (inDev){
+			e.get(clientCodeLastModifiedStatusRoute, (req, res, next)=>{
+				let sendBody = this.clientCodeLastModified
+				sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
+				let status = sendBody ? 200 : 204 // OK : No content
+				res.status(status).send(sendBody)
+			})
+		}
 	}
 
 	startServer(){
@@ -155,7 +154,7 @@ let app = new Server()
 app.startServer()
 
 // TEMP DEV only
-let fileWatcherStart = ()=>{
+let fileWatcherStart = (clientCodeLastModified)=>{
 	// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
 	let fileWatcher = chokidar.watch([
 		'browser/public/**/*.{js,json,html,css,scss,png,gif,jpg,jpeg}'
@@ -173,7 +172,11 @@ let fileWatcherStart = ()=>{
 	fileWatcher.on('add', ()=>{ clientCodeLastModified = new Date() }) 
 		.on('change', onBrowserFileModified)
 		.on('unlink', onBrowserFileModified)	
+
+	return clientCodeLastModified
 }
-if (inDev) fileWatcherStart()
+if (inDev){ 
+	app.clientCodeLastModified = fileWatcherStart(app.clientCodeLastModified)
+}
 
 exports = { Server, clientModes }

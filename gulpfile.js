@@ -16,6 +16,14 @@ const gRename = require('gulp-rename')
 const gESLint = require('gulp-eslint')
 const gDebug = require('gulp-debug')
 const gWebpack = require('webpack-stream')
+const gNamed = require('vinyl-named')
+
+// In-house
+const {
+	ensureOneProcess,
+	handleChildProcess,
+	existingChildProcesses
+} = require('./child-processes.esm.js')
 
 // Convenience assignmenmts
 let inDev = process.env.NODE_ENV === 'development'
@@ -35,53 +43,6 @@ let paths = {
 	wholeBrowserClient: {
 		src: p(__dirname, 'browser/public'),
 		dest: p(__dirname, 'browser/dist')
-	}
-}
-
-let existingChildProcesses = {}
-let handleChildProcess = (child, processName, resolve, reject) => {
-	existingChildProcesses[processName] = child
-
-	let onStdioEvent = data => {
-		if (child.pid){ // This is a pretty good indication that the child process spawned successfully
-			console.info(`[gulp:${processName}] ${data.toString().trim()}`)
-			resolve(data)
-		} else {
-			console.error(`gulp.${processName} child process does not have a PID`)
-			reject(data)
-		}
-	}
-	child.stdout.on('data', onStdioEvent)
-	child.stderr.on('data', onStdioEvent)
-
-	child.on('error', (code, signal)=>{
-		console.error(`gulp.${processName} process hit an error with code ${code} and signal ${signal}`)
-		reject({code, signal})
-	})
-	child.on('close', code =>{
-		console.info(`gulp.${processName} process closed with code ${code}`)
-		reject({code})
-	})
-	child.on('exit', code =>{
-		console.info(`gulp.${processName} process exited with code ${code}`)
-		reject({code})
-	})
-}
-let ensureOneProcess = (spawnFn, processName, resolve, reject)=>{
-	let startNewChild = ()=>{
-		let child = spawnFn() // Must return a child_process.spawn() result
-		handleChildProcess(child, processName, resolve, reject)
-	}
-
-	let existingProcess = existingChildProcesses[processName]
-	if (existingProcess){
-		existingProcess.kill('SIGINT')
-		existingProcess.on('exit', (code, signal)=>{ // Does this override handleChildProcess' existing onExit handler?
-			console.info(`[gulp:ensureOneProcess] Existing process "${processName}" was automatically killed & restarted`)
-			startNewChild()
-		})
-	} else {
-		startNewChild()
 	}
 }
 
@@ -142,6 +103,7 @@ let sassTask = () => gulp.src(p(paths.scss.src, '**/*.scss'))
 	.pipe(gulp.dest(paths.scss.dest))
 
 let webpackTask = () => gulp.src(p(paths.js.src, 'entry.js'))
+	.pipe(gNamed())
 	.pipe(gWebpack({
 		entry: {
 			'live-reload-custom': p(paths.js.src, 'live-reload-custom.esm.js'),
@@ -150,7 +112,11 @@ let webpackTask = () => gulp.src(p(paths.js.src, 'entry.js'))
 		output: {
 			filename: '[name].bundle.js'
 		},
-		devtool: inDev ? undefined : 'source-map',
+		devtool: inDev ? false : 'source-map',
+		// devtool: false,
+		optimization: {
+			minimize: inDev ? false : undefined // Defaults to minimising
+		},
 		mode: inDev ? 'development' : 'production'
 	})).on('error', (err)=>{
       console.error('[gWebpack stream error]...')
@@ -185,7 +151,6 @@ let jsWatch = ()=>{
 			return new Promise((resolve, reject)=>{
 				// webpackTask is a fn that returns a stream
 				webpackTask().on('data', (val)=>{
-					console.debug('jsWatch webpack task wrapper: ', val)
 					resolve(val)
 				}).on('error', (err)=>{
 					console.error('jsWatch webpack task wrapper error: ', err)
