@@ -16,7 +16,10 @@ let liveReloadMiddleware = (req, res, next)=>{
 	let sendBody = clientCodeLastModified
 	sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
 	let status = sendBody ? 200 : 204 // OK : No content
-	res.status(status).send(sendBody)
+	res.status(status)
+		.header("Access-Control-Allow-Origin", "*")
+		.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+		.send(sendBody)
 }	
 
 let fileWatcherStart = (callback)=>{
