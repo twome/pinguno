@@ -7,19 +7,21 @@
 const chokidar = require('chokidar')
 const express = require('express')
 
-let clientCodeLastModified = process.env.NODE_ENV === 'development' ? new Date() : null
 let clientCodeLastModifiedStatusRoute = '/dev/client-code-last-modified'
 let portClueRoute = '/dev/live-reload-port-clue'
 let defaultLiveReloadPort = '1919'
+let clientCodeLastModified = new Date()
 
 let liveReloadMiddleware = (req, res, next)=>{
 	let sendBody = clientCodeLastModified
 	sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
 	let status = sendBody ? 200 : 204 // OK : No content
 	res.status(status).send(sendBody)
-}
+}	
 
-let fileWatcherStart = ()=>{
+let fileWatcherStart = (callback)=>{
+	let internalLastModified = new Date
+
 	// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
 	let fileWatcher = chokidar.watch([
 		'browser/public/**/*.{js,json,html,css,scss,png,gif,jpg,jpeg}'
@@ -30,11 +32,11 @@ let fileWatcherStart = ()=>{
 	
 	let onBrowserFileModified = path => {
 		console.info('Browser client will refresh due to change in: ' + path)
-		clientCodeLastModified = new Date()
+		callback(new Date())
 	}
 
 	// Don't print to console for new added files or we get a surge of them on app launch
-	fileWatcher.on('add', ()=>{ clientCodeLastModified = new Date() }) 
+	fileWatcher.on('add', ()=>{ callback(new Date()) }) 
 		.on('change', onBrowserFileModified)
 		.on('unlink', onBrowserFileModified)	
 }
@@ -56,10 +58,10 @@ let liveReloadServerStart = (port, activeLocalIP)=>{
 }
 
 module.exports = { 
-	liveReloadMiddleware,
-	fileWatcherStart,
-	liveReloadServerStart, 
 	clientCodeLastModifiedStatusRoute,
 	portClueRoute,
-	defaultLiveReloadPort
+	defaultLiveReloadPort,
+
+	fileWatcherStart,
+	liveReloadServerStart
 }
