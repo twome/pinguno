@@ -177,29 +177,10 @@ let sassWatch = ()=>{
 }
 
 let jsWatch = ()=>{
-	let watcher = gulp.watch(
+	return gulp.watch(
 		p(paths.js.src, '**/*.js'),
-		(callback)=>{
-			return new Promise((resolve, reject)=>{
-				// webpackTask is a fn that returns a stream
-				webpackTask().on('data', (val)=>{
-					resolve(val)
-				}).on('error', (err)=>{
-					console.error('jsWatch webpack task wrapper error: ', err)
-					reject(err)
-				})
-			})
-		}
+		webpackTask
 	)
-
-	// Chokidar error events
-	watcher.on('error', (...params)=>{
-		params.forEach((val, key)=>{
-			console.debug(`jsWatch chokidar error event - ${key}:`, val)
-		})
-	})
-
-	return watcher
 }
 
 let serverWatch = () => gulp.watch([
