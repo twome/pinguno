@@ -18,6 +18,7 @@ const gDebug = require('gulp-debug')
 const gWebpack = require('webpack-stream')
 const gNamed = require('vinyl-named')
 const gRestart = require('gulp-restart')
+const gTemplate = require('gulp-template')
 
 // In-house
 const { config } = require('./config')
@@ -30,6 +31,10 @@ let inDev = process.env.NODE_ENV === 'development'
 
 let p = path.join
 let paths = {
+	html: {
+		src: p(__dirname, 'browser/public'),
+		dest: p(__dirname, 'browser/dist')
+	},
 	scss: {
 		src: p(__dirname, 'browser/scss'),
 		dest: p(__dirname, 'browser/public/styles')
@@ -161,6 +166,7 @@ let serverTask = () => new Promise ((resolve, reject)=>{
 	resolve('ok')
 })
 
+// Prod only
 let pkgTask = () => new Promise((resolve, reject)=>{
 	// DANGER: Variable value fed to command line
 	let buildPath = path.normalize(paths.pkg.prod) // Just another check to try ensure this is indeed a path
@@ -168,6 +174,17 @@ let pkgTask = () => new Promise((resolve, reject)=>{
 	let child = child_process.spawn(`pkg`, [`.`, `--out-path`, buildPath, `--debug`])
 	processRoster.handleChildProcess(child, 'pkg', resolve, reject)
 })
+
+// Prod only
+let htmlTask = () => {
+	return gulp.src(paths.html.src + 'index.html')
+		.pipe(gTemplate({
+			inDev: inDev,
+			env: process.env.NODE_ENV,
+			pingunoDOMPrefix: 'pn-'
+		}))
+		.pipe(gulp.dest(paths.html.dest))
+}
 
 let sassWatch = ()=>{
 	return gulp.watch(

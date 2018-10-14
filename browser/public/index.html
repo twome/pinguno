@@ -1,12 +1,16 @@
 <!DOCTYPE html>
+<!--<% if (inDev){ %>-->
+<html data-pn-build-env="development">
+<!--<% } else { %>-->
 <html>
+<!--<% } %>-->
 <head>
 	<title>Pinguno - ISP Uptime Logger</title>
 
 	<link rel="stylesheet" href="/styles/main.css">
-	<!-- buildMarker`{dev: 'start'}}` -->
+	<!--<% if (inDev){ %>-->
 	<script type="module" src="/scripts/live-reload-custom.bundle.js"></script>
-	<!-- buildMarker`{dev: 'end'}}` -->
+	<!--<% } %>-->
 	<script type="module" src="/scripts/main.bundle.js"></script>
 </head>
 <body>
