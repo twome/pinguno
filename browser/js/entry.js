@@ -1,21 +1,16 @@
 // 3rd-party
-import cloneDeep from '../node_modules/lodash-es/cloneDeep.js'
-let _ = { cloneDeep }
-for (let key of Object.keys(_)){ if (typeof window[key] === 'function') delete window[key] } // Clean lodash methods off the global scope
+// import cloneDeep from '../node_modules/lodash-es/cloneDeep.js' // example of Lodash url
 import Vue from '../node_modules/vue/dist/vue.esm.js'
 import renderjson from '../node_modules/renderjson/renderjson.js'
 
 // In-house
+import { d, w, c, ce, ci } from './util.esm.js'
 import { PingunoSession } from './pinguno-session.esm.js'
-import { MoreOptionsBtn } from './components/more-options-btn.esm.js' // Side-effects
+import { customEls, registerDOMNodesToCustomEls } from './custom-el-reg.esm.js' // Side-effects
 
-// Convenience / shorthands
-let d = document
-let c = console.log.bind(console)
-let cw = console.warn.bind(console)
-let cdb = console.debug.bind(console)
-let ci = console.info.bind(console)
-let ce = console.error.bind(console)
+let customElInstances = registerDOMNodesToCustomEls(customEls)
+
+/* MODEL */
 
 // Options
 let opt = {
@@ -23,28 +18,13 @@ let opt = {
 }
 
 // State
-let vm = {} // TEMP Legacy / backup viewmodel (instead of Vue)
+let vm = {}
 let fetchTimer = {}
 let cachedVm = {} // TODO use iDB to save most recent view
 let liveSession = null
 let liveSessionJSONPollTick = null
 let renderVmTick = null
-let jsonOutputEl = document.querySelector('.json-output')
-let customEls = [
-	MoreOptionsBtn
-]
-
-// Get a reference to the "classed" version of every instance (DOM element) of each custom element we've made
-let customElInstances = new Map()
-for (let customEl of customEls){
-	customElInstances.set(customEl, [])
-	let instancesForElType = customElInstances.get(customEl)
-	d.querySelectorAll(customEl.selector).forEach(el => {
-		let classedEl = new MoreOptionsBtn(el)
-		instancesForElType.push(classedEl)
-		customElInstances.set(customEl, instancesForElType)
-	})	
-}
+let jsonOutputEl = document.querySelector('.c-json-output')
 
 let vue = new Vue({
 	el: '#vue-app',
@@ -73,46 +53,25 @@ let vue = new Vue({
 		openCurrentLogJSON: ()=>{
 			fetch('/api/1/actions/open-current-log-json', {
 				method: 'GET'
-			}).then((res)=>{
-				console.debug('fetch open current log json')
-				console.debug(res)
 			})
 		}
 	}
 })
 
-let fetchAndParse = (jsonUrl)=>{
-	return fetch(jsonUrl).then((res)=>{
-		return res.json()
-	}, (err)=>{
-		throw Error(err) // TEMP this should be graceful
-	})
+
+/* INPUT */
+
+let registerInputHandlers = ()=>{
+	for (let el of d.querySelectorAll('.js-toggle-live-pinging')){
+		el.addEventListener('click', e => {
+			clearInterval(liveSessionJSONPollTick)
+		})
+	}
 }
 
-let updateIndicators = ()=>{
-	let indicatorEls = d.querySelectorAll('.indicator')
-	indicatorEls.forEach(el => {
-		let hideEl = el => el.classList.add('invisible')
-		if (el.dataset.indicatorType === 'browserClientCodeLoading'){
-			hideEl(el)
-			// This is already executing after .onPageReady
-		}
 
-		if (el.dataset.indicatorType === 'waitingForServerResponse'){
-			if (liveSession) hideEl(el)
-		}
-	}) 
-}
 
-let onFetchedSession = session =>{
-	fetchTimer.end = new Date()
-	// console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
-
-	liveSession = new PingunoSession(session)
-	vm.lowestUptime = liveSession.getLowestUptime()
-	vm.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
-	simpleJSONRender(session)
-}
+/* RENDERING */
 
 // TEMP dev only
 let simpleJSONRender = (parsedObj)=>{
@@ -121,11 +80,62 @@ let simpleJSONRender = (parsedObj)=>{
 	jsonOutputEl.appendChild(renderjson(parsedObj))
 }
 
+let renderVm = ()=>{
+	let els = d.querySelectorAll('.c-short-stat')
+
+	let defaultRenderFn = (propKey)=>{
+		if (propKey !== undefined){
+			let el = [...els].filter(el => el.dataset.statType === 'lowestUptime')[0]
+			el.querySelector('.c-short-stat__value').innerHTML = vm.lowestUptime
+		}
+	}
+
+	let valuesToUpdate = {
+		lowestUptime: vm.lowestUptime,
+		lowestMeanGoodRTT: vm.lowestUptime,
+	}
+
+	for (let key of Object.keys(valuesToUpdate)){
+		defaultRenderFn(key)
+	}
+
+	customElInstances.forEach((classedEl)=>{
+		if (typeof classedEl.updateRender === 'function'){
+			classedEl.updateRender(vm)
+		}
+	})
+}
+
+
+/* NETWORK */
+
+let fetchAndParse = (jsonUrl)=>{
+	return fetch(jsonUrl).then((res)=>{
+		return res.json()
+	}, (err)=>{
+		return Error(err) // TEMP this should be graceful
+	})
+}
+
+let onFetchedSession = session =>{
+	fetchTimer.end = new Date()
+	// console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
+
+	liveSession = new PingunoSession(session)
+	vm.liveSession = liveSession
+	vm.lowestUptime = liveSession.getLowestUptime()
+	vm.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
+	simpleJSONRender(session)
+}
+
 let registerDataPolls = ()=>{
 	// Fetch static/mock data for use in rendering
 	let onLiveSessionJSONPoll = ()=>{
 		fetchTimer.start = new Date()
-		fetchAndParse('/api/1/live-session').then(onFetchedSession).catch(err => {throw Error(err)})
+		let fetched = fetchAndParse('/api/1/live-session')
+		fetched.then(onFetchedSession, err => {
+			throw Error(err)
+		})
 	}
 	liveSessionJSONPollTick = setInterval(onLiveSessionJSONPoll, 2000)
 	onLiveSessionJSONPoll()
@@ -133,45 +143,10 @@ let registerDataPolls = ()=>{
 	// fetchAndRender('/api/1/mock-session')
 }
 
-let registerInputHandlers = ()=>{
-	for (let el of d.querySelectorAll('.js-toggle-live-pinging, .renderjson a')){
-		el.addEventListener('click', e => {
-			clearInterval(liveSessionJSONPollTick)
-		})
-	}	
-
-	d.addEventListener('keydown', e => {
-		if (e.which === 27){ // Esc
-			customElInstances.forEach(klass => {
-				cdb(klass)
-				// Elements which the user can "back out" of by eg. pressing <Esc>
-				if (typeof klass.onEscape === 'function') klass.onEscape()
-			})
-			e.preventDefault()
-		}
-	})
-}
-
-
-let renderVm = ()=>{
-	updateIndicators()
-	let els = d.querySelectorAll('.short-stat')
-	
-	if (vm.lowestUptime){
-		let el = [...els].filter(el => el.dataset.statType === 'lowestUptime')[0]
-		el.querySelector('.short-stat__value').innerHTML = vm.lowestUptime
-	}
-
-	if (vm.lowestMeanGoodRTT){
-		let el = [...els].filter(el => el.dataset.statType === 'lowestMeanGoodRTT')[0]
-		el.querySelector('.short-stat__value').innerHTML = vm.lowestMeanGoodRTT
-	}
-}
-
-
 /*
 	Kickoff
 */
+ci('Running entry.js')
 renderVmTick = setInterval(renderVm, 1000)
 renderVm()
 registerInputHandlers()

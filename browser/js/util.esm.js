@@ -1,3 +1,13 @@
+// Convenience shorthands
+let d = document
+let w = window
+let c = console.debug
+let cl = console.log
+let ci = console.info
+let cw = console.warn
+let ce = console.error
+
+// Collect the different values of the same property from different instances of an object into an array
 let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNameProp)=>{
 	let collection = []
 
@@ -14,5 +24,20 @@ let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNamePro
 	return collection
 }
 
+// Clean lodash methods off the global scope
+let cleanGlobalKeys = obj => {
+	for (let key of Object.keys(obj)){ 
+		if (typeof window[key] === 'function') delete window[key] 
+	} 
+}
 
-export { collectPropertyAcrossInstancesDeep }
+export { 
+	d,
+	c,
+	cl,
+	ci,
+	cw,
+	ce,
+	cleanGlobalKeys,
+	collectPropertyAcrossInstancesDeep 
+}

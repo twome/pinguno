@@ -17,7 +17,7 @@
 	Global...............Project-wide variables and settings.
  */
 @import "settings/settings.config";
-$inuit-global-font-size:   12px; // Because this is running in a menubar, space is at a premium
+// $inuit-global-font-size:   12px; // Because this is running in a menubar, space is at a premium
 @import "settings/settings.core";
 @import "settings/settings.global";
 
@@ -86,6 +86,8 @@ $inuit-global-font-size:   12px; // Because this is running in a menubar, space 
 @import "components/components.short-stat";
 @import "components/components.renderjson";
 @import "components/components.button";
+
+@import "components/components.misc";
 
 /* 
 	UTILITIES

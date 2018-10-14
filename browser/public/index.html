@@ -21,15 +21,15 @@
 		<div id="vue-app" class="app mac-menubar-sim">
 			
 			<header class="app__header">
-				<div class="short-stat" data-stat-type="lowestUptime">
+				<div class="c-short-stat" data-stat-type="lowestUptime">
 					Uptime: 
-					<span class="short-stat__value">
+					<span class="c-short-stat__value">
 						${42.0}
 					</span><div class="superscript">%</div>
 				</div>
-				<div class="short-stat" data-stat-type="lowestMeanGoodRTT">
+				<div class="c-short-stat" data-stat-type="lowestMeanGoodRTT">
 					Lowest mean good latency: 
-					<span class="short-stat__value">
+					<span class="c-short-stat__value">
 						${191.9}
 					</span><div class="superscript">ms</div>
 				</div>
@@ -83,7 +83,7 @@
 					<button class="c-more-options-btn__list-toggle">
 						&hellip;
 					</button>
-					<div class="c-more-options-btn__list hidden">
+					<div class="c-more-options-btn__list u-hidden">
 						<button class="js-open-log-human">Open human log in text editor</button>
 					</div>
 				</div>
@@ -94,7 +94,7 @@
 					<button class="c-more-options-btn__list-toggle">
 						&hellip;
 					</button>
-					<div class="c-more-options-btn__list hidden">
+					<div class="c-more-options-btn__list u-hidden">
 						<button v-for="button in exportButtons" v-bind:class="button.name">{{button.description}}</button>
 					</div>
 				</div>
