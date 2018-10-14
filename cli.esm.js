@@ -1,4 +1,4 @@
-// Built-in modules
+// side-effects: true
 
 // 3rd-party dependencies
 const { DateTime } = require('luxon')
@@ -7,6 +7,7 @@ const _ = {
 }
 
 // In-house modules
+import { handleExitGracefully } from './my-util.js'
 const { config } = require('./config.js')
 const { 
 	compressAllLogsToArchive, 
@@ -34,44 +35,29 @@ app.startPinging(
 	/*, app.pingEngineEnum.NodeNetPing*/
 )
 
-let connectionStatusTick = setInterval(()=>{
+setInterval(()=>{
 	app.updateGlobalConnectionStatus()
 	let stdoutTimeFormat = config.NODE_VERBOSE >= 2 ? 'yyyy-LL-dd HH:mm:ss.SSS' : 'yyyy-LL-dd HH:mm:ss'
 	console.log(DateTime.local().toFormat(stdoutTimeFormat) + ' Internet connected?: ' + app.updateGlobalConnectionStatus().humanName)
 }, app.opt.connectionStatusIntervalMs)
 
-let updateOutagesTick = setInterval(()=>{	
+setInterval(()=>{	
 	app.updateOutages()
 }, app.opt.updateOutagesIntervalMs)
 
-let writeToFileTick = setInterval(()=>{
-	Promise.resolve(saveSessionLogJSON(app)).then((val)=>{
-		// TEMP - dev only, testing reading of json logs with real live data
-		if (typeof val === 'string'){
-			let respondToRead = (newSessionFromRead)=>{
-				// console.debug(newSessionFromRead)
-			}
-
-			readJSONLogIntoSession(app.activeLogUri)
-				.then(respondToRead)
-				.catch((err)=>{
-					console.debug('readJSONLogIntoSession - error:', err)
-				})
-		}
-	}, (err)=>{
-		console.error(err)
-	})
+setInterval(()=>{
+	saveSessionLogJSON(app)
 }, app.opt.writeToFileIntervalMs)
 
-let exportSessionToTextSummaryTick = setInterval(()=>{
+setInterval(()=>{
 	saveSessionLogHuman(app)
 }, app.opt.exportSessionToTextSummaryIntervalMs)
 
-let updateSessionEndTimeTick = setInterval(()=>{
+setInterval(()=>{
 	app.updateSessionEndTime()
 }, app.opt.updateSessionEndTimeIntervalMs)
 
-let statsTick = setInterval(()=>{
+setInterval(()=>{
 	app.updateSessionStats()
 	console.info(app.sessionStats)
 }, app.opt.updateSessionStatsIntervalMs)
@@ -85,25 +71,6 @@ app.getArchiveSizeMiB((sizeMiB)=>{
 	}	
 })
 
-let handlePOSIXSignal = (signalStr)=>{
-	let ensureExit = ()=>{
-		setTimeout(()=>{
-			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
-		}, 1000)
-	}
-
-	if (signalStr === 'SIGINT'){
-		console.info('[server] Received SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
-		app.cleanExit()
-		ensureExit()
-	}
-
-	// Regardless of specific signal, ensure we exit
-	ensureExit()
-}
-process.on('SIGINT', handlePOSIXSignal)
-
-process.on('exit', (code)=>{
-	// Everything returned asynchronously will be ignored before the program exits
-	console.info(`cli.js - About to exit with code: ${code}`)
+handleExitGracefully(undefined, ()=>{
+	app.cleanExit()
 })

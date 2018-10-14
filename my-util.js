@@ -140,5 +140,26 @@ let defaultAndValidateArgs = (options, defaultOptions, validateFns)=>{
 	return Object.assign(defaultOptions, options)
 }
 
+let handleExitGracefully = (
+	moduleName = __filename.match(/(.*)[\.esm]?\.js/)[0],
+	cleanupFn
+)=>{
+	let ensureExit = (waitMs = 1000)=>{
+		setTimeout(()=>{
+			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
+		}, waitMs)
+	}
+	process.on('SIGINT', ()=>{
+		console.info(`[${moduleName}] Received SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.`)
+		cleanupFn() // This is in a race condition vs ensureExit()
+		ensureExit()
+	})
+	process.on('exit', (code)=>{
+		// Everything returned asynchronously will be ignored before the program exits
+		console.info(`[${moduleName}] About to exit with code: ${code}`)
+	})
+}
+
 exports.MyUtil = MyUtil
 exports.defaultAndValidateArgs = defaultAndValidateArgs
+exports.handleExitGracefully = handleExitGracefully

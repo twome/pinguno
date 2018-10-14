@@ -16,7 +16,7 @@ const chokidar = require('chokidar')
 const { config } = require('./config.js')
 const { Enum } = require('./enum.js')
 const { Pinguno } = require('./pinguno.js')
-const { df: defaultAndValidateArgs } = require('./my-util.js')
+const { df: defaultAndValidateArgs, handleExitGracefully } = require('./my-util.js')
 const { getLocalIP } = require('./my-util-network.js')
 const { clientCodeLastModifiedStatusRoute, fileWatcherStart } = require('./live-reload-custom-server.js')
 
@@ -31,7 +31,7 @@ let clientModes = new Enum(['browser', 'electron'])
 
 class Server {
 	// Accept one argument (an options object) and destructure specified properties (which we name in the default parameter) from that argument into the properties
-	// Any argument properties that don't use the name we expect are ignored, and any undefiend expected properties are defaulted
+	// Any argument properties that don't use the name we expect are ignored, and any undefined expected properties are defaulted
 	constructor({...options} = {
 		clientModes: clientModes,
 		clientMode: clientModes.browser,
@@ -164,27 +164,8 @@ if (inDev){
 	fileWatcherStart(date => app.clientCodeLastModified = date)
 }
 
-let handlePOSIXSignal = (signalStr)=>{
-	let ensureExit = ()=>{
-		setTimeout(()=>{
-			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
-		}, 1000)
-	}
-
-	if (signalStr === 'SIGINT'){
-		console.info('[server] Received SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
-		app.cleanExit()
-		ensureExit()
-	}
-
-	// Regardless of specific signal, ensure we exit
-	ensureExit()
-}
-process.on('SIGINT', handlePOSIXSignal)
-
-process.on('exit', (code)=>{
-	// Everything returned asynchronously will be ignored before the program exits
-	console.info(`[server] About to exit with code: ${code}`)
+handleExitGracefully(undefined, ()=>{
+	app.cleanExit()
 })
 
 exports = { Server, clientModes }

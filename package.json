@@ -30,6 +30,7 @@
     "yarn": "^1.9.4"
   },
   "main": "pinguno.js",
+  "module": "pinguno.js",
   "bin": {
     "pinguno": "./cli.js"
   },
