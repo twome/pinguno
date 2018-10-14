@@ -1,6 +1,6 @@
 ## Code of Conduct
 
-NB: This is a modified fork of the Contributor Covenant Code of Conduct (see bottom).
+This is a modified fork of the Contributor Covenant Code of Conduct (see bottom).
 
 ## Our Pledge
 
@@ -27,13 +27,13 @@ Examples of unacceptable behavior by participants include:
 * The use of unwelcome sexualized language or imagery and unwelcome sexual attention or
   advances
 * Trolling (taken in its original meaning to mean "deliberately disguising irony as 
-  sincerity to provoke intense responses"), undeserving or non-constructive 
-  insulting/derogatory comments, and non-constructive personal or political attacks 
-* Unfair public or private harassment
+  sincerity to provoke intense responses"), unreasonable or non-constructive 
+  insulting/derogatory comments, and unreasonable personal or political attacks 
+* Unreasonable public or private harassment
 * Publishing others' private information, such as a physical or electronic
-  address, without explicit permission, in situations where that illegal or unethical
-* Promoting bigotry, rape culture, fascism, or any other conduct which could reasonably 
-  be considered inappropriate by good people
+  address, without explicit permission, in situations where that is unethical
+* Promoting bigotry, rape culture, exploitation, fascism, or any other conduct which could 
+  reasonably be considered unacceptable by good people
 
 ## Our Responsibilities
 
@@ -58,7 +58,7 @@ further defined and clarified by project maintainers.
 
 ## Enforcement
 
-Contributors must recognise that objectivity & political neutrality cannot exist
+Contributors must recognise that objectivity & political neutrality do not exist
 in any social context, and accept that appeals to those concepts will be ignored.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be

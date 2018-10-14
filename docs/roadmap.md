@@ -1,7 +1,7 @@
 # To do / roadmap:
 
 1. auto-run on boot
-1. run for extreme long term; need to save off sessions and start new ones automatically 
+1. stream sessions to file 
 1. run headless (prefpane? service? process?)
 
 ## GUI
