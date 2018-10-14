@@ -2,7 +2,7 @@
 const { _ } = require('lodash')
 
 // In-house
-const { Outage, TargetOutage } = require('./ping-formats.js')
+import { Outage, TargetOutage } from './ping-formats.js'
 
 
 let isBadResponse = (ping, latencyAccuracyMargin)=>{
@@ -112,6 +112,8 @@ let fullOutagesAcrossTargets = (targets, timeframeLeniencyMs)=>{
 	return { fullOutages, targets } 
 }
 
-exports.fullOutagesAcrossTargets = fullOutagesAcrossTargets
-exports.isBadResponse = isBadResponse
-exports.isRoughlyWithinTimeframe = isRoughlyWithinTimeframe
+export {  
+	fullOutagesAcrossTargets,
+	isBadResponse,
+	isRoughlyWithinTimeframe
+}

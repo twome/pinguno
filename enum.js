@@ -22,4 +22,4 @@ class Enum {
 	}
 }
 
-exports.Enum = Enum
+export { Enum }

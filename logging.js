@@ -11,10 +11,10 @@ const del = require('del')
 const prompts = require('prompts')
 
 // In-house modules
-const { Pinguno } = require('./pinguno.js')
+import { Pinguno } from './pinguno.js'
 const { config } = require('./config.js')
-const { MyUtil } = require('./my-util.js')
-const { PingsLog, RequestError } = require('./ping-formats.js')
+import { MyUtil } from './my-util.js'
+import { PingsLog, RequestError } from './ping-formats.js'
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
 const fsReadFilePromise = util.promisify(fs.readFile)
@@ -511,7 +511,7 @@ let deleteAllLogs = (logsDir, summariesDir)=>{
 	})
 }
 
-module.exports = {
+export {
 	compressAllLogsToArchive,
 	compressLogToArchive,
 	saveSessionLogHuman,

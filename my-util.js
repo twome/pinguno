@@ -1,3 +1,7 @@
+// Built-in
+const path = require('path')
+
+// 3rd-party
 const { DateTime } = require('luxon')
 
 class MyUtil {
@@ -141,7 +145,7 @@ let defaultAndValidateArgs = (options, defaultOptions, validateFns)=>{
 }
 
 let handleExitGracefully = (
-	moduleName = __filename.match(/(.*)[\.esm]?\.js/)[0],
+	moduleName = path.parse(process.mainModule.filename.match(/(.*)[\.esm]?\.js/)[1]).name,
 	cleanupFn
 )=>{
 	let ensureExit = (waitMs = 1000)=>{
@@ -160,6 +164,8 @@ let handleExitGracefully = (
 	})
 }
 
-exports.MyUtil = MyUtil
-exports.defaultAndValidateArgs = defaultAndValidateArgs
-exports.handleExitGracefully = handleExitGracefully
+export {
+	MyUtil,
+	defaultAndValidateArgs,
+	handleExitGracefully
+} 

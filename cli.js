@@ -8,14 +8,14 @@ const _ = {
 
 // In-house modules
 import { handleExitGracefully } from './my-util.js'
-const { config } = require('./config.js')
-const { 
+import { config } from './config.js'
+import { 
 	compressAllLogsToArchive, 
 	saveSessionLogHuman,
 	saveSessionLogJSON,
 	readJSONLogIntoSession
-} = require('./logging.js')
-const { Pinguno } = require('./pinguno.js')
+} from './logging.js'
+import { Pinguno } from './pinguno.js'
 
 if (config.NODE_VERBOSE >= 2){
 	console.info('  -----\nStarting Pinguno\n  -----') // verbose 2

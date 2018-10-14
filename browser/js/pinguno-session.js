@@ -1,4 +1,4 @@
-import { collectPropertyAcrossInstancesDeep } from './util.esm.js'
+import { collectPropertyAcrossInstancesDeep } from './util.js'
 
 class PingunoSession {
 	constructor(dataObj){

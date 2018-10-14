@@ -13,12 +13,12 @@ const bodyParser = require('body-parser')
 const chokidar = require('chokidar')
 
 // In-house modules
-const { config } = require('./config.js')
-const { Enum } = require('./enum.js')
-const { Pinguno } = require('./pinguno.js')
-const { df: defaultAndValidateArgs, handleExitGracefully } = require('./my-util.js')
-const { getLocalIP } = require('./my-util-network.js')
-const { clientCodeLastModifiedStatusRoute, fileWatcherStart } = require('./live-reload-custom-server.js')
+import { config } from './config.js'
+import { Enum } from './enum.js'
+import { Pinguno } from './pinguno.js'
+import { defaultAndValidateArgs as df, handleExitGracefully } from './my-util.js'
+import { getLocalIP } from './my-util-network.js'
+import { clientCodeLastModifiedStatusRoute, fileWatcherStart } from './live-reload-custom-server.js'
 
 const fsReadFilePromise = util.promisify(fs.readFile)
 

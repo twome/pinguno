@@ -1,6 +1,6 @@
-import { d, w, c, ce, ci } from './util.esm.js'
-import { MoreOptionsBtn } from './components/more-options-btn.esm.js'
-import { Indicator } from './components/indicator.esm.js'
+import { d, w, c, ce, ci } from './util.js'
+import { MoreOptionsBtn } from './components/more-options-btn.js'
+import { Indicator } from './components/indicator.js'
 
 let customEls = [
 	MoreOptionsBtn,

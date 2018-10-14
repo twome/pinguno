@@ -1,5 +1,5 @@
 // In-house modules
-const { Enum } = require('./enum.js')
+import { Enum } from './enum.js'
 
 class PingData {
 	constructor(data){
@@ -183,8 +183,10 @@ class PingsLog {
 	}
 }
 
-exports.RequestError = RequestError
-exports.PingData = PingData
-exports.Outage = Outage
-exports.TargetOutage = TargetOutage
-exports.PingsLog = PingsLog
+export {
+	RequestError,
+	PingData,
+	Outage,
+	TargetOutage,
+	PingsLog
+}

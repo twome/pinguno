@@ -6,8 +6,8 @@ const netPing = require('net-ping')
 const Address4 = require('ip-address').Address4
 
 // In-house modules
-const { config } = require('./config.js')
-const { PingData, RequestError } = require('./ping-formats.js')
+import { config } from './config.js'
+import { PingData, RequestError } from './ping-formats.js'
 
 
 class EngineNative {
@@ -274,5 +274,7 @@ class EngineNetPing {
 	}
 }
 
-exports.EngineNative = EngineNative
-exports.EngineNetPing = EngineNetPing
+export {
+	EngineNative,
+	EngineNetPing
+}

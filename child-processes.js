@@ -1,4 +1,4 @@
-const { config } = require('./config.js')
+import { config } from './config.js'
 
 class ProcessRoster {
 	constructor(){
@@ -60,16 +60,14 @@ class ProcessRoster {
 		return new Promise((resolve, reject)=>{
 			let checkIfAllGone = ()=>{
 				if (Object.keys(this.processes).length === 0){
-					console.info(`[ProcessRoster:killAll] All child process are now dead`)
-					console.info(this.processes)
-					resolve('OK')
+					resolve()
 				}
 			}
 
-			if (config.NODE_VERBOSE >= 2) console.info('Attempting to kill all processes...', )
 			for (let existingProcessKey of Object.keys(this.processes)){
 				if (!this.processes.hasOwnProperty(existingProcessKey)) continue
 				let existingProcess = this.processes[existingProcessKey]
+				console.info(`[ProcessRoster:killAll] Killing ${existingProcessKey}...`)	
 				existingProcess.kill('SIGINT')
 				existingProcess.on('exit', checkIfAllGone)
 			}
@@ -82,6 +80,6 @@ class ProcessRoster {
 	}
 }
 
-module.exports = {
+export {
 	ProcessRoster
 }

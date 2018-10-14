@@ -37,4 +37,4 @@ let getLocalIP =()=>{
 	return finalAddresses
 }
 
-module.exports = { getLocalIP }
+export { getLocalIP }

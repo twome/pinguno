@@ -8,15 +8,15 @@ const { _ } = require('lodash')
 const getFolderSize = require('get-folder-size')
 
 // In-house modules
-const { config } = require('./config.js')
-const { fullOutagesAcrossTargets, isBadResponse } = require('./outages.js')
-const { Enum } = require('./enum.js')
-const { EngineNative, EngineNetPing } = require('./ping-engines.js')
-const { Stats } = require('./stats.js')
-const { ProcessRoster } = require('./child-processes.js')
+import { config } from './config.js'
+import { fullOutagesAcrossTargets, isBadResponse } from './outages.js'
+import { Enum } from './enum.js'
+import { EngineNative, EngineNetPing } from './ping-engines.js'
+import { Stats } from './stats.js'
+import { ProcessRoster } from './child-processes.js'
 
 // Extensions of this module's main class
-const { attachExtensions } = require('./pinguno-ext-fs.js')
+import { attachExtensions } from './pinguno-ext-fs.js'
 
 // Convenience / shorthands
 let inDev = process.env.NODE_ENV === 'development'
@@ -411,4 +411,4 @@ class Pinguno {
  
 attachExtensions(Pinguno) // Attach class def extensions from pinguno-ext-fs.js to Pinguno 
 
-module.exports = { Pinguno, connectionState }
+export { Pinguno, connectionState }

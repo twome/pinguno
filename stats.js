@@ -6,7 +6,7 @@ const { _ } = require('lodash')
 const simpleStatistics = require('simple-statistics')
 
 // In-house modules
-const { isBadResponse } = require('./outages.js')
+import { isBadResponse } from './outages.js'
 
 // TODO: better way of managing user configs for stats
 let statsConfig = {		
@@ -79,4 +79,4 @@ class Stats {
 	}
 }
 
-exports.Stats = Stats
+export { Stats }

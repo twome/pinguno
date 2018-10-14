@@ -33,4 +33,4 @@ let attachExtensions = (Pinguno)=>{
 	}
 }
 
-exports.attachExtensions = attachExtensions
+export { attachExtensions } 

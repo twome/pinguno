@@ -4,6 +4,7 @@ const util = require('util')
 const child_process = require('child_process')
 
 // 3rd-party
+require = require('esm')(module) /* eslint-disable-line no-global-assign */
 const del = require('del')
 
 // Gulp & plugins
@@ -21,8 +22,8 @@ const gRestart = require('gulp-restart')
 const gTemplate = require('gulp-template')
 
 // In-house
-const { config } = require('./config')
-const { ProcessRoster } = require('./child-processes')
+const { config } = require('./config.js')
+const { ProcessRoster } = require('./child-processes.js')
 
 let processRoster = new ProcessRoster()
 
@@ -161,7 +162,7 @@ let webpackTask = ()=>{
 let serverTask = () => new Promise ((resolve, reject)=>{
 	// TEMP disabled for testing
 	processRoster.ensureOneProcess(()=>{
-		return child_process.spawn('node', ['server'])
+		return child_process.spawn('node', ['server-esm-adapter'])
 	}, 'server', resolve, reject)
 	resolve('ok')
 })

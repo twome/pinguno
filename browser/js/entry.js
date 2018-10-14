@@ -4,9 +4,9 @@ import Vue from '../node_modules/vue/dist/vue.esm.js'
 import renderjson from '../node_modules/renderjson/renderjson.js'
 
 // In-house
-import { d, w, c, ce, ci } from './util.esm.js'
-import { PingunoSession } from './pinguno-session.esm.js'
-import { customEls, registerDOMNodesToCustomEls } from './custom-el-reg.esm.js' // Side-effects
+import { d, w, c, ce, ci } from './util.js'
+import { PingunoSession } from './pinguno-session.js'
+import { customEls, registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects
 
 let customElInstances = registerDOMNodesToCustomEls(customEls)
 

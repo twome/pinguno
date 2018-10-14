@@ -60,7 +60,7 @@ let liveReloadServerStart = (port, activeLocalIP)=>{
 	})
 }
 
-module.exports = { 
+export { 
 	clientCodeLastModifiedStatusRoute,
 	portClueRoute,
 	defaultLiveReloadPort,

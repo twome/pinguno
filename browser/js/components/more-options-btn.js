@@ -1,4 +1,4 @@
-import { config } from '../config.esm.js'
+import { config } from '../config.js'
 
 class MoreOptionsBtn {
 	constructor(el){
