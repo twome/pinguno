@@ -13,6 +13,7 @@ const { fullOutagesAcrossTargets, isBadResponse } = require('./outages.js')
 const { Enum } = require('./enum.js')
 const { EngineNative, EngineNetPing } = require('./ping-engines.js')
 const { Stats } = require('./stats.js')
+const { ProcessRoster } = require('./child-processes.js')
 
 // Extensions of this module's main class
 const { attachExtensions } = require('./pinguno-ext-fs.js')
@@ -163,10 +164,13 @@ class Pinguno {
 		} else {
 			this.pingEngine = this.pingEngineEnum.NodeNetPing
 		}
+
+		// Keep track of child processes (such as ping) we spawn
+		this.processRoster = new ProcessRoster()
 	}
 
 	tellStatus(){
-		if (this.runningInPkgExecutable && config.nodeVerbose >= 2){
+		if (this.runningInPkgExecutable && config.NODE_VERBOSE >= 2){
 			console.info('Pinguno is running from within a pkg-built executable.')
 		}
 		console.info(
@@ -392,8 +396,16 @@ class Pinguno {
 		})
 
 		for ( let pingTarget of pingTargets ){				
-			registerEngineFn(this, pingTarget)
+			let returnedEngine = registerEngineFn(this, pingTarget)
+			console.debug('Registered engine:', returnedEngine.pid)
+			if (returnedEngine.pid) this.processRoster.processes['ping' + pingTarget.humanName] // Is a node_spawn child process
 		}
+	}
+
+	cleanExit(){
+		return this.processRoster.killAll().then(()=>{
+			return process.exit()
+		})
 	}
 }
  

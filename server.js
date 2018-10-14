@@ -18,7 +18,7 @@ const { Enum } = require('./enum.js')
 const { Pinguno } = require('./pinguno.js')
 const { df: defaultAndValidateArgs } = require('./my-util.js')
 const { getLocalIP } = require('./my-util-network.js')
-const { clientCodeLastModifiedStatusRoute } = require('./live-reload-custom-server.esm.js')
+const { clientCodeLastModifiedStatusRoute, fileWatcherStart } = require('./live-reload-custom-server.js')
 
 const fsReadFilePromise = util.promisify(fs.readFile)
 
@@ -80,7 +80,7 @@ class Server {
 			let respond = ()=>{
 				let stateBefore = new Date()
 				this.pinger.updateEntireState()
-				if (config.nodeVerbose >= 2) console.info(`State update took ${new Date() - stateBefore}ms`)
+				if (config.NODE_VERBOSE >= 2) console.info(`State update took ${new Date() - stateBefore}ms`)
 				res.send(JSON.stringify(this.pinger))	
 			}
 			setTimeout(respond, 1)
@@ -130,7 +130,7 @@ class Server {
 		let connectionStatusTick = setInterval(()=>{
 			pinger.updateGlobalConnectionStatus()
 			let stdoutConnectionMessage = DateTime.local().toFormat('yyyy-LL-dd HH:mm:ss.SSS') + ' Internet connected?: ' + pinger.updateGlobalConnectionStatus().humanName
-			if (config.nodeVerbose >= 2) console.info(stdoutConnectionMessage)
+			if (config.NODE_VERBOSE >= 2) console.info(stdoutConnectionMessage)
 		}, pinger.opt.connectionStatusIntervalMs)
 
 		let updateOutagesTick = setInterval(()=>{	
@@ -148,35 +148,43 @@ class Server {
 		this.pingerRunning = true
 		return pinger
 	}
+
+	cleanExit(){
+		return this.pinger.cleanExit().then(()=>{
+			process.exit()
+		})
+	}
 }
 
 let app = new Server()
 app.startServer()
 
 // TEMP DEV only
-let fileWatcherStart = (clientCodeLastModified)=>{
-	// Watch browser client code for changes, upon which we can send a notification to the client so it can restart
-	let fileWatcher = chokidar.watch([
-		'browser/public/**/*.{js,json,html,css,scss,png,gif,jpg,jpeg}'
-	],{
-		ignored: /(^|[\/\\])\../, // Ignore .dotfiles
-		persistent: true
-	})
-	
-	let onBrowserFileModified = path => {
-		console.info('Browser client will refresh due to change in: ' + path)
-		clientCodeLastModified = new Date()
+if (inDev){ 
+	fileWatcherStart(date => app.clientCodeLastModified = date)
+}
+
+let handlePOSIXSignal = (signalStr)=>{
+	let ensureExit = ()=>{
+		setTimeout(()=>{
+			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
+		}, 1000)
 	}
 
-	// Don't print to console for new added files or we get a surge of them on app launch
-	fileWatcher.on('add', ()=>{ clientCodeLastModified = new Date() }) 
-		.on('change', onBrowserFileModified)
-		.on('unlink', onBrowserFileModified)	
+	if (signalStr === 'SIGINT'){
+		console.info('[server] Received SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
+		app.cleanExit()
+		ensureExit()
+	}
 
-	return clientCodeLastModified
+	// Regardless of specific signal, ensure we exit
+	ensureExit()
 }
-if (inDev){ 
-	app.clientCodeLastModified = fileWatcherStart(app.clientCodeLastModified)
-}
+process.on('SIGINT', handlePOSIXSignal)
+
+process.on('exit', (code)=>{
+	// Everything returned asynchronously will be ignored before the program exits
+	console.info(`[server] About to exit with code: ${code}`)
+})
 
 exports = { Server, clientModes }

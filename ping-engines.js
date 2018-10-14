@@ -68,7 +68,7 @@ class EngineNative {
 
 		pingProcess.stderr.on('data', (data)=>{
 			let dataStr = data.toString()
-			if ( config.nodeVerbose >= 3){
+			if ( config.NODE_VERBOSE >= 3){
 				console.error('inbuilt ping returned error through stderr: ', dataStr)
 			} 
 
@@ -93,7 +93,7 @@ class EngineNative {
 			console.info(`Child process (ping) exited with code ${code}`)
 		})
 
-		return true
+		return pingProcess
 	}
 
 	// FRAGILE: Depends on particular structure of text output from macOS 10.12.6 Sierra's inbuilt `ping` binary
@@ -182,7 +182,7 @@ class EngineNetPing {
 
 		let targetPingingTick = setInterval(npPingChosenTarget, instance.opt.pingIntervalMs)
 
-		return true
+		return npSession
 	}
 
 	static processNetPingResponse(err, target, sent, rcvd, req, res, unpairedRequests, pingTarget){

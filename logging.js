@@ -197,7 +197,7 @@ let overwriteExistingSessionLog = (instance)=>{
 	if (!instance.sessionDirty){
 		// Nothing's changed, so don't bother writing. Consumer will need to test for non-Promise return value
 		// noop - just update timestamp and re-save same data (we already do this anyway)
-		if ( config.nodeVerbose >= 2 ){
+		if ( config.NODE_VERBOSE >= 2 ){
 			console.info('No new pings found to update existing session\'s log with.')
 		}
 		return Error('No new data to write')
@@ -393,7 +393,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 			let usesOurStandardName = !! path.basename(uri, '.json').match(path.normalize(logStandardFilename))
 			let isJSONFile = path.extname(uri) === '.json'
 			if ( usesOurStandardName || ( compressAnyJsonLogs && isJSONFile ) ){
-				if (config.nodeVerbose >= 1){ console.info('Compressing file: ' + uri) }
+				if (config.NODE_VERBOSE >= 1){ console.info('Compressing file: ' + uri) }
 				allURIsToCompress.push(uri)
 			} 
 		}
@@ -421,7 +421,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 			if (err){
 				throw Error(err)
 			} else if (compressed){
-				if (config.nodeVerbose >= 2){console.debug('Compressed all logs to string:', compressed)}
+				if (config.NODE_VERBOSE >= 2){console.debug('Compressed all logs to string:', compressed)}
 				let finalFullPath = path.join(archiveDir, finalFilename)
 
 				let onMakeDirectory = (err)=>{

@@ -17,16 +17,17 @@ const gESLint = require('gulp-eslint')
 const gDebug = require('gulp-debug')
 const gWebpack = require('webpack-stream')
 const gNamed = require('vinyl-named')
+const gRestart = require('gulp-restart')
 
 // In-house
-const {
-	ensureOneProcess,
-	handleChildProcess,
-	existingChildProcesses
-} = require('./child-processes.esm.js')
+const { config } = require('./config')
+const { ProcessRoster } = require('./child-processes')
+
+let processRoster = new ProcessRoster()
 
 // Convenience assignmenmts
 let inDev = process.env.NODE_ENV === 'development'
+
 let p = path.join
 let paths = {
 	scss: {
@@ -46,16 +47,20 @@ let paths = {
 	}
 }
 
-let lintBackendProdTask = () => gulp.src([
-	'./*.js',
-	'!browser/**/*',
-	'!ignored/**/*'
-])
-	.pipe(gESLint({
+let gulpConfigDependencies = [
+	p(__dirname, `gulpfile.js`),
+	p(__dirname, `child-processes.js`),
+	p(__dirname, 'config.js'),
+	p(__dirname, '.env'),
+	p(__dirname, 'package.json')
+]
+
+let ignorePaths = pathArr => pathArr.map(val => '!' + val)
+
+let lintBackendProdTask = ()=>{
+	let esLintConfig = {
 		rules: {
-			"no-console": 0,
-			// "no-unused-vars": 0,
-			// "no-useless-escape": 0
+			'no-console': 0
 		},
 		globals: [
 			'jQuery',
@@ -70,9 +75,19 @@ let lintBackendProdTask = () => gulp.src([
 			sourceType: 'module',
 			ecmaVersion: 2018
 		}
-	}))
-	.pipe(gESLint.format())
-	.pipe(gESLint.failAfterError())
+	}
+	if (inDev){ 
+		esLintConfig.rules['no-unused-vars'] = 0
+	}
+	return gulp.src([
+		'./*.js',
+		'!browser/**/*',
+		'!ignored/**/*'
+	])
+		.pipe(gESLint(esLintConfig))
+		.pipe(gESLint.format())
+		.pipe(gESLint.failAfterError())
+}
 
 let lintBrowserTask = () => gulp.src(p(paths.js.src, '**/*.js'))
 	.pipe(gESLint({
@@ -94,47 +109,64 @@ let lintBrowserTask = () => gulp.src(p(paths.js.src, '**/*.js'))
 	.pipe(gESLint.format())
 	.pipe(gESLint.failAfterError())
 
-let sassTask = () => gulp.src(p(paths.scss.src, '**/*.scss'))
-	.pipe(gSourcemaps.init())
-	.pipe(gSass({
-		// outputStyle: 'compressed'
+let sassTask = () => {
+	let stream = gulp.src(p(paths.scss.src, '**/*.scss'))
+	if (config.CSS_SOURCEMAPS) stream = stream.pipe(gSourcemaps.init())
+	stream = stream.pipe(gSass({
+		outputStyle: inDev ? 'nested' : 'compressed',
+		sourceComments: inDev ? true : false
 	}).on('error', gSass.logError))
-	.pipe(gSourcemaps.write('./sourcemaps')) // Path relative to dest() path
-	.pipe(gulp.dest(paths.scss.dest))
+	if (config.CSS_SOURCEMAPS) stream = stream.pipe(gSourcemaps.write('./sourcemaps')) // Path relative to dest() path
+	return stream.pipe(gulp.dest(paths.scss.dest))
+}
 
-let webpackTask = () => gulp.src(p(paths.js.src, 'entry.js'))
-	.pipe(gNamed())
-	.pipe(gWebpack({
+let webpackTask = ()=>{
+	let webpackConfig = {
 		entry: {
-			'live-reload-custom': p(paths.js.src, 'live-reload-custom.esm.js'),
 			'main': p(paths.js.src, 'entry.js')
 		},
 		output: {
 			filename: '[name].bundle.js'
 		},
-		devtool: inDev ? false : 'source-map',
-		// devtool: false,
+		devtool: 'source-map',
 		optimization: {
-			minimize: inDev ? false : undefined // Defaults to minimising
+			minimize: undefined // Defaults to minimising
 		},
-		mode: inDev ? 'development' : 'production'
-	})).on('error', (err)=>{
-      console.error('[gWebpack stream error]...')
-      console.error(err)
-    }) // Returns the same stream
-	.pipe(gulp.dest(paths.js.dest))
+		mode: 'production'
+	}
+	if (inDev){
+		webpackConfig.entry['live-reload-custom'] = p(paths.js.src, 'live-reload-custom.esm.js')
+		webpackConfig.devtool = false
+		webpackConfig.optimization.minimize = false
+		webpackConfig.mode = 'development'
+	}
+
+	// Not sure what specifying entry.js does here vs in webpack's `entry` config
+	let stream = gulp.src(p(paths.js.src, 'entry.js')) 
+		.pipe(gNamed())
+		.pipe(gWebpack(webpackConfig))
+		.on('error', (err)=>{
+			console.error('[gWebpack stream error]...')
+			console.error(err)
+		}) // Returns the same stream
+		.pipe(gulp.dest(paths.js.dest))
+	return stream
+}
 
 let serverTask = () => new Promise ((resolve, reject)=>{
-	ensureOneProcess(()=>{
+	// TEMP disabled for testing
+	processRoster.ensureOneProcess(()=>{
 		return child_process.spawn('node', ['server'])
 	}, 'server', resolve, reject)
+	resolve('ok')
 })
 
 let pkgTask = () => new Promise((resolve, reject)=>{
 	// DANGER: Variable value fed to command line
 	let buildPath = path.normalize(paths.pkg.prod) // Just another check to try ensure this is indeed a path
+	if (!buildPath){ throw Error('[gulp:pkg] Invalid build path: ' + buildPath)}
 	let child = child_process.spawn(`pkg`, [`.`, `--out-path`, buildPath, `--debug`])
-	handleChildProcess(child, 'pkg', resolve, reject)
+	processRoster.handleChildProcess(child, 'pkg', resolve, reject)
 })
 
 let sassWatch = ()=>{
@@ -170,9 +202,9 @@ let jsWatch = ()=>{
 	return watcher
 }
 
-
 let serverWatch = () => gulp.watch([
-	p(__dirname, `/*.js`)
+	p(__dirname, `/*.js`),
+	...ignorePaths(gulpConfigDependencies)
 ], serverTask)
 
 // CAUTION: This deletes the containing folders, not just the contents.
@@ -219,7 +251,6 @@ let buildTask = gulp.series(
 	exportBrowserToDistTask
 )
 
-
 // Export atomised tasks in case we want to run them for specialised reasons
 module.exports['sass'] = sassTask
 module.exports['pkg'] = pkgTask 
@@ -240,9 +271,33 @@ module.exports['build'] = buildTask
 
 // Run 'dev' if we call `gulp` in the CLI with no arguments.
 module.exports['default'] = devTask
+ 
+// Automatically end gulp if any of its dependencies change
+gulp.watch(gulpConfigDependencies, ()=>{
+	console.error(`[gulp] One of the configuration files Gulp depends on has changed, ending gulp.`)
+	return processRoster.killAll().then(()=>{
+		console.info('Self-killing gulp process...')
+		process.exit()
+	},(err)=>{
+		throw Error(err)
+	})
+})
 
-/*
-	Dependency tasks run async & simultaneous by default.
-	Note: Are your tasks running before the dependencies are complete?
-	Make sure your dependency tasks are correctly using the async run hints: take in a callback or return a promise or event stream.
-*/
+process.on('SIGINT', (signal)=>{
+	let ensureExit = ()=>{
+		setTimeout(()=>{
+			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
+		}, 1000)
+	}
+
+	if (signal === 'SIGINT'){
+		console.info('[gulp] Received SIGINT; program is now exiting')
+		ProcessRoster.killAll().then(()=>{
+			process.exit()
+		})
+		ensureExit()
+	}
+
+	// Regardless of specific signal, ensure we exit
+	ensureExit()
+})

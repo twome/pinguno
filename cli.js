@@ -16,7 +16,7 @@ const {
 } = require('./logging.js')
 const { Pinguno } = require('./pinguno.js')
 
-if (config.nodeVerbose >= 2){
+if (config.NODE_VERBOSE >= 2){
 	console.info('  -----\nStarting Pinguno\n  -----') // verbose 2
 	console.info(`Process PID: ${process.pid}`) // verbose 2
 	console.info(`process.cwd: ${process.cwd()}`) // verbose 2
@@ -25,7 +25,7 @@ if (config.nodeVerbose >= 2){
 
 let app = new Pinguno()
 
-if (config.nodeVerbose >= 2){
+if (config.NODE_VERBOSE >= 2){
 	app.tellStatus()
 }
 
@@ -36,7 +36,7 @@ app.startPinging(
 
 let connectionStatusTick = setInterval(()=>{
 	app.updateGlobalConnectionStatus()
-	let stdoutTimeFormat = config.nodeVerbose >= 2 ? 'yyyy-LL-dd HH:mm:ss.SSS' : 'yyyy-LL-dd HH:mm:ss'
+	let stdoutTimeFormat = config.NODE_VERBOSE >= 2 ? 'yyyy-LL-dd HH:mm:ss.SSS' : 'yyyy-LL-dd HH:mm:ss'
 	console.log(DateTime.local().toFormat(stdoutTimeFormat) + ' Internet connected?: ' + app.updateGlobalConnectionStatus().humanName)
 }, app.opt.connectionStatusIntervalMs)
 
@@ -46,7 +46,7 @@ let updateOutagesTick = setInterval(()=>{
 
 let writeToFileTick = setInterval(()=>{
 	Promise.resolve(saveSessionLogJSON(app)).then((val)=>{
-		// TEMP
+		// TEMP - dev only, testing reading of json logs with real live data
 		if (typeof val === 'string'){
 			let respondToRead = (newSessionFromRead)=>{
 				// console.debug(newSessionFromRead)
@@ -62,8 +62,6 @@ let writeToFileTick = setInterval(()=>{
 		console.error(err)
 	})
 }, app.opt.writeToFileIntervalMs)
-
-// let mockSession = readJSONLogIntoSession('./dev-materials/test-data_frequent-disconnects.json')
 
 let exportSessionToTextSummaryTick = setInterval(()=>{
 	saveSessionLogHuman(app)
@@ -87,23 +85,22 @@ app.getArchiveSizeMiB((sizeMiB)=>{
 	}	
 })
 
-// TEMP: USING PRE-COOKED DATA
-// let updateOutagesTick = setInterval(()=>{
-// 	app.readCombinedListFromFile('./logs/test-data_frequent-disconnects.json', (fileData)=>{
-// 		app.updateOutages(fileData.combinedPingList, fileData.targetList)
-// 	})
-// }, 2 * 1000)
-
 let handlePOSIXSignal = (signalStr)=>{
+	let ensureExit = ()=>{
+		setTimeout(()=>{
+			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
+		}, 1000)
+	}
+
 	if (signalStr === 'SIGINT'){
-		console.info('\nReceived SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
-		process.exit()
+		console.info('[server] Received SIGINT; program is now exiting. If it takes too long, press Control-\\ to force exit.')
+		app.cleanExit()
+		ensureExit()
 	}
 
 	// Regardless of specific signal, ensure we exit
-	process.exit()	
+	ensureExit()
 }
-
 process.on('SIGINT', handlePOSIXSignal)
 
 process.on('exit', (code)=>{
