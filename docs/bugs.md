@@ -2,7 +2,7 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
-- [dev-only, gulp] errors in webpack-stream are stopping watch:js from running continuously
+- [dev-only, gulp] hitting ctrl+C leaves the server child-process running, which interferes with ports 
 
 - have to repeatedly hit Ctrl+C to properly exit (chokidar/nodemon/process.spawn subprocesses?)
 
