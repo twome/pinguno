@@ -1,6 +1,9 @@
+import { config } from '../config.esm.js'
+
 class MoreOptionsBtn {
 	constructor(el){
 		this.el = el
+		this.el.setAttribute('data-' + config.appDomPrefix + 'custom-class', 'more-options-btn')
 	
 		this.toggleElSel = '.c-more-options-btn__list-toggle'
 		this.listElSel = '.c-more-options-btn__list'
