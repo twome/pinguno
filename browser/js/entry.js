@@ -85,14 +85,14 @@ let renderVm = ()=>{
 
 	let defaultRenderFn = (propKey)=>{
 		if (propKey !== undefined){
-			let el = [...els].filter(el => el.dataset.statType === 'lowestUptime')[0]
-			el.querySelector('.c-short-stat__value').innerHTML = vm.lowestUptime
+			let el = [...els].filter(el => el.dataset.statType === propKey)[0]
+			el.querySelector('.c-short-stat__value').innerHTML = vm[propKey]
 		}
 	}
 
 	let valuesToUpdate = {
 		lowestUptime: vm.lowestUptime,
-		lowestMeanGoodRTT: vm.lowestUptime,
+		lowestMeanGoodRTT: vm.lowestMeanGoodRTT,
 	}
 
 	for (let key of Object.keys(valuesToUpdate)){
