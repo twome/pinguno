@@ -141,7 +141,7 @@ let webpackTask = ()=>{
 		mode: 'production'
 	}
 	if (inDev){
-		webpackConfig.entry['live-reload-custom'] = p(paths.js.src, 'live-reload-custom.esm.js')
+		webpackConfig.entry['live-reload-custom'] = p(paths.js.src, 'live-reload-custom.js')
 		webpackConfig.devtool = false
 		webpackConfig.optimization.minimize = false
 		webpackConfig.mode = 'development'
@@ -161,10 +161,17 @@ let webpackTask = ()=>{
 
 let serverTask = () => new Promise ((resolve, reject)=>{
 	// TEMP disabled for testing
-	processRoster.ensureOneProcess(()=>{
-		return child_process.spawn('node', ['server-esm-adapter'])
+	let nodeCLArgs = [
+		'server-esm-adapter',
+		'--experimental-vm-modules'
+	]
+	if (inDev) nodeCLArgs.push('--inspect-brk=127.0.0.1:1919')
+	
+	processRoster.ensureOneProcess(()=>{		
+		return child_process.spawn('node', nodeCLArgs)
 	}, 'server', resolve, reject)
-	resolve('ok')
+
+	resolve()
 })
 
 // Prod only
@@ -178,7 +185,7 @@ let pkgTask = () => new Promise((resolve, reject)=>{
 
 // Prod only
 let htmlTask = () => {
-	return gulp.src(paths.html.src + 'index.html')
+	return gulp.src(p(paths.html.src, 'index.html'))
 		.pipe(gTemplate({
 			inDev: inDev,
 			env: process.env.NODE_ENV,
@@ -219,7 +226,8 @@ let cleanTask = callback => {
 
 let exportBrowserToDistTask = () => {
 	return gulp.src([
-		p(paths.wholeBrowserClient.src, '**')
+		p(paths.wholeBrowserClient.src, '**'),
+		'!' + p(paths.wholeBrowserClient.src, 'index.html')
 	])
 		.pipe(gDebug())
 		.pipe(gulp.dest(
@@ -240,14 +248,29 @@ let devTask = gulp.series(
 	)
 )
 
-let buildTask = gulp.series(
+let browserProdTask = gulp.series(
 	cleanTask,
-	lintBackendProdTask, 
-	lintBrowserTask,
+	gulp.parallel(
+		lintBackendProdTask, 
+		lintBrowserTask
+	),
 	sassTask,
 	webpackTask,
-	pkgTask, 
-	exportBrowserToDistTask
+	exportBrowserToDistTask,
+	htmlTask
+)
+
+let buildExesTask = gulp.series(
+	cleanTask,
+	gulp.parallel(
+		lintBackendProdTask, 
+		lintBrowserTask
+	),
+	sassTask,
+	webpackTask,
+	exportBrowserToDistTask,
+	htmlTask,
+	pkgTask
 )
 
 // Export atomised tasks in case we want to run them for specialised reasons
@@ -259,6 +282,7 @@ module.exports['webpack'] = webpackTask
 module.exports['server'] = serverTask 
 module.exports['clean'] = cleanTask 
 module.exports['export:browser'] = exportBrowserToDistTask 
+module.exports['html'] = htmlTask 
 
 // Watchers
 module.exports['watch:sass'] = sassWatch
@@ -266,7 +290,8 @@ module.exports['watch:js'] = jsWatch
 
 // One-command workflows
 module.exports['dev'] = devTask
-module.exports['build'] = buildTask
+module.exports['browser:prod'] = browserProdTask
+module.exports['build'] = buildExesTask
 
 // Run 'dev' if we call `gulp` in the CLI with no arguments.
 module.exports['default'] = devTask
@@ -282,21 +307,17 @@ gulp.watch(gulpConfigDependencies, ()=>{
 	})
 })
 
-process.on('SIGINT', (signal)=>{
+process.on('SIGINT', ()=>{
+	console.info('[gulp] Received SIGINT; program is now exiting')
+
 	let ensureExit = ()=>{
 		setTimeout(()=>{
 			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
 		}, 1000)
 	}
 
-	if (signal === 'SIGINT'){
-		console.info('[gulp] Received SIGINT; program is now exiting')
-		ProcessRoster.killAll().then(()=>{
-			process.exit()
-		})
-		ensureExit()
-	}
-
-	// Regardless of specific signal, ensure we exit
+	ProcessRoster.killAll().then(()=>{
+		process.exit()
+	})
 	ensureExit()
 })

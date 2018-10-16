@@ -1,17 +1,10 @@
 # To do / roadmap:
 
-1. auto-run on boot
-1. stream sessions to file 
-1. run headless (prefpane? service? process?)
+
 
 ## GUI
 
 - learn Vue and render session data with it
-
-- set up a Sass development build system
-
-- browser: figure if there's any future-proof / shim-y way to import non-standard (CommonJS, AMD etc) modules through the ESM syntax by using window.fetch or something
-	- using globals really sucks
 
 - sketch/visual exploration of layout before investing more effort in html structure
 
@@ -75,6 +68,7 @@
 	- clearly tell user which process(es) to look for in Activity Monitor / `ps -e` if they can't get access to a GUI for it due to a bug
 	- any time user manually opens program, invisble mode deactivated
 	- obviously there's a button to go into invisible mode again in the UI
+	- prefpane? service?
 
 - [highpriority] run cli as service / auto-run on boot 
 	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
@@ -82,15 +76,16 @@
 
 ## Misc
 
-- process HTML comments eg: buildMarker`{dev: 'start'}}` in order to template new index files
+
+- [highpriority] stream sessions to file 
+	- necessary for efficient memory usage
+	- workaround: simply start a new session whenever mem usage gets too high; starting new session automatically calls a compress-all-logs if log-archive too big (could this be parallel & ignore present session? wait of course it could)
 
 - use quasi-random port. have an order of default ports to test for availability first, then give up and try random ones
 	- there *has* to be a community module for this, right?
 
 - for users with an always-on computer: pinguno should prominently display (and make easy to copy) the ping-server's local IP & suggest to bookmark / save as native-webapp (app manifest eg home app icon on phone), so users can easily check, for eg, on phone over wifi
 	- if server is running on same computer (ie localhost works)
-
-- node: import all packages as ESM through `esm` package: https://github.com/standard-things/esm
 
 - fn to find latest failure that also searches requestFailures (as well as pings/responses)
 
@@ -166,7 +161,7 @@
 
 - stretch: auto-upgrade or one-click upgrade for non-tech users
 
-- implement a stretchable interval (eg shorter interval if we have a bad ping, gradually reduce that over time, reduce interval again upon reconnect )
+- implement a stretchable interval (eg shorter interval if we have a bad ping, gradually reduce that over time, reduce interval again upon reconnect 
 
 - reduce pkg binary size by importing only the functions/data we need from dependencies
 	- Lodash:

@@ -22,16 +22,16 @@ class ProcessRoster {
 		child.stderr.on('data', onStdioEvent)
 
 		child.on('error', (code, signal)=>{
-			console.error(`[ProcessRoster:${processName}] This process hit an error with code ${code} and signal ${signal}`)
+			console.error(`[ProcessRoster:${processName}] This child process hit an error with code ${code} and signal ${signal}`)
 			reject({code, signal})
 		})
 		child.on('close', code => {
-			console.info(`[ProcessRoster:${processName}] This process closed with code ${code}`)
+			console.info(`[ProcessRoster:${processName}] This child process closed with code ${code}`)
 			reject({code})
 		})
 		child.on('exit', code => {
 			delete this.processes[processName]
-			console.info(`[ProcessRoster:${processName}] This process exited with code ${code}`)
+			console.info(`[ProcessRoster:${processName}] This child process exited with code ${code}`)
 			reject({code})
 			if (afterExit) afterExit(child, processName, code)
 		})

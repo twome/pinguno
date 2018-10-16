@@ -18,7 +18,12 @@ import { Enum } from './enum.js'
 import { Pinguno } from './pinguno.js'
 import { defaultAndValidateArgs as df, handleExitGracefully } from './my-util.js'
 import { getLocalIP } from './my-util-network.js'
-import { clientCodeLastModifiedStatusRoute, fileWatcherStart } from './live-reload-custom-server.js'
+import {
+	clientCodeLastModifiedStatusRoute,
+	liveReloadFileWatcherStart,
+	makeLiveReloadMiddleware,
+	liveReloadServerStart
+} from './live-reload-custom-server.js'
 
 const fsReadFilePromise = util.promisify(fs.readFile)
 
@@ -38,26 +43,33 @@ class Server {
 		availableOnLAN: false,
 		apiPath: 'api/1',
 		preferredProtocol: 'http://',
-		port: 1919
+		port: 1919,
+		serverStartRetryIntervalMs: 5000
 	}){
 		this.opt = {...options} // Bind constructor options to the instance
 
 		// State properties
-		this.activeLocalIP = getLocalIP()[0].address.trim()
-		this.serverURL = new URL('http://' + this.activeLocalIP)
-		this.serverURL.port = this.opt.port.toString()
-		this.serverURL.protocol = this.opt.preferredProtocol
-		this.latestAPIPath = this.opt.apiPath
+		this.activeLocalIP = null
+		this.serverURL = null
+		this.updateLocalIPAddress()
+		this.updateLocalIPAddressTick = setInterval(()=>{
+			this.updateLocalIPAddress
+		}, 5000)
 
-		this.serverRunning = false			
+		this.latestAPIPath = this.opt.apiPath
+		this.chosenServerHostname = this.opt.availableOnLAN && this.activeLocalIP ? this.activeLocalIP : '127.0.0.1'
+
+		this.serverRunning = false
+		this.retryStartTick = null
 
 		this.exp = express()
 		let e = this.exp
+		this.registerServerErrorHandlers(e)
 
 		this.pinger = this.startPinger()
 		this.appDir = this.pinger.appDir
 
-		this.clientCodeLastModified = inDev ? new Date() : null
+		this.clientCodeLastModified = inDev ? { date: new Date() } : null
 
 		// Allow us to parse request (could be any format) into text on req.body
 		e.use(bodyParser.text())
@@ -66,16 +78,6 @@ class Server {
 		/*
 			API routes
 		*/
-		e.get('/' + this.latestAPIPath + '/' + 'mock-session', (req, res)=>{ 
-			let respond = ()=>{
-				fsReadFilePromise(path.join(this.appDir, '/dev-materials/test-data_frequent-disconnects.json'), 'utf8').then((val)=>{
-					res.send(val)	
-				}, (err)=>{
-					console.error(err)
-				})
-			}
-			setTimeout(respond, 1)
-		})
 		e.get('/' + this.latestAPIPath + '/' + 'live-session', (req, res)=>{ 
 			let respond = ()=>{
 				let stateBefore = new Date()
@@ -102,13 +104,11 @@ class Server {
 		/*
 			Development-only routes
 		*/
+		// Add custom live reload middleware
 		if (inDev){
-			e.get(clientCodeLastModifiedStatusRoute, (req, res, next)=>{
-				let sendBody = this.clientCodeLastModified
-				sendBody = sendBody instanceof Date ? sendBody.toISOString() : null
-				let status = sendBody ? 200 : 204 // OK : No content
-				res.status(status).send(sendBody)
-			})
+			e.get(clientCodeLastModifiedStatusRoute, makeLiveReloadMiddleware(this.clientCodeLastModified))
+		}
+	}
 		}
 	}
 
@@ -157,9 +157,11 @@ class Server {
 let app = new Server()
 app.startServer()
 
-// TEMP DEV only
 if (inDev){ 
-	fileWatcherStart(date => app.clientCodeLastModified = date)
+	liveReloadFileWatcherStart((date)=>{
+		app.clientCodeLastModified.date = date
+	})
+	liveReloadServerStart(app.clientCodeLastModified, app.chosenServerHostname, app.opt.port)
 }
 
 handleExitGracefully(undefined, ()=>{

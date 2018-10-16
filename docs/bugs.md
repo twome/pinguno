@@ -2,6 +2,8 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
+- [breaking] subprocesses do not auto-exit after losing their parent, so if the parent exits without properly cleaning up its children, then the subprocesses run ad infinitum
+
 - [breaking] we store entire sessions in-memory rather than streaming them to files
 	- this rules out long-term logging until fixed
 
