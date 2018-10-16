@@ -1,15 +1,23 @@
+/* eslint no-console: 0 */
+
 let { DateTime } = require('../node_modules/luxon/build/cjs-browser/luxon.js')
 
-/* eslint no-console: 0 */
 console.log('Custom client reloading enabled. Polling...')
-let sequentialFailures = 0
+
+// Options
 let hugeConsoleAlertStyle = 'background: hsla(0, 20%, 5%, 1); color: hsla(0, 100%, 90%, 1); padding: 1em; font-size: 2em;'
+let defaultLiveReloadPath = '/dev/client-code-last-modified'
+
+let sequentialFailures = 0
 let clientLastRefreshedDate = new Date()
-let defaultPort = '1918'
-let defaultHost = `http://127.0.0.1:${defaultPort}`
+let defaultPort = Number(location.port) + 1
+let defaultProtocol = location.protocol + '//'
+let defaultHostname = location.hostname
+let portToUse = defaultPort + sequentialFailures
+let fetchURL = new URL(defaultLiveReloadPath, defaultProtocol + defaultHostname + ':' + portToUse)
 
 let liveReloadTick = ()=>{
-	fetch(`/dev/client-code-last-modified`).then((res)=>{
+	fetch(fetchURL.href).then((res)=>{
 		res.text().then(responseText => {
 			if (!responseText){	return false }
 			let resDate = DateTime.fromISO(responseText) && DateTime.fromISO(responseText).toJSDate()
@@ -22,9 +30,13 @@ let liveReloadTick = ()=>{
 		})
 	},(err)=>{
 		sequentialFailures += 1
-		if (sequentialFailures >= 3){
+		if (sequentialFailures >= 5){
 			clearInterval(liveReloadTick)
-			console.warn(`Live reload failed to connect ${sequentialFailures} times in a row; assuming the server's down.`)
+			console.warn(`Live reload failed to connect${sequentialFailures} times in a row; assuming the server's down.`)
+		} else {
+			console.warn(`Live reload failed to connect to ${fetchURL.href} - trying again at port ${portToUse}`)
+			// Try again at an incremented port
+			liveReloadTick()
 		}
 	})
 }

@@ -1,5 +1,5 @@
 // In-house modules
-import { Enum } from './enum.js'
+import { Enum } from './my-util-iso.js'
 
 class PingData {
 	constructor(data){

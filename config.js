@@ -1,3 +1,5 @@
+// Built-ins
+
 // 3rd-party dependencies
 require('dotenv').config() // We only need side-effects on: process.env
 
@@ -22,4 +24,23 @@ if (process.env.CSS_SOURCEMAPS){
 	}	
 }
 
+if (config.NODE_VERBOSE >= 2) console.info('process.argv: ', process.argv)
+
+// Hostname and/or port
+// ~ if we are running 'server' cli
+// if (process.argv[2]){
+// 	let input = process.argv[2]
+// 	let hostURL = typeof input === 'string' && new URL(input)
+
+// 	if (hostURL){
+// 		config.hostname = hostURL.hostname
+// 		config.port = hostURL.port
+// 	}
+// }
+
+// ~ use lib to easily parse CL args
+
+// ~ overwrite each config[prop] in the following priority order (highest first): 
+// CL args
+// process.env
 exports.config = config

@@ -1,3 +1,16 @@
+// Isomorphic utilities (do not depend on objects specifically available in Node OR browsers)
+// Any global-object dependencies must be included as arguments
+
+let isValidURL = (str, URI)=>{
+	try {
+		new URL(str)
+		return true
+	} catch (err){
+		return false
+	}
+}
+
+
 class Enum {
 	constructor(valueArr){
 
@@ -22,4 +35,4 @@ class Enum {
 	}
 }
 
-export { Enum }
+export { isValidURL, Enum }

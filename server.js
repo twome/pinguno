@@ -14,11 +14,11 @@ const chokidar = require('chokidar')
 
 // In-house modules
 import { config } from './config.js'
-import { Enum } from './enum.js'
+import { Enum } from './my-util-iso.js'
 import { Pinguno } from './pinguno.js'
 import { defaultAndValidateArgs as df, handleExitGracefully } from './my-util.js'
 import { getLocalIP } from './my-util-network.js'
-import {
+import { 
 	clientCodeLastModifiedStatusRoute,
 	liveReloadFileWatcherStart,
 	makeLiveReloadMiddleware,
@@ -49,7 +49,7 @@ class Server {
 		this.opt = {...options} // Bind constructor options to the instance
 
 		// State properties
-		this.activeLocalIP = null
+		this.activeLocalIP = null 
 		this.serverURL = null
 		this.updateLocalIPAddress()
 		this.updateLocalIPAddressTick = setInterval(()=>{
@@ -59,8 +59,8 @@ class Server {
 		this.latestAPIPath = this.opt.apiPath
 		this.chosenServerHostname = this.opt.availableOnLAN && this.activeLocalIP ? this.activeLocalIP : '127.0.0.1'
 
-		this.serverRunning = false
-		this.retryStartTick = null
+		this.serverRunning = false		
+		this.retryStartTick = null	
 
 		this.exp = express()
 		let e = this.exp
@@ -109,15 +109,57 @@ class Server {
 			e.get(clientCodeLastModifiedStatusRoute, makeLiveReloadMiddleware(this.clientCodeLastModified))
 		}
 	}
+
+	updateLocalIPAddress(){
+		try {
+			this.activeLocalIP = getLocalIP()[0].address.trim()
+			this.serverURL = new URL('http://' + this.activeLocalIP)
+			this.serverURL.port = this.opt.port.toString()
+			this.serverURL.protocol = this.opt.preferredProtocol
+		} catch (error){
+			this.activeLocalIP = null
+			this.serverURL = null
+			console.error(`[server] Can't find a local IP address - are your network adapters (WiFi, ethernet etc) on?`)
+		}
+		return {
+			activeLocalIP: this.activeLocalIP,
+			serverURL: this.serverURL
 		}
 	}
 
 	startServer(){
-		console.info('Current local (LAN) IP address: ', this.activeLocalIP)
+		if (this.activeLocalIP){
+			console.info('Current local (LAN) IP address: ', this.activeLocalIP)	
+			if (this.retryStartTick) clearInterval(this.retryStartTick)
+		} else {
+			console.error(`[server:startServer] Can't find a local IP address - no network to serve web UI on.`)
+			if (!this.retryStartTick) this.retryStartTick = setInterval(()=>{
+				this.startServer()
+			}, this.opt.serverStartRetryIntervalMs || 5000)
+			return false
+		}
 
-		this.exp.listen(this.opt.port, this.opt.availableOnLAN ? this.activeLocalIP : '127.0.0.1', ()=>{
-			console.info(`Pinguno server listening at: ${this.opt.availableOnLAN ? this.activeLocalIP : '127.0.0.1'}:${this.opt.port}`)
+		this.exp.listen(this.opt.port, this.chosenServerHostname, ()=>{
+			// This fn is effectively a this.exp.on('listen') handler
+			console.info(`Pinguno server listening at: ${this.chosenServerHostname}:${this.opt.port}`)
 			this.serverRunning = true
+		})
+	}
+
+	registerServerErrorHandlers(e){
+		let retryIntervalMs = 5000
+
+		e.on('error', err => {
+			if (err.code === 'EADDRINUSE'){
+				console.info(`[server:registerServerErrorHandlers] IP address / port already in use, retrying in ${retryIntervalMs}...`)
+				setTimeout(()=>{
+					e.close()
+					this.startServer()
+				}, retryIntervalMs || 5000)
+				//~ this.pinger.killOrphanProcesses().then((val)=>{
+					// this.startServer()
+				//~ })
+			}
 		})
 	}
 

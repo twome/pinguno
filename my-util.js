@@ -164,8 +164,18 @@ let handleExitGracefully = (
 	})
 }
 
+let isValidURL = (str)=>{
+	try {
+		new URL(str)
+		return true
+	} catch (err){
+		return false
+	}
+}
+
 export {
 	MyUtil,
 	defaultAndValidateArgs,
-	handleExitGracefully
+	handleExitGracefully,
+	isValidURL
 } 

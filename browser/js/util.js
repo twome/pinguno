@@ -39,5 +39,5 @@ export {
 	cw,
 	ce,
 	cleanGlobalKeys,
-	collectPropertyAcrossInstancesDeep 
+	collectPropertyAcrossInstancesDeep
 }

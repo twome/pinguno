@@ -10,7 +10,7 @@ const getFolderSize = require('get-folder-size')
 // In-house modules
 import { config } from './config.js'
 import { fullOutagesAcrossTargets, isBadResponse } from './outages.js'
-import { Enum } from './enum.js'
+import { Enum } from './my-util-iso.js'
 import { EngineNative, EngineNetPing } from './ping-engines.js'
 import { Stats } from './stats.js'
 import { ProcessRoster } from './child-processes.js'
