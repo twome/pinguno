@@ -36,7 +36,7 @@ class Indicator {
 			if (this.domReady) this.close()
 		}
 		if (this.el.dataset.indicatorType === 'waitingForServerResponse'){			
-			if (vm.liveSession) this.close()
+			if (vm.liveSessionLoaded) this.close()
 		}
 	}
 }

@@ -1,11 +1,4 @@
 import { d, w, c, ce, ci } from './util.js'
-import { MoreOptionsBtn } from './components/more-options-btn.js'
-import { Indicator } from './components/indicator.js'
-
-let customEls = [
-	MoreOptionsBtn,
-	Indicator
-]
 
 // Get a reference to the "classed" version of every instance (DOM element) of each custom element we've made
 let registerDOMNodesToCustomEls = (customEls, existingInstances)=>{
@@ -22,4 +15,4 @@ let registerDOMNodesToCustomEls = (customEls, existingInstances)=>{
 	return customElInstances
 }
 
-export { customEls, registerDOMNodesToCustomEls }
+export { registerDOMNodesToCustomEls }

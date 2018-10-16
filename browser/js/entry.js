@@ -7,9 +7,18 @@ import renderjson from '../node_modules/renderjson/renderjson.js'
 import { config } from './config.js'
 import { d, w, c, ce, ci } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
-import { customEls, registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects
+import { registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects
 
+// DOM Components
+import { Indicator } from './components/indicator.js'
+import { MoreOptionsBtn } from './components/more-options-btn.js'
+
+let customEls = [
+	MoreOptionsBtn,
+	Indicator
+]
 let customElInstances = registerDOMNodesToCustomEls(customEls)
+console.debug(customElInstances)
 
 /* MODEL */
 
@@ -100,10 +109,12 @@ let renderVm = ()=>{
 		defaultRenderFn(key)
 	}
 
-	customElInstances.forEach((classedEl)=>{
-		if (typeof classedEl.updateRender === 'function'){
-			classedEl.updateRender(vm)
-		}
+	customElInstances.forEach((customElClass)=>{
+		customElClass.forEach((instance)=>{
+			if (typeof instance.updateRender === 'function'){
+				instance.updateRender(vm)
+			}
+		})
 	})
 }
 
@@ -120,10 +131,10 @@ let fetchAndParse = (jsonUrl)=>{
 
 let onFetchedSession = session =>{
 	fetchTimer.end = new Date()
-	// console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
-
+	if (config.verbose >= 2) console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
 	liveSession = new PingunoSession(session)
-	vm.liveSession = liveSession
+	
+	vm.liveSessionLoaded = Object.keys(liveSession).length >= 1
 	vm.lowestUptime = liveSession.getLowestUptime()
 	vm.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
 	simpleJSONRender(session)
@@ -140,8 +151,6 @@ let registerDataPolls = ()=>{
 	}
 	liveSessionJSONPollTick = setInterval(onLiveSessionJSONPoll, 2000)
 	onLiveSessionJSONPoll()
-
-	// fetchAndRender('/api/1/mock-session')
 }
 
 /*
