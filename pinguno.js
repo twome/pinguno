@@ -13,7 +13,6 @@ import { fullOutagesAcrossTargets, isBadResponse } from './outages.js'
 import { Enum } from './my-util-iso.js'
 import { EngineNative, EngineNetPing } from './ping-engines.js'
 import { Stats } from './stats.js'
-import { ProcessRoster } from './child-processes.js'
 
 // Extensions of this module's main class
 import { attachExtensions } from './pinguno-ext-fs.js'
@@ -166,7 +165,7 @@ class Pinguno {
 		}
 
 		// Keep track of child processes (such as ping) we spawn
-		this.processRoster = new ProcessRoster()
+		this.processRoster = []
 	}
 
 	tellStatus(){
@@ -397,15 +396,24 @@ class Pinguno {
 
 		for ( let pingTarget of pingTargets ){				
 			let returnedEngine = registerEngineFn(this, pingTarget)
-			console.debug('Registered engine:', returnedEngine.pid)
-			if (returnedEngine.pid) this.processRoster.processes['ping' + pingTarget.humanName] // Is a node_spawn child process
+			if (returnedEngine.pid){
+				// Engine is a node_spawn'd process
+				this.processRoster.push({
+					processName: 'ping' + pingTarget.humanName,
+					actualProcess: returnedEngine
+				})
+
+				console.log('server pushed new ping process '+ returnedEngine.pid )
+			}
 		}
 	}
 
 	cleanExit(){
-		return this.processRoster.killAll().then(()=>{
-			return process.exit()
+		this.processRoster.forEach((obj, i)=>{
+			console.info(`[pinguno:cleanExit] Exiting subprocess ${obj.processName}`)
+			process.kill(obj.actualProcess.pid, 'SIGTERM')
 		})
+		return this.processRoster
 	}
 }
  

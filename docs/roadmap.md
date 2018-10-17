@@ -74,6 +74,21 @@
 	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
 		- could relay these instructions to users looking for that
 
+## CLI
+
+- add & use `meow` for better CL UX
+
+- get more data from system `ping` https://linux.die.net/man/8/ping:
+	- `-R` option to record route (max of 9 nodes)
+		- from man:
+			> Many Hosts and Gateways ignore the RECORD_ROUTE option.
+			> The maximum IP header length is too small for options like RECORD_ROUTE to be completely useful. There's not much that 
+			> that can be done about this, however.
+			It looks like traceroute is the far superior option
+
+	- `-Q` to adjust ToS, Type of Service (adjust for higher network precendence, more reliability etc)
+	- `-t` set the IP ttl
+
 ## Misc
 
 

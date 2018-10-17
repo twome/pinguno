@@ -4,7 +4,6 @@ const util = require('util')
 const child_process = require('child_process')
 
 // 3rd-party
-require = require('esm')(module) /* eslint-disable-line no-global-assign */
 const del = require('del')
 
 // Gulp & plugins
@@ -23,9 +22,6 @@ const gTemplate = require('gulp-template')
 
 // In-house
 const { config } = require('./config.js')
-const { ProcessRoster } = require('./child-processes.js')
-
-let processRoster = new ProcessRoster()
 
 // Convenience assignmenmts
 let inDev = process.env.NODE_ENV === 'development'
@@ -55,7 +51,6 @@ let paths = {
 
 let gulpConfigDependencies = [
 	p(__dirname, `gulpfile.js`),
-	p(__dirname, `child-processes.js`),
 	p(__dirname, 'config.js'),
 	p(__dirname, '.env'),
 	p(__dirname, 'package.json')
@@ -159,28 +154,56 @@ let webpackTask = ()=>{
 	return stream
 }
 
-let serverTask = () => new Promise ((resolve, reject)=>{
-	// TEMP disabled for testing
+let serverProcess = null
+let serverTaskProm = (resolve, reject)=>{
+	console.debug('[gulp:server task] Starting...')
+
 	let nodeCLArgs = [
 		'server-esm-adapter',
 		'--experimental-vm-modules'
 	]
-	if (inDev) nodeCLArgs.push('--inspect-brk=127.0.0.1:1919')
-	
-	processRoster.ensureOneProcess(()=>{		
-		return child_process.spawn('node', nodeCLArgs)
-	}, 'server', resolve, reject)
+	if (inDev) nodeCLArgs.push('--inspect=127.0.0.1:1919')
+		
+	serverProcess = child_process.spawn('node', nodeCLArgs, {
+		stdio: ['pipe', 'pipe', 'pipe', 'ipc'] // Functionally the same as using child_process.fork?
+	})
 
-	resolve()
-})
+	let alreadySentParentPID = false
+
+	let logOutput = (data)=>{
+		if (config.NODE_VERBOSE >= 2) console.info(`[gulp:server] ${data.toString().trim()}`)
+		resolve(serverProcess)
+		if (!alreadySentParentPID){
+			serverProcess.send({
+				parentPID: process.pid
+			})
+			alreadySentParentPID = true
+		}
+	}
+	serverProcess.stdout.on('data', logOutput)
+	serverProcess.stderr.on('data', logOutput) // An express.listen() EADDRINUSE error will output here
+
+	serverProcess.on('error', (err)=>{
+		console.debug('[gulp:server] Error while starting server...')
+		console.error(err)
+		serverProcess.kill(serverProcess.pid, 'SIGTERM')
+		reject(err)
+	})
+
+	serverProcess.on('message', (messageStr)=>{
+		console.debug(`[gulp:server] Received IPC message from ${serverProcess.pid}: ${messageStr}`)
+	})
+}
+let serverTask = ()=>{
+	return new Promise(serverTaskProm)
+}
 
 // Prod only
 let pkgTask = () => new Promise((resolve, reject)=>{
 	// DANGER: Variable value fed to command line
 	let buildPath = path.normalize(paths.pkg.prod) // Just another check to try ensure this is indeed a path
 	if (!buildPath){ throw Error('[gulp:pkg] Invalid build path: ' + buildPath)}
-	let child = child_process.spawn(`pkg`, [`.`, `--out-path`, buildPath, `--debug`])
-	processRoster.handleChildProcess(child, 'pkg', resolve, reject)
+	let childProcess = child_process.spawn(`pkg`, [`.`, `--out-path`, buildPath, `--debug`])
 })
 
 // Prod only
@@ -298,26 +321,40 @@ module.exports['default'] = devTask
  
 // Automatically end gulp if any of its dependencies change
 gulp.watch(gulpConfigDependencies, ()=>{
-	console.error(`[gulp] One of the configuration files Gulp depends on has changed, ending gulp.`)
-	return processRoster.killAll().then(()=>{
-		console.info('Self-killing gulp process...')
-		process.exit()
-	},(err)=>{
-		throw Error(err)
-	})
+	console.error(`[gulpfile] One of the configuration files Gulp depends on has changed, ending gulp.`)
+	process.kill(serverProcess.pid, 'SIGINT')
+	process.kill(process.pid, 'SIGINT')
 })
 
-process.on('SIGINT', ()=>{
-	console.info('[gulp] Received SIGINT; program is now exiting')
+// Instead of running 'gulp <command>' as a CLI, simply run this file with node.
+if (module === process.mainModule){ // We are running this gulpfile.js directly with node
+	console.info(`Executing gulpfile using node (instead of Gulp's CLI).`)
 
-	let ensureExit = ()=>{
-		setTimeout(()=>{
-			process.exit() // Don't wait longer than a second before exiting, despite app's memory/storage/request state.
-		}, 1000)
+	process.on('SIGINT', ()=>{
+		let toChild = {} 
+		toChild[config.exitSelfMsg] = true
+		serverProcess.send(toChild)
+		process.kill(process.pid, 'SIGTERM')
+	})
+
+	if (process.argv.length >= 4){ 
+		throw Error('[gulpfile] Too many command-line arguments provided to gulpfile - we expect just one; the name of the gulp task to execute.') 
 	}
-
-	ProcessRoster.killAll().then(()=>{
-		process.exit()
-	})
-	ensureExit()
-})
+	let taskName = process.argv[2]
+	if (taskName){
+		console.info(`Attempting to execute Gulp task "${taskName}"`)
+		// Because we've exported tasks to the module rather than using gulp.task to register them,
+		// we can just call them directly from inside this same module.
+		let result = module.exports[taskName]()
+		if (result instanceof Promise){
+			result.then((val)=>{
+				console.info(`[gulp:${taskName}] Task resolved.`)
+			},(err)=>{
+				throw Error(err)
+			})
+		}
+	} else {
+		console.info(`No Gulp task argument provided, executing default task.`)
+		module.exports.default()
+	}
+}

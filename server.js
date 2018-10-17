@@ -16,7 +16,6 @@ const chokidar = require('chokidar')
 import { config } from './config.js'
 import { Enum } from './my-util-iso.js'
 import { Pinguno } from './pinguno.js'
-import { defaultAndValidateArgs as df, handleExitGracefully } from './my-util.js'
 import { getLocalIP } from './my-util-network.js'
 import { 
 	clientCodeLastModifiedStatusRoute,
@@ -64,7 +63,7 @@ class Server {
 
 		this.exp = express()
 		let e = this.exp
-		this.registerServerErrorHandlers(e)
+		this.activeHTTPServer = null
 
 		this.pinger = this.startPinger()
 		this.appDir = this.pinger.appDir
@@ -82,7 +81,7 @@ class Server {
 			let respond = ()=>{
 				let stateBefore = new Date()
 				this.pinger.updateEntireState()
-				if (config.NODE_VERBOSE >= 2) console.info(`State update took ${new Date() - stateBefore}ms`)
+				if (config.NODE_VERBOSE >= 3) console.info(`State update took ${new Date() - stateBefore}ms`)
 				res.send(JSON.stringify(this.pinger))	
 			}
 			setTimeout(respond, 1)
@@ -139,28 +138,44 @@ class Server {
 			return false
 		}
 
-		this.exp.listen(this.opt.port, this.chosenServerHostname, ()=>{
-			// This fn is effectively a this.exp.on('listen') handler
+		this.activeHTTPServer = this.exp.listen(this.opt.port, this.chosenServerHostname, err =>{
+			// This fn is effectively a .('listen') handler on the .listen() returned active server
+
+			if (err){
+				throw Error('[server:listen] Error starting server listener:', err)
+			}
+			
 			console.info(`Pinguno server listening at: ${this.chosenServerHostname}:${this.opt.port}`)
 			this.serverRunning = true
 		})
-	}
 
-	registerServerErrorHandlers(e){
-		let retryIntervalMs = 5000
-
-		e.on('error', err => {
+		this.activeHTTPServer.on('error', err => {
 			if (err.code === 'EADDRINUSE'){
+				let retryIntervalMs = 5000
 				console.info(`[server:registerServerErrorHandlers] IP address / port already in use, retrying in ${retryIntervalMs}...`)
-				setTimeout(()=>{
-					e.close()
-					this.startServer()
-				}, retryIntervalMs || 5000)
-				//~ this.pinger.killOrphanProcesses().then((val)=>{
-					// this.startServer()
-				//~ })
+				this.completelyRestart(retryIntervalMs)
+			} else {
+				throw Error(`Error with unhandled code "${err.code}":`, err)
 			}
 		})
+	}
+
+	startUp(){
+		this.pinger = this.startPinger()
+		this.startServer()
+	}
+
+	shutDown(){
+		this.pinger.cleanExit()
+		this.activeHTTPServer.close()
+	}
+
+	completelyRestart(retryIntervalMs){
+		console.info('[server] Completely restarting Express server & pingers')
+		this.shutDown()
+		setTimeout(()=>{
+			this.startUp()
+		}, retryIntervalMs || 5000)
 	}
 
 	startPinger(){
@@ -188,26 +203,52 @@ class Server {
 		this.pingerRunning = true
 		return pinger
 	}
-
-	cleanExit(){
-		return this.pinger.cleanExit().then(()=>{
-			process.exit()
-		})
-	}
 }
 
 let app = new Server()
 app.startServer()
 
-if (inDev){ 
+if (inDev){
 	liveReloadFileWatcherStart((date)=>{
 		app.clientCodeLastModified.date = date
 	})
 	liveReloadServerStart(app.clientCodeLastModified, app.chosenServerHostname, app.opt.port)
 }
 
-handleExitGracefully(undefined, ()=>{
-	app.cleanExit()
+if (process.mainModule !== module){
+	process.on('message', (messageData)=>{
+		if (messageData[config.exitSelfMsg] === true){
+			console.info(`[server] Custom "clean exit" message received over IPC from parent process`)
+			app.shutDown()
+			process.kill(process.pid, 'SIGINT')
+		} else {
+			console.error(`[server] Unknown IPC message received: ${messageData}`)
+		}
+	})
+
+	process.on('close', ()=>{
+		console.debug(`[server] Process closed; exiting self.`)
+		process.kill(process.pid, 'SIGINT')
+	})
+
+	process.on('disconnect', ()=>{
+		console.debug('[server] Parent process disconnected IPC channels; exiting self.')
+		process.kill(process.pid, 'SIGINT')
+	})
+}
+
+process.on('SIGINT', ()=>{
+	console.debug(`[server] Process received SIGINT, upgrading to SIGTERM`)
+	process.kill(process.pid, 'SIGTERM')
 })
+
+process.on('SIGTERM', ()=>{
+	console.debug(`[server] Process received SIGTERM`)
+	app.shutDown()
+	setTimeout(()=>{
+		process.kill(process.pid, 'SIGKILL')
+	}, 1000)
+})
+
 
 exports = { Server, clientModes }

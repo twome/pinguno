@@ -9,6 +9,8 @@
 
 - [test, mac, nativeping, breaking] after running for long enough on native ping, we stop getting "new" pings (newer than the active log file's) for some reason -- check if this is still happening
 
+- .exit() is not available as a method of subprocesses, even though it's definitely a process and is runnign with a PID??
+
 - [dev-only, gulp] hitting ctrl+C leaves the server child-process running, which interferes with ports 
 
 - have to repeatedly hit Ctrl+C to properly exit (chokidar/nodemon/process.spawn subprocesses?)

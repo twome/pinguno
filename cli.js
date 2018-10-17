@@ -7,7 +7,6 @@ const _ = {
 }
 
 // In-house modules
-import { handleExitGracefully } from './my-util.js'
 import { config } from './config.js'
 import { 
 	compressAllLogsToArchive, 
@@ -69,8 +68,4 @@ app.getArchiveSizeMiB((sizeMiB)=>{
 		console.warn(`Logs directory size exceeds ${app.opt.maxUncompressedSizeMiB}MiB, compressing all logs...`)
 		compressAllLogsToArchive(app.logsDir, app.archiveDir, app.opt.logStandardFilename, app.opt.compressAnyJsonLogs)
 	}	
-})
-
-handleExitGracefully(undefined, ()=>{
-	app.cleanExit()
 })
