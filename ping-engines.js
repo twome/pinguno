@@ -54,26 +54,35 @@ class EngineNative {
 		instance.firstPingSent = true
 
 		pingProcess.on('error', (code, signal)=>{
-			console.error('child process hit an error with ' + `code ${code} and signal ${signal}`)
+			console.error(`[pingProcess] Hit an error with code ${code} and signal ${signal}`)
 			instance.sessionDirty = true
-			throw Error('Node child process hit an error')
+			throw Error({code, signal})
 		})
 
 		pingProcess.stdout.on('data', (data)=>{
 			let dataStr = data.toString()
 			let pingAsStructure = EngineNative.macOSPingTextToStructure(dataStr, new Date())
-			pingTarget.pingList.push(new PingData(pingAsStructure))	
+			if (pingAsStructure){
+				if (pingAsStructure.isExitSummary){
+					// TODO: Save this statistics summary somewhere, and compare it with our own stats for veracity
+					console.info('[pingProcess] Process ended and sent final statistics:', pingAsStructure.inbuiltStats)
+				} else {
+					// This is normal ping data; add it to the list of pings for this target
+					pingTarget.pingList.push(new PingData(pingAsStructure))
+				}
+				
+			}
 			instance.sessionDirty = true
 		})
 
 		pingProcess.stderr.on('data', (data)=>{
 			let dataStr = data.toString()
 			if ( config.NODE_VERBOSE >= 3){
-				console.error('inbuilt ping returned error through stderr: ', dataStr)
+				console.error(`[pingProcess ${pingTarget.humanName}] Stderr: ${dataStr}`)
 			} 
 
 			// Defaults
-			let errorReqTime = new Date()
+			let errorReqTime = new Date() // Update this request time if you can deduce a more accurate date
 			let errorResTime = new Date()
 			let errorType = RequestError.errorTypes.unknownError
 			// TODO: test more comprehensively for other error types
@@ -85,8 +94,14 @@ class EngineNative {
 			instance.sessionDirty = true
 		})
 
+		pingProcess.on('SIGINT', ()=>{
+			console.info('[pingProcess] Received SIGINT; saving what we can, then sending a SIGTERM to self.')
+			// TODO: ensure process cleaned up
+			pingProcess.kill(pingProcess.pid, 'SIGTERM')
+		})
+
 		pingProcess.on('close', (code)=>{
-			console.info(`Child process (ping) closed with code ${code}`)
+			console.info(`Child process (ping) standard in/outs (stdio) closed with code ${code}`)
 		})
 
 		pingProcess.on('exit', (code)=>{
@@ -118,6 +133,26 @@ class EngineNative {
 			structure.failure = true
 			structure.errorType = PingData.errorTypes.requestTimedOutError
 			structure.icmpSeq = pingText.match(timeoutRegex) ? Number(pingText.match(timeoutRegex)[1]) : null
+		}
+
+		if (pingText.match(/ping statistics ---/)){
+			// This is the final stdout message from `ping` before it exits itself.
+			// It is a summary of the ping statistics from the lifetime of this `ping` process
+			structure.isExitSummary = true
+			let inbuiltStats = {}
+
+			let statsLine1 = pingText.match(/([\d\.]+) packets transmitted, ([\d\.]+) packets received, ([\d\.]+)\% packet loss/)
+			inbuiltStats.packetsTransmitted = Number(statsLine1[1])
+			inbuiltStats.packetsReceived = Number(statsLine1[2])
+			inbuiltStats.packetLossPercent = Number(statsLine1[3])
+
+			let statsLine2 = pingText.match(/round-trip min\/avg\/max\/stddev = (\d+\.\d+)\/(\d+\.\d+)\/(\d+\.\d+)\/(\d+\.\d+).*$/)
+			inbuiltStats.rttMin = Number(statsLine2[1])
+			inbuiltStats.rttAvg = Number(statsLine2[2])
+			inbuiltStats.rttMax = Number(statsLine2[3])
+			inbuiltStats.rttStdDev = Number(statsLine2[4])
+
+			structure.inbuiltStats = inbuiltStats
 		}
 		
 		// Either way
