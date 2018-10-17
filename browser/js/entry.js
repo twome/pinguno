@@ -9,32 +9,9 @@ import { d, w, c, ce, ci } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
 import { registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects
 
-// DOM Components
+// Vue Components
 import { Indicator } from './components/indicator.js'
 import { MoreOptionsBtn } from './components/more-options-btn.js'
-
-let customEls = [
-	MoreOptionsBtn,
-	Indicator
-]
-let customElInstances = registerDOMNodesToCustomEls(customEls)
-console.debug(customElInstances)
-
-/* MODEL */
-
-// Options
-let opt = {
-	renderVmTickIntervalMs: 1000
-}
-
-// State
-let vm = {}
-let fetchTimer = {}
-let cachedVm = {} // TODO use iDB to save most recent view
-let liveSession = null
-let liveSessionJSONPollTick = null
-let renderVmTick = null
-let jsonOutputEl = document.querySelector('.c-json-output')
 
 let vue = new Vue({
 	el: '#vue-app',
@@ -68,96 +45,90 @@ let vue = new Vue({
 	}
 })
 
+class PingunoGUI {
+	constructor({...options} = {
+		renderVmTickIntervalMs: 1000
+	}){
+		this.opt = {...options}  // Bind constructor options to the instance
 
-/* INPUT */
+		// State
+		this.customVueEls = [
+			MoreOptionsBtn,
+			Indicator
+		]
+		console.debug(this.customVueEls)
 
-let registerInputHandlers = ()=>{
-	for (let el of d.querySelectorAll('.js-toggle-live-pinging')){
-		el.addEventListener('click', e => {
-			clearInterval(liveSessionJSONPollTick)
-		})
+		this.fetchTimer = {}
+		this.liveSession = null
+		this.liveSessionJSONPollTick = null
+		this.renderVmTick = null
+		
 	}
-}
 
 
+	// USER INPUT
 
-/* RENDERING */
-
-// TEMP dev only
-let simpleJSONRender = (parsedObj)=>{
-	let existing = jsonOutputEl.querySelector('.renderjson')
-	if (existing) jsonOutputEl.removeChild(existing)
-	jsonOutputEl.appendChild(renderjson(parsedObj))
-}
-
-let renderVm = ()=>{
-	let els = d.querySelectorAll('.c-short-stat')
-
-	let defaultRenderFn = (propKey)=>{
-		if (propKey !== undefined){
-			let el = [...els].filter(el => el.dataset.statType === propKey)[0]
-			el.querySelector('.c-short-stat__value').innerHTML = vm[propKey]
+	registerInputHandlers(){
+		for (let el of d.querySelectorAll('.js-toggle-live-pinging')){
+			el.addEventListener('click', e => {
+				clearInterval(this.liveSessionJSONPollTick)
+			})
 		}
 	}
 
-	let valuesToUpdate = {
-		lowestUptime: vm.lowestUptime,
-		lowestMeanGoodRTT: vm.lowestMeanGoodRTT,
+
+
+	// RENDERING
+
+	simpleJSONRender(parsedObj){
+		let jsonOutputEl = document.querySelector('.c-json-output')
+
+		let existing = jsonOutputEl.querySelector('.renderjson')
+		if (existing) jsonOutputEl.removeChild(existing)
+		jsonOutputEl.appendChild(renderjson(parsedObj))
 	}
 
-	for (let key of Object.keys(valuesToUpdate)){
-		defaultRenderFn(key)
-	}
-
-	customElInstances.forEach((customElClass)=>{
-		customElClass.forEach((instance)=>{
-			if (typeof instance.updateRender === 'function'){
-				instance.updateRender(vm)
-			}
-		})
-	})
-}
 
 
-/* NETWORK */
+	// NETWORK
 
-let fetchAndParse = (jsonUrl)=>{
-	return fetch(jsonUrl).then((res)=>{
-		return res.json()
-	}, (err)=>{
-		return Error(err) // TEMP this should be graceful
-	})
-}
-
-let onFetchedSession = session =>{
-	fetchTimer.end = new Date()
-	if (config.verbose >= 2) console.info(`Session fetch took ${fetchTimer.end - fetchTimer.start}ms`)
-	liveSession = new PingunoSession(session)
-	
-	vm.liveSessionLoaded = Object.keys(liveSession).length >= 1
-	vm.lowestUptime = liveSession.getLowestUptime()
-	vm.lowestMeanGoodRTT = liveSession.getLowestMeanGoodRTT()
-	simpleJSONRender(session)
-}
-
-let registerDataPolls = ()=>{
-	// Fetch static/mock data for use in rendering
-	let onLiveSessionJSONPoll = ()=>{
-		fetchTimer.start = new Date()
-		let fetched = fetchAndParse('/api/1/live-session')
-		fetched.then(onFetchedSession, err => {
-			throw Error(err)
+	fetchAndParse(jsonUrl){
+		return fetch(jsonUrl).then((res)=>{
+			return res.json()
+		}, (err)=>{
+			return Error(err) // TEMP this should be graceful
 		})
 	}
-	liveSessionJSONPollTick = setInterval(onLiveSessionJSONPoll, 2000)
-	onLiveSessionJSONPoll()
+
+	onFetchedSession(session){
+		this.fetchTimer.end = new Date()
+		if (config.verbose >= 2) console.info(`Session fetch took ${this.fetchTimer.end - this.fetchTimer.start}ms`)
+		this.liveSession = new PingunoSession(session)
+		
+		this.vm.liveSessionLoaded = Object.keys(this.liveSession).length >= 1
+		this.vm.lowestUptime = this.liveSession.getLowestUptime()
+		this.vm.lowestMeanGoodRTT = this.liveSession.getLowestMeanGoodRTT()
+		this.simpleJSONRender(session)
+	}
+
+	registerDataPolls(){
+		// Fetch static/mock data for use in rendering
+		let onLiveSessionJSONPoll = ()=>{
+			this.fetchTimer.start = new Date()
+			let fetched = this.fetchAndParse('/api/1/live-session')
+			fetched.then(this.onFetchedSession, err => {
+				throw Error(err)
+			})
+		}
+		this.liveSessionJSONPollTick = setInterval(onLiveSessionJSONPoll, 2000)
+		onLiveSessionJSONPoll()
+	}
 }
 
 /*
 	Kickoff
 */
 ci('Running entry.js')
-renderVmTick = setInterval(renderVm, 1000)
-renderVm()
-registerInputHandlers()
-registerDataPolls()
+
+let gui = new PingunoGUI()
+gui.registerDataPolls()
