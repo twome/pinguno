@@ -1,6 +1,5 @@
 // 3rd-party
 // import cloneDeep from '../node_modules/lodash-es/cloneDeep.js' // example of Lodash url
-import Vue from '../node_modules/vue/dist/vue.esm.js'
 import renderjson from '../node_modules/renderjson/renderjson.js'
 
 // In-house
@@ -8,14 +7,15 @@ import { config } from './config.js'
 import { d, w, c, ce, ci } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
 import { registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects
+import { ReactiveVm } from './reactive-vm.js' // Side-effects
 
-// Vue Components
+// Web Components (custom elements)
 import { Indicator } from './components/indicator.js'
 import { MoreOptionsBtn } from './components/more-options-btn.js'
 
-let vue = new Vue({
-	el: '#vue-app',
-	data: {
+let vm = new ReactiveVm({
+	el: '#reactive-vm-app',
+	data: { // exposed to all custom el templates
 		lowestUptime: 69.69,
 		exportButtons: {
 			'js-open-log-json': {
@@ -36,7 +36,7 @@ let vue = new Vue({
 			port: '1919'
 		}
 	},
-	methods: {
+	methods: { // callable from vm-on-change, vm-on-click etc
 		openCurrentLogJSON: ()=>{
 			fetch('/api/1/actions/open-current-log-json', {
 				method: 'GET'
@@ -52,11 +52,11 @@ class PingunoGUI {
 		this.opt = {...options}  // Bind constructor options to the instance
 
 		// State
-		this.customVueEls = [
+		this.customElClasses = [
 			MoreOptionsBtn,
 			Indicator
 		]
-		console.debug(this.customVueEls)
+		console.debug(this.customElClasses)
 
 		this.fetchTimer = {}
 		this.liveSession = null
