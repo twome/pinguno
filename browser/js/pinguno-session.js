@@ -7,7 +7,7 @@ class PingunoSession {
 	}
 
 	getValPerTargetForStatKey(statKey){
-		let targets = Object.keys(this.data.sessionStats).map(key => this.data.sessionStats[key])
+		let targets = Object.keys(this.data.sessionStats.targets).map(key => this.data.sessionStats.targets[key])
 		return collectPropertyAcrossInstancesDeep(targets, [statKey])
 	}
 
