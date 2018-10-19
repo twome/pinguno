@@ -57,8 +57,7 @@ class Server {
 
 		this.latestAPIPath = this.opt.apiPath
 		this.chosenServerHostname = this.opt.availableOnLAN && this.activeLocalIP ? this.activeLocalIP : '127.0.0.1'
-
-		this.serverRunning = false		
+	
 		this.retryStartTick = null	
 
 		this.exp = express()
@@ -139,14 +138,12 @@ class Server {
 		}
 
 		this.activeHTTPServer = this.exp.listen(this.opt.port, this.chosenServerHostname, err =>{
-			// This fn is effectively a .('listen') handler on the .listen() returned active server
-
+			// This handler is effectively a .('listen') handler on the .listen() returned active server
 			if (err){
 				throw Error('[server:listen] Error starting server listener:', err)
 			}
 			
 			console.info(`Pinguno server listening at: ${this.chosenServerHostname}:${this.opt.port}`)
-			this.serverRunning = true
 		})
 
 		this.activeHTTPServer.on('error', err => {
@@ -158,6 +155,8 @@ class Server {
 				throw Error(`Error with unhandled code "${err.code}":`, err)
 			}
 		})
+
+		return this.activeHTTPServer
 	}
 
 	startUp(){
@@ -166,7 +165,7 @@ class Server {
 	}
 
 	shutDown(){
-		this.pinger.cleanExit()
+		this.pinger.shutDown()
 		this.activeHTTPServer.close()
 	}
 
@@ -214,41 +213,5 @@ if (inDev){
 	})
 	liveReloadServerStart(app.clientCodeLastModified, app.chosenServerHostname, app.opt.port)
 }
-
-if (process.mainModule !== module){
-	process.on('message', (messageData)=>{
-		if (messageData[config.exitSelfMsg] === true){
-			console.info(`[server] Custom "clean exit" message received over IPC from parent process`)
-			app.shutDown()
-			process.kill(process.pid, 'SIGINT')
-		} else {
-			console.error(`[server] Unknown IPC message received: ${messageData}`)
-		}
-	})
-
-	process.on('close', ()=>{
-		console.debug(`[server] Process closed; exiting self.`)
-		process.kill(process.pid, 'SIGINT')
-	})
-
-	process.on('disconnect', ()=>{
-		console.debug('[server] Parent process disconnected IPC channels; exiting self.')
-		process.kill(process.pid, 'SIGINT')
-	})
-}
-
-process.on('SIGINT', ()=>{
-	console.debug(`[server] Process received SIGINT, upgrading to SIGTERM`)
-	process.kill(process.pid, 'SIGTERM')
-})
-
-process.on('SIGTERM', ()=>{
-	console.debug(`[server] Process received SIGTERM`)
-	app.shutDown()
-	setTimeout(()=>{
-		process.kill(process.pid, 'SIGKILL')
-	}, 1000)
-})
-
 
 exports = { Server, clientModes }

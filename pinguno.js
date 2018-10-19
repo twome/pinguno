@@ -402,15 +402,13 @@ class Pinguno {
 					processName: 'ping' + pingTarget.humanName,
 					actualProcess: returnedEngine
 				})
-
-				console.log('server pushed new ping process '+ returnedEngine.pid )
 			}
 		}
 	}
 
-	cleanExit(){
+	shutDown(){
 		this.processRoster.forEach((obj, i)=>{
-			console.info(`[pinguno:cleanExit] Exiting subprocess ${obj.processName}`)
+			console.info(`[pinguno:shutDown] Exiting subprocess ${obj.processName}`)
 			process.kill(obj.actualProcess.pid, 'SIGTERM')
 		})
 		return this.processRoster

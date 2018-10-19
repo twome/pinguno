@@ -160,21 +160,11 @@ let serverTaskProm = (resolve, reject)=>{
 	]
 	if (inDev) nodeCLArgs.push('--inspect=127.0.0.1:1919')
 		
-	serverProcess = child_process.spawn('node', nodeCLArgs, {
-		stdio: ['pipe', 'pipe', 'pipe', 'ipc'] // Functionally the same as using child_process.fork?
-	})
-
-	let alreadySentParentPID = false
+	serverProcess = child_process.spawn('node', nodeCLArgs)
 
 	let logOutput = (data)=>{
 		if (config.NODE_VERBOSE >= 2) console.info(`[gulp:server] ${data.toString().trim()}`)
 		resolve(serverProcess)
-		if (!alreadySentParentPID){
-			serverProcess.send({
-				parentPID: process.pid
-			})
-			alreadySentParentPID = true
-		}
 	}
 	serverProcess.stdout.on('data', logOutput)
 	serverProcess.stderr.on('data', logOutput) // An express.listen() EADDRINUSE error will output here
@@ -184,10 +174,6 @@ let serverTaskProm = (resolve, reject)=>{
 		console.error(err)
 		serverProcess.kill(serverProcess.pid, 'SIGTERM')
 		reject(err)
-	})
-
-	serverProcess.on('message', (messageStr)=>{
-		console.debug(`[gulp:server] Received IPC message from ${serverProcess.pid}: ${messageStr}`)
 	})
 }
 let serverTask = ()=>{
@@ -325,13 +311,6 @@ gulp.watch(gulpConfigDependencies, ()=>{
 // Instead of running 'gulp <command>' as a CLI, simply run this file with node.
 if (module === process.mainModule){ // We are running this gulpfile.js directly with node
 	console.info(`Executing gulpfile using node (instead of Gulp's CLI).`)
-
-	process.on('SIGINT', ()=>{
-		let toChild = {} 
-		toChild[config.exitSelfMsg] = true
-		serverProcess.send(toChild)
-		process.kill(process.pid, 'SIGTERM')
-	})
 
 	if (process.argv.length >= 4){ 
 		throw Error('[gulpfile] Too many command-line arguments provided to gulpfile - we expect just one; the name of the gulp task to execute.') 
