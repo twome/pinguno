@@ -1,9 +1,5 @@
-// Built-ins
-
-// 3rd-party dependencies
+// 3rd-party
 require('dotenv').config() // We only need side-effects on: process.env
-
-let config = {}
 
 let defaultConfig = {
 	exitSelfMsg: 'cleanExit',
@@ -14,10 +10,9 @@ let defaultConfig = {
 		SIGHUP: 'SIGHUP' // Signal Hang Up
 	}
 }
-let envVars = {}
-let clArgs = {}
 
-// Process text environment variables into more useful types & validate them
+let envVars = {}
+// Process environment variables (which are string-only) into more useful types & validate them
 if (process.env.NODE_VERBOSE){
 	let verbosityAsInt = Number(process.env.NODE_VERBOSE)
 	if ( typeof verbosityAsInt === 'number' && verbosityAsInt <= 9 && verbosityAsInt >= 0 ){
@@ -45,8 +40,7 @@ if (process.env.NODE_ENV){
 	}
 }
 
-if (config.NODE_VERBOSE >= 3) console.info('process.argv: ', process.argv)
-
+let clArgs = {}
 // Hostname and/or port
 // ~ if we are running 'server' cli
 // if (process.argv[2]){
@@ -66,7 +60,8 @@ if (config.NODE_VERBOSE >= 3) console.info('process.argv: ', process.argv)
 // process.env
 
 
-// Normal unix order of precendence
+// Overwrite config properties accord to the normal Unix order of precendence (command-line arguments > enviroment variables > app defaults)
+let config = {}
 Object.assign(config, defaultConfig)
 Object.assign(config, envVars)
 Object.assign(config, clArgs)

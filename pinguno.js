@@ -367,7 +367,7 @@ class Pinguno {
 	}
 
 	updateSessionStats(){
-		this.sessionStats = Stats.calcSessionStats(this)
+		this.sessionStats = new Stats(this)
 		this.sessionDirty = true
 		return this.sessionStats
 	}

@@ -1,11 +1,8 @@
-// Built-in modules
-// (none)
-
-// 3rd-party dependencies
+// 3rd-party
 const { _ } = require('lodash')
 const simpleStatistics = require('simple-statistics')
 
-// In-house modules
+// In-house
 import { isBadResponse } from './outages.js'
 
 // TODO: better way of managing user configs for stats
@@ -14,14 +11,11 @@ let statsConfig = {
 }
 
 class Stats {
-	constructor(){
-	
+	constructor(instancePinguno){
+		this.calcSessionStats(instancePinguno)
 	}
 
-	static calcSessionStats(instancePinguno){
-		let session = instancePinguno
-		let sessionStats = {}
-
+	calcSessionStats(session){
 		// BUG: doesn't handle negatives properly
 		let toNearestMultipleOf = (input, factor)=>{
 			if (typeof input !== 'number' || typeof factor !== 'number'){
@@ -49,6 +43,7 @@ class Stats {
 			return inputIsNegative ? -input : input
 		}
 
+		this.targets = {}
 		for (let target of session.pingTargets){
 			let thisStatTarget = {}
 
@@ -72,10 +67,13 @@ class Stats {
 				thisStatTarget.uptimeFraction = 1 - (badResponses.length / target.pingList.length)
 			}
 
-			sessionStats[target.IPV4] = thisStatTarget
+			this.targets[target.IPV4] = thisStatTarget
 		}
 
-		return sessionStats
+		this.memoryUsage = process.memoryUsage()
+
+		this.dateCalculated = new Date()
+		return this
 	}
 }
 
