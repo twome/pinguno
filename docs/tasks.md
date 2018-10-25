@@ -62,6 +62,7 @@
 	- add a delay in the server to simulate spotty/slow/async data
 		- module for this
 
+
 ## Native / OS code
 
 - "invisible" mode - when executed by "run on boot" lists, run without tray icon visible to save clutter
@@ -73,6 +74,7 @@
 - [highpriority] run cli as service / auto-run on boot 
 	- look up hands-off rebooting Windows PC like a router (auto log in; auto lock the UI; start on-boot services)
 		- could relay these instructions to users looking for that
+
 
 ## CLI
 
@@ -89,11 +91,12 @@
 	- `-Q` to adjust ToS, Type of Service (adjust for higher network precendence, more reliability etc)
 	- `-t` set the IP ttl
 
-## Misc
 
+## Misc
 
 - [highpriority] stream sessions to file 
 	- necessary for efficient memory usage
+	- should we json-stringify each 'chunk'? i guess that might be inefficient but easiest to parse
 	- workaround: simply start a new session whenever mem usage gets too high; starting new session automatically calls a compress-all-logs if log-archive too big (could this be parallel & ignore present session? wait of course it could)
 
 - use quasi-random port. have an order of default ports to test for availability first, then give up and try random ones
@@ -215,10 +218,12 @@
 - live demo from Pinguno cli running on domain's server
 	- open in popup iframe exactly like a menubar Electron window?
 
+
 ## 3rd-party code propositions
 
 - proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
 - support getting TTL & response size for response pings
+
 
 ## Checklist for public release:
 
@@ -240,6 +245,7 @@
 -[ ] CODE QUALITY: Remove all unnecessary dependencies to reduce install time / size.
 -[ ] CODE QUALITY: Check that single-line, single statement 'if' statements are not wrapped in block curlies
 -[ ] UX: Ensure readme has no serious inaccurate information.
+
 
 ### Before 1.0.0:
 - test suite

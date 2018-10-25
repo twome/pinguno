@@ -113,20 +113,15 @@ See the `docs` folder in this repo for Markdown-formatted documentation.
 
 - **changelog.md**: brief summaries of important changes between releases (commits to the `master` branch)
 - **bugs.md**: the full list of known bugs
-- **hacks.md**: currently-implemented hacks to be wary of
-- **roadmap.md**: future development plans - Pinguno is planned to be a very simple menubar/tray app for non-technical users.
+- **hacks.md**: currently-implemented hacks/workarounds to be wary of
+- **roadmap.md**: [pending] future development plans - Pinguno is planned to be a very simple menubar/tray app for non-technical users.
 
 ## Error reporting & contributing
 
-We use [semantic versioning](https://semver.org/) for releases (tags on the 'master' branch).
+We use [semantic versioning](https://semver.org/) for releases (tags on the 'master' branch). Send us a PR, or make an issue on GitHub!
+All help is appreciated :)
 
-Send us a PR or make an issue on GitHub! 
-
-- We don't have easy access to good Windows and Linux testing machines, so finding bugs on them would be especially useful. Running reliably without user input on common machines is a very high long-term priority. 
-- Test data on a wide variety of network conditions is very valuable.
-
-Development roadmap is currently All help is appreciated :) 
-Read the contributor's code of conduct at `docs/conduct.md` if you want to get a feel for what is appropriate.
+For contributing labour to Pinguno directly, please see `docs/contributing.md`.
 
 ## Contributors:
 
