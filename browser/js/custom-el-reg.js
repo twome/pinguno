@@ -1,3 +1,4 @@
+/* side-effects: true */
 import { d, w, c, ce, ci } from './util.js'
 
 // Get a reference to the "classed" version of every instance (DOM element) of each custom element we've made

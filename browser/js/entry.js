@@ -4,6 +4,7 @@ import renderjson from '../node_modules/renderjson/renderjson.js'
 
 // In-house
 import { config } from './config.js'
+import './compatibility.js'
 import { d, w, c, ce, ci } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
 import { registerDOMNodesToCustomEls } from './custom-el-reg.js' // Side-effects

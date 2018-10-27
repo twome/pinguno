@@ -12,11 +12,13 @@ let config = {
 }
 
 /*
-	Write the current release environement into the DOM, so it's available to:
+	Read the current release environment from the DOM (written by server templating). This is also available to:
 	- JS not controlled by us (we can just `import` this config file instead of using a pseudo-global)
 	- CSS
 */
+let htmlElAttrName = config.appDomPrefix.slice(0, config.appDomPrefix.length - 1) + 'BuildEnv'
+console.debug('htmlElAttrName', htmlElAttrName)
 let htmlEl = document.documentElement
-if (htmlEl.dataset.pnBuildEnv) config.env = htmlEl.dataset.pnBuildEnv
+if (htmlEl.dataset[htmlElAttrName]) config.env = htmlEl.dataset[htmlElAttrName]
 
 export { config, envs }

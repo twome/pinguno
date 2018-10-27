@@ -1,8 +1,13 @@
-# To do / roadmap:
+# Tasks to do:
 
+- add `pre-push` git hook from this repo to global config
 
 
 ## GUI
+
+- add list of hard browser requirements, without which it's not worth making fallbacks for. alert user if their browser is insufficient, and inform them that all the features used are in the *standard spec* and the problem is with the browser, not the page code (for easier debugging eg. with their technical support). enumerate the specific features the browser lacks and link to CanIUse.com or MDN browser support matrix
+
+- add HTML5Boilerplate stuff like correct <meta> tags
 
 - learn Vue and render session data with it
 
