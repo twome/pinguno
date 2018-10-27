@@ -39,7 +39,7 @@ class Server {
 	constructor({...options} = {
 		clientModes: clientModes,
 		clientMode: clientModes.browser,
-		availableOnLAN: false,
+		makeAvailableOnLAN: false,
 		apiPath: 'api/1',
 		preferredProtocol: 'http://',
 		port: 1919,
@@ -48,7 +48,8 @@ class Server {
 		this.opt = {...options} // Bind constructor options to the instance
 
 		// State properties
-		this.activeLocalIP = null 
+		this.activeLocalIP = null
+		this._localhostIP = '127.0.0.1'
 		this.serverURL = null
 		this.updateLocalIPAddress()
 		this.updateLocalIPAddressTick = setInterval(()=>{
@@ -56,7 +57,7 @@ class Server {
 		}, 5000)
 
 		this.latestAPIPath = this.opt.apiPath
-		this.chosenServerHostname = this.opt.availableOnLAN && this.activeLocalIP ? this.activeLocalIP : '127.0.0.1'
+		this.chosenServerHostname = (this.opt.makeAvailableOnLAN && this.activeLocalIP) ? this.activeLocalIP : this._localhostIP
 	
 		this.retryStartTick = null	
 
@@ -126,18 +127,21 @@ class Server {
 	}
 
 	startServer(){
-		if (this.activeLocalIP){
-			console.info('Current local (LAN) IP address: ', this.activeLocalIP)	
-			if (this.retryStartTick) clearInterval(this.retryStartTick)
-		} else {
-			console.error(`[server:startServer] Can't find a local IP address - no network to serve web UI on.`)
-			if (!this.retryStartTick) this.retryStartTick = setInterval(()=>{
-				this.startServer()
-			}, this.opt.serverStartRetryIntervalMs || 5000)
-			return false
+
+		if (this.opt.makeAvailableOnLAN){
+			if (this.activeLocalIP){
+				console.info('Current local (LAN) IP address: ', this.activeLocalIP)	
+				if (this.retryStartTick) clearInterval(this.retryStartTick)
+			} else {
+				console.error(`[server:startServer] Can't find a local IP address - no network to serve web UI on.`)
+				if (!this.retryStartTick) this.retryStartTick = setInterval(()=>{
+					this.startServer()
+				}, this.opt.serverStartRetryIntervalMs || 5000)
+				return false
+			}
 		}
 
-		this.activeHTTPServer = this.exp.listen(this.opt.port, this.chosenServerHostname, err =>{
+		this.activeHTTPServer = this.exp.listen(this.opt.port, this.chosenServerHostname, err => {
 			// This handler is effectively a .('listen') handler on the .listen() returned active server
 			if (err){
 				throw Error('[server:listen] Error starting server listener:', err)
