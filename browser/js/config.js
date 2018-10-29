@@ -4,9 +4,8 @@ import { Enum } from '../../my-util-iso.js'
 // Release environments
 let envs = new Enum(['development', 'production', 'staging'])
 
-// TODO make enum isomorphic and use it to set settings
 let config = {
-	env: envs.development,
+	env: envs.production, // Production by default (for safety)
 	appDomPrefix: 'pn-',
 	verbose: 2
 }
@@ -17,8 +16,9 @@ let config = {
 	- CSS
 */
 let htmlElAttrName = config.appDomPrefix.slice(0, config.appDomPrefix.length - 1) + 'BuildEnv'
-console.debug('htmlElAttrName', htmlElAttrName)
 let htmlEl = document.documentElement
 if (htmlEl.dataset[htmlElAttrName]) config.env = htmlEl.dataset[htmlElAttrName]
+
+if (config.verbose >= 2) console.debug('[config] Release environment: ', config.env)
 
 export { config, envs }

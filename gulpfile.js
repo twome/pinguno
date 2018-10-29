@@ -152,8 +152,6 @@ let webpackTask = ()=>{
 
 let serverProcess = null
 let serverTaskProm = (resolve, reject)=>{
-	console.debug('[gulp:server task] Starting...')
-
 	let nodeCLArgs = [
 		'server-esm-adapter',
 		'--experimental-vm-modules'
@@ -170,7 +168,7 @@ let serverTaskProm = (resolve, reject)=>{
 	serverProcess.stderr.on('data', logOutput) // An express.listen() EADDRINUSE error will output here
 
 	serverProcess.on('error', (err)=>{
-		console.debug('[gulp:server] Error while starting server...')
+		console.error('[gulp:server] Error while starting server...')
 		console.error(err)
 		serverProcess.kill(serverProcess.pid, 'SIGTERM')
 		reject(err)

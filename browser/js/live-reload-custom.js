@@ -2,19 +2,16 @@
 
 let { DateTime } = require('../node_modules/luxon/build/cjs-browser/luxon.js')
 
-console.log('Custom client reloading enabled. Polling...')
-
 // Options
 let hugeConsoleAlertStyle = 'background: hsla(0, 20%, 5%, 1); color: hsla(0, 100%, 90%, 1); padding: 1em; font-size: 2em;'
 let defaultLiveReloadPath = '/dev/client-code-last-modified'
 
-let sequentialFailures = 0
+// State
 let clientLastRefreshedDate = new Date()
+let sequentialFailures = 0
 let defaultPort = Number(location.port) + 1
-let defaultProtocol = location.protocol + '//'
-let defaultHostname = location.hostname
 let portToUse = defaultPort + sequentialFailures
-let fetchURL = new URL(defaultLiveReloadPath, defaultProtocol + defaultHostname + ':' + portToUse)
+let fetchURL = new URL(defaultLiveReloadPath, location.protocol + '//' + location.hostname + ':' + portToUse)
 
 let liveReloadTick = ()=>{
 	fetch(fetchURL.href).then((res)=>{
