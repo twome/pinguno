@@ -5,19 +5,19 @@ import template from '../node_modules/lodash-es/template.js'
 
 const _ = { cloneDeep, last, template }
 
-// TODO: this should extend inbuilt Error class
-class ErrorCannotAccessProperty {
-	constructor(currentPropPathKey, currentPropPathValue, nextPropKey){
-		return new Error(`Property ${nextPropKey} can't be accesssed because ${currentPropPathKey} has value ${currentPropPathValue}`)
-	}
+class ErrorCannotAccessProperty extends Error {
+  constructor(currentPropPathKey, currentPropPathValue, nextPropKey, messageForSuper = ''){
+    super(messageForSuper)
+    this.message = `ErrorCannotAccessProperty: Property ${nextPropKey} can't be accesssed because ${currentPropPathKey} has value ${currentPropPathValue}`
+  }
 }
 
-class ErrorInvalidPropertyKey {
-	constructor(propKey){
-		return new Error(`Property ${propKey} has a period "." in its name, which is not allowed as it could lead to confusion.`)
+class ErrorInvalidPropertyKey extends Error {
+	constructor(propKey, messageForSuper = ''){
+		super(messageForSuper)
+		this.message = `ErrorInvalidPropertyKey: Property ${propKey} has a period "." in its name, which is not allowed as it could lead to confusion.`
 	}
 }
-
 
 // TODO: make deep-setting (for arrays) and deep-getting methods
 /*
@@ -36,25 +36,27 @@ class ErrorInvalidPropertyKey {
 class ReactiveObj {
 	constructor(objToWatch, watchersToAssign){
 		this.$original = _.cloneDeep(objToWatch)
-		this.$watchersToAssign = watchersToAssign || Watcher.stack
 
-		return this.walkPlainObject(objToWatch)
+		// Static properties
+		ReactiveObj.watchersToAssign = watchersToAssign || Watcher.stack
+
+		return ReactiveObj.walkPlainObject(objToWatch)
 	}
 
 	/*
 		Recursively interate through a plain javascript object's properties to replace all its 
 		simple properties with getter/setter functions (which operate on a private internal value)
 	*/
-	walkPlainObject(objToWatch){
+	static walkPlainObject(objToWatch){
 		Object.keys(objToWatch).forEach((propKey)=>{
 			let propVal = objToWatch[propKey]
 			console.debug('[ReactiveObj:walkPlainObject] propKey, propVal', propKey, propVal)
 
 			if (propVal !== null && typeof propVal === 'object'){ // Matches arrays, objects etc
-				this.walkPlainObject(propVal)
+				ReactiveObj.walkPlainObject(propVal)
 			}
 			
-			this.createReactiveProperty(objToWatch, propVal, propKey)
+			ReactiveObj.createReactiveProperty(objToWatch, propVal, propKey)
 		})
 
 		// TODO: should we seal the output object; can its accessor properties
@@ -65,9 +67,7 @@ class ReactiveObj {
 	}
 
 	// Replace simple "data descriptor" property with an "accessor descriptor" reactive property 
-	createReactiveProperty(parentObject, existingPropVal, propKey){
-		let instance = this
-
+	static createReactiveProperty(parentObject, existingPropVal, propKey){
 		let _previousInternalValue
 		let _internalValue = existingPropVal
 		let _internalDependants = new Set() // each dependency instance is unique to EACH property of the object
@@ -84,8 +84,8 @@ class ReactiveObj {
 
 				// The watcher must make sure it has added itself to this watcher list before trying to 
 				// `get` any reactive properties, if it wants to be automatically registered as a dependency.
-				if (last(this.$watchersToAssign)){ //
-					_internalDependants.add(last(this.$watchersToAssign.current)) // Add this dependency to the current target watcher
+				if (last(ReactiveObj.watchersToAssign)){ //
+					_internalDependants.add(last(ReactiveObj.watchersToAssign.current)) // Add this dependency to the current target watcher
 					console.debug(`[ReactiveObj:createReactiveProperty:get] List of dependants: ${_internalDependants}`)
 				}
 				return _internalValue
@@ -94,7 +94,7 @@ class ReactiveObj {
 				console.debug(`[ReactiveObj:createReactiveProperty] Setting ${propKey}`)
 				if (value !== _previousInternalValue){ // Prevent unnecessary update runs
 					if (value !== null && typeof value === 'object'){
-						instance.walkPlainObject(value, true)
+						ReactiveObj.walkPlainObject(value, true)
 					}
 					_previousInternalValue = _internalValue
 					_internalValue = value
@@ -102,6 +102,18 @@ class ReactiveObj {
 				}
 			}
 		})
+	}
+
+	static setNewKey(parentObj, keyToCreate, value){
+		parentObj[keyToCreate] = null // Placeholder value, just to add this key to Object.keys(parentArr)
+		ReactiveObj.createReactiveProperty(parentObj, value, keyToCreate)
+	}
+
+	// Array-like wrapper for set, for using on Arrays
+	static pushNewIndex(parentArr, value){ 
+		let keysAsNumbers = Object.keys(parentArr).map(key => Number(key))
+		let plainPropKey = Math.max(...keysAsNumbers) + 1 // Increment on the highest existing index (accounting for sparse arrays)
+		ReactiveObj.setNewKey(parentArr, plainPropKey, value)
 	}
 }
 
@@ -144,71 +156,6 @@ class Watcher {
 	}
 }
 
-// TEMP dev only
-let w = window
-w.objA = new ReactiveObj({
-	lightColor: 'red',
-	dancers: [
-		{
-			name: 'leon',
-			height: 7
-		},{
-			name: 'ali',
-			height: 9
-		}
-	],
-	danceStyle: {
-		bpm: 120,
-		rules: 'street'
-	}	
-})
-w.dancerWatcher = new Watcher(()=>{
-	return w.objA.dancers.reduce((combinedHeight, dancer)=>{
-		console.log(dancer)
-		if (dancer.height){
-			combinedHeight += dancer.height	
-		} else {
-			return 0
-		}
-		console.log(`Combined dancers height so far = ${combinedHeight}`)
-		return combinedHeight
-	}, 0)
-}, (oldHeight, newHeight)=>{
-	console.debug('CALLBACH')
-	console.debug('oldHeight, newHeight', oldHeight, newHeight)
-},)
-w.objB = new ReactiveObj(Object.assign(w.objA, {
-	dancers: [
-		{ 
-			name: 'BIG DANCE FELLA',
-			height: 918
-		}
-	]
-}))
-
-w.objB.dancers = [
-	{
-		name: 'Hot Streak',
-		speed: 100
-	},{
-		name: 'Cool Stuff',
-		sludginess: 19
-	}
-]
-
-w.objB.danceStyle.influences = {
-	early: {
-		name: 'jazz',
-		period: 1940
-	},
-	impressionable: [
-		'metal',
-		'metallica',
-		'ferrous substances'
-	]
-}
-
-console.debug('Original testObj:', w.testObj)
 
 
 /*
