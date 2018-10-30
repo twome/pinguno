@@ -5,20 +5,6 @@ import template from '../node_modules/lodash-es/template.js'
 
 const _ = { cloneDeep, last, template }
 
-class ErrorCannotAccessProperty extends Error {
-  constructor(currentPropPathKey, currentPropPathValue, nextPropKey, messageForSuper = ''){
-    super(messageForSuper)
-    this.message = `ErrorCannotAccessProperty: Property ${nextPropKey} can't be accesssed because ${currentPropPathKey} has value ${currentPropPathValue}`
-  }
-}
-
-class ErrorInvalidPropertyKey extends Error {
-	constructor(propKey, messageForSuper = ''){
-		super(messageForSuper)
-		this.message = `ErrorInvalidPropertyKey: Property ${propKey} has a period "." in its name, which is not allowed as it could lead to confusion.`
-	}
-}
-
 // TODO: make deep-setting (for arrays) and deep-getting methods
 /*
 	Recursively walks a plain ES object and replaces each property with a "reactive property". The reactive property 
