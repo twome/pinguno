@@ -45,7 +45,7 @@ class Enum {
 	}
 }
 
-// First in, first out stack. This is basically just an array, but provides a clearer interface when 
+// Last in, first out stack. This is basically just an array, but provides a clearer interface when 
 // you're supposed to be interacting with *only* the topmost element of an array
 class Stack {
 	constructor(){
