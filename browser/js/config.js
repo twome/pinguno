@@ -1,5 +1,5 @@
 // In-house
-import { Enum } from '../../my-util-iso.js'
+import { Enum } from '../../util-iso.js'
 
 // Release environments
 let envs = new Enum(['development', 'production', 'staging'])

@@ -6,7 +6,7 @@ import template from '../node_modules/lodash-es/template.js'
 
 // In-house 
 import { d, w, c, ce, ci, cw, debug2 } from './util.js'
-import { Stack } from '../../my-util-iso.js'
+import { Stack } from '../../util-iso.js'
 
 // This is the meta-information for the value of a reactive object's property. It has its own list of Watchers 
 // (much like a Publisher) which it notifies whenever its internal value changes.

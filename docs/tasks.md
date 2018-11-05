@@ -1,7 +1,6 @@
 # Tasks to do:
 
 - add `pre-push` git hook from this repo to global config
-- rename my-util to util across projects
 
 ## GUI
 

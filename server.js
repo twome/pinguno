@@ -14,9 +14,9 @@ const chokidar = require('chokidar')
 
 // In-house modules
 import { config } from './config.js'
-import { Enum } from './my-util-iso.js'
+import { Enum } from './util-iso.js'
 import { Pinguno } from './pinguno.js'
-import { getLocalIP } from './my-util-network.js'
+import { getLocalIP } from './util-network.js'
 import { 
 	clientCodeLastModifiedStatusRoute,
 	liveReloadFileWatcherStart,

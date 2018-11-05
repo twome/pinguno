@@ -13,7 +13,7 @@ const prompts = require('prompts')
 // In-house modules
 import { Pinguno } from './pinguno.js'
 const { config } = require('./config.js')
-import { MyUtil } from './my-util.js'
+import { MyUtil } from './util.js'
 import { PingsLog, RequestError } from './ping-formats.js'
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
