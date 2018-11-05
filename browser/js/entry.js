@@ -7,7 +7,7 @@ import './compatibility.js'
 import { d, w, c, ce, ci } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
 import { registerDOMNodesToCustomEls } from './custom-el-reg.js' 
-import { ReactiveObj, Watcher, ReactiveVm } from './reactive-vm.js'
+import { ReactiveProxy, Watcher, ReactiveVm } from './reactive-vm.js'
 
 // Web Components (custom elements)
 import { Indicator } from './components/indicator.js'
@@ -34,7 +34,7 @@ class PingunoGUI {
 
 		// TEMP dev inprogress
 		let w = window
-		w.objA = new ReactiveObj({r: {
+		w.objA = new ReactiveProxy({
 			lightColor: 'red',
 			dancers: [
 				{
@@ -50,67 +50,78 @@ class PingunoGUI {
 				rules: 'street',
 				influences: '_STUB'
 			}
-		}})
-		console.debug('∆∆∆ making watcher')
-		w.dancerWatcher = new Watcher(()=>{
-			return w.objA.r.dancers.reduce((combinedHeight, dancer)=>{
-				console.log('[watcher render] dancer: ', dancer)
-				if (dancer.height){
-					combinedHeight += dancer.height	
-				} else {
-					return 0
-				}
-				console.log(`[watcher render] Combined dancers height so far = ${combinedHeight}`)
-				return combinedHeight
-			}, 0)
-		}, (oldHeight, newHeight)=>{
-			console.debug('[watcher callback] oldHeight, newHeight', oldHeight, newHeight)
-		},)
-		console.debug('∆∆∆ making big dance fella')
-		w.objB = new ReactiveObj({r: Object.assign(w.objA.r, 
-			{r: {
-				dancers: [
-					{ 
-						name: 'BIG DANCE FELLA',
-						height: 918
-					}
-				]
-			}}
-		)})
-		console.debug(`∆∆∆ replacing big lad with new dancers`)
-		w.objB.r.dancers = [
-			{
-				name: 'Hot Streak',
-				speed: 100
-			},{
-				name: 'Cool Stuff',
-				sludginess: 19
-			}
-		]
-		console.debug(`∆∆∆ pushing extra dancer`)
-		ReactiveObj.setNewKey(w.objB.r.dancers, '69', {
-			name: 'Fourth Wheel',
-			speed: 0.5
 		})
-		ReactiveObj.pushNewIndex(w.objB.r.dancers, {
-			name: 'Fourth Wheel',
-			speed: 0.5
-		})
-		console.debug(`∆∆∆ adding influences obj-prop to style`)
-		w.objB.r.danceStyle.influences = {
-			early: {
-				name: 'jazz',
-				period: 1940
-			},
-			impressionable: [
-				'metal',
-				'metallica',
-				'ferrous substances'
-			]
-		}
 
-		console.debug('∆∆∆ whats the syncronous objA?:', w.objA)
-		console.debug('∆∆∆ whats the syncronous objB?:', w.objB)
+		// w.objA.lightColor = 'green'
+		// w.objA.newProp = 'a primitive, like a string'
+		w.objA.dancers.push({
+			name: 'Power Muscle',
+			strength: 99
+		})
+		// w.objA.dancers.push('just a string')
+		// c('w.objA.lightColor', w.objA.lightColor )
+		// c('w.objA.newProp', w.objA.newProp )
+		// c('w.objA.dancers', w.objA.dancers )
+
+
+		// console.debug('∆∆∆ making watcher')
+		// w.dancerWatcher = new Watcher(()=>{
+		// 	return w.objA.dancers.reduce((combinedHeight, dancer)=>{
+		// 		console.log('[watcher render] dancer: ', dancer)
+		// 		if (dancer.height){
+		// 			combinedHeight += dancer.height	
+		// 		} else {
+		// 			return 0
+		// 		}
+		// 		console.log(`[watcher render] Combined dancers height so far = ${combinedHeight}`)
+		// 		return combinedHeight
+		// 	}, 0)
+		// }, (oldHeight, newHeight)=>{
+		// 	console.debug('[watcher callback] oldHeight, newHeight', oldHeight, newHeight)
+		// })
+		// console.debug('∆∆∆ making big dance fella')
+		// w.objB = new ReactiveProxy(Object.assign(w.objA, {
+		// 	dancers: [
+		// 		{ 
+		// 			name: 'BIG DANCE FELLA',
+		// 			height: 918
+		// 		}
+		// 	]
+		// }))
+		// console.debug(`∆∆∆ replacing big lad with new dancers`)
+		// w.objB.dancers = [
+		// 	{
+		// 		name: 'Hot Streak',
+		// 		speed: 100
+		// 	},{
+		// 		name: 'Cool Stuff',
+		// 		sludginess: 19
+		// 	}
+		// ]
+		// console.debug(`∆∆∆ pushing extra dancer`)
+		// w.objB.dancers[69] = {
+		// 	name: 'Fourth Wheel',
+		// 	speed: 0.5
+		// }
+		// w.objB.dancers.push({
+		// 	name: 'Fourth Wheel',
+		// 	speed: 0.5
+		// })
+		// console.debug(`∆∆∆ adding influences obj-prop to style`)
+		// w.objB.danceStyle.influences = {
+		// 	early: {
+		// 		name: 'jazz',
+		// 		period: 1940
+		// 	},
+		// 	impressionable: [
+		// 		'metal',
+		// 		'metallica',
+		// 		'ferrous substances'
+		// 	]
+		// }
+
+		console.debug('Final synchronous objA:', w.objA)
+		// console.debug('∆∆∆ whats the syncronous objB?:', w.objB)
 
 
 		// this.vm = new ReactiveVm({

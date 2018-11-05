@@ -1,107 +1,245 @@
 // 3rd-party
 import cloneDeep from '../node_modules/lodash-es/cloneDeep.js'
 import last from '../node_modules/lodash-es/last.js'
+import isEqual from '../node_modules/lodash-es/isEqual.js'
 import template from '../node_modules/lodash-es/template.js'
 
-const _ = { cloneDeep, last, template }
+// In-house 
+import { d, w, c, ce, ci, cw, debug2 } from './util.js'
+import { Stack } from '../../my-util-iso.js'
 
-// TODO: make deep-setting (for arrays) and deep-getting methods
-/*
-	Recursively walks a plain ES object and replaces each property with a "reactive property". The reactive property 
-	stores the real/original value in its own private property, and uses a getter to to automatically register an
-	internal list of every "watcher" (render function that depends on this reactive property) that gets the 
-	reactive property. Any time that reactive property is changed, its setter automatically calls the 'update' function 
-	of every watcher it had added to its internal list of subscribers, which allows users to asynchronously work with
-	the updated output/view/rendering of the watcher.
+// This is the meta-information for the value of a reactive object's property. It has its own list of Watchers 
+// (much like a Publisher) which it notifies whenever its internal value changes.
+class KeyMeta {
+	constructor(key){
+		this.previousValue = undefined
+		this.value = undefined
+		this.key = key
+		this.dependants = new Set()
+	}
 
-	This works in a very similar way to Angular's and Vue 2.x's "viewmodels".
+	set(value){
+		this.previousValue = this.value
+		this.value = value
+		this.notifyDependants()
+		return this
+	}
 
-	Made with help / adapted from tutorial by Matthew Dangerfield, who in turn adapted from Vue.js source
-	https://hackernoon.com/how-to-build-your-own-reactivity-system-fc48863a1b7c
-*/
-class ReactiveObj {
-	constructor(objToWatch, watchersToAssign){
-		this.$original = _.cloneDeep(objToWatch)
+	subscribeCurrentWatcher(watcherStack){
+		// The watcher must make sure it has added itself to this watcher list before trying to 
+		// `get` any reactive properties, if it wants to be automatically registered as a dependency.
+		if (last(watcherStack)){
+			this.dependants.add(last(watcherStack)) // Add this dependency to the current target watcher
+		} else {
+			cw('[KeyMeta] Accessed property at $key without having any active watchers.', this.key)
+		}
+	}
 
-		// Static properties
-		ReactiveObj.watchersToAssign = watchersToAssign || Watcher.stack
+	unsubscribeWatcher(watcher, keyMeta){
+		keyMeta.dependants.remove(watcher)
+	}
 
-		return ReactiveObj.walkPlainObject(objToWatch)
+	notifyDependants(){
+		Object.entries(this.dependants).map((dependant, key) => {
+			// Allow the dependants to tell us when they're done (if they're asynchronous),
+			// so we can choose to perform something
+			return Promise.resolve(dependant.update())
+		})
+
+		return Promise.all(this.dependants)
+	}
+}
+
+class ReactiveProxy {
+	constructor(targetObj, watchersToAssign){
+		this.watchersToAssign = watchersToAssign || Watcher.stack
+		this.metas = {}
+		this.originalObj = targetObj
+
+		return this.walk(targetObj) // Because we don't return an instance, all instance ("this") references are essentially private
 	}
 
 	/*
 		Recursively interate through a plain javascript object's properties to replace all its 
-		simple properties with getter/setter functions (which operate on a private internal value)
+		simple properties with proxies
 	*/
-	static walkPlainObject(objToWatch){
-		Object.keys(objToWatch).forEach((propKey)=>{
-			let propVal = objToWatch[propKey]
-			console.debug('[ReactiveObj:walkPlainObject] propKey, propVal', propKey, propVal)
-
-			if (propVal !== null && typeof propVal === 'object'){ // Matches arrays, objects etc
-				ReactiveObj.walkPlainObject(propVal)
+	walk(target){
+		for (let [key, child] of Object.entries(target)){
+			c(`[walk] walking key, child`, key, child)
+			// Anything that *can* have properties, we want to shim with a proxy so we can track those properties 
+			// with a KeyMeta
+			if (Object.isExtensible(child)){
+				c(`[walk] walking found an extensible child at key, walking that....`, key)
+				// Deep-recurse from the bottom up, overwriting any objects with Proxies
+				target[key] = new ReactiveProxy(child) 
 			}
-			
-			ReactiveObj.createReactiveProperty(objToWatch, propVal, propKey)
-		})
+		}
 
-		// TODO: should we seal the output object; can its accessor properties
-		// be set() even though their property-attributes (enumerable,
-		// configurable, data: writable, data: value, accessor: set, accessor:
-		// get) are non-configurable? objToWatch = Object.seal(objToWatch)
-		return objToWatch
+		c('[walk] about to makeProxy for target:', target)
+		let topAncestorProxy = this.makeProxy(target)
+		c('[walk] topAncestorProxy:', topAncestorProxy)
+		return topAncestorProxy
 	}
 
-	// Replace simple "data descriptor" property with an "accessor descriptor" reactive property 
-	static createReactiveProperty(parentObject, existingPropVal, propKey){
-		let _previousInternalValue
-		let _internalValue = existingPropVal
-		let _internalDependants = new Set() // each dependency instance is unique to EACH property of the object
-		
-		Object.defineProperty(parentObject, propKey, {
-			enumerable: true,
-			configurable: true, 
-			get(){
-				console.debug(`[ReactiveObj:createReactiveProperty:get] Getting ${propKey}`)
-				
-				// This is how this reactive property knows which processes are watching/depending on it.
-				// This is why we need to use a watcher; so that the reactive object's properties know *which* 
-				// processes (watcher's 'dependentProcesses') depend on them
+	makeProxy(target){
+		c('[makeProxy] before adding metas for existing keys')
+		c('[makeProxy] target entries:', Object.entries(target))
+		c('[makeProxy] prexisting proxy metas:', this.metas)
+		for (let [key, val] of Object.entries(target)){
+			c('[makeProxy] creating new meta for key:', key)	
+			this.metas[key] = new KeyMeta(key).set(val)
+		}
 
-				// The watcher must make sure it has added itself to this watcher list before trying to 
-				// `get` any reactive properties, if it wants to be automatically registered as a dependency.
-				if (last(ReactiveObj.watchersToAssign)){ //
-					_internalDependants.add(last(ReactiveObj.watchersToAssign.current)) // Add this dependency to the current target watcher
-					console.debug(`[ReactiveObj:createReactiveProperty:get] List of dependants: ${_internalDependants}`)
-				}
-				return _internalValue
+		const handler = {
+			get: (target, key, receiver)=>{
+				/*
+					Affects:
+						 `[]` accessor operator
+						`.` accessor operator
+				*/
+				c(`TRAP --- getting key:`, key)
+				let retrievedValue = this.onGetKeyValue(target, key)
+				return retrievedValue
 			},
-			set(value){
-				console.debug(`[ReactiveObj:createReactiveProperty] Setting ${propKey}`)
-				if (value !== _previousInternalValue){ // Prevent unnecessary update runs
-					if (value !== null && typeof value === 'object'){
-						ReactiveObj.walkPlainObject(value, true)
-					}
-					_previousInternalValue = _internalValue
-					_internalValue = value
-					_internalDependants.forEach(dependant => dependant.update())
+			set: (target, key, value, /*receiver*/)=>{
+				/*
+					Affects:
+						`=` operator
+						Array.push()
+				*/
+				c(`TRAP --- setting $key to $value:`, key, value)
+				this.onSetKeyValue(target, key, value, this.getMeta(key))
+				return true
+			},
+			defineProperty: (target, key, descriptor)=>{
+				/*
+					Affects:
+						Object.defineProperty()
+						Array.pop() ?
+				*/
+				c('TRAP --- defineProperty. descriptor:', descriptor)
+				if ('value' in descriptor){ // Data descriptor
+					this.onSetKeyValue(target, key, descriptor.value, this.getMeta(key), descriptor)
+					return true
+				} else if (descriptor.get || descriptor.set ){ // Accessor descriptor
+					// We probably shouldn't let user interfere with accessors here
+					return false
+				} else {
+					// Value hasn't changed, so just update the descriptor attributes.
+					// We're not changing the value so we probably don't need to call onSetKeyValue()
+					Object.defineProperty(target, key, descriptor)
+					return true
 				}
+			},
+			deleteProperty: (target, key)=>{
+				/*
+					Affects:
+						`delete` operator
+						Array.pop() ?
+				*/
+				c('TRAP --- delete')
+				this.onDeleteKey(target, key, this.getMeta(key))
+			},
+			getOwnPropertyDescriptor: (target, key)=>{
+				/*
+					Affects:
+						Object.getOwnPropertyDescriptor(),
+						Object.keys(),
+						anObject.hasOwnProperty(),
+				*/
+				c(`TRAP --- getOwnPropertyDescriptor`)
+				let originalDescriptor = Object.getOwnPropertyDescriptor(target, key)
+				c(originalDescriptor)
+				return originalDescriptor
+				// return Object.assign(originalDescriptor, {
+				// 	enumerable: true,
+				// 	configurable: true
+				// })
 			}
-		})
+		}
+
+		target = new Proxy(target, handler) // Write over target with its Proxy
+		c(`[makeProxy] made the actual proxy from target; proxy is:`, target)
+		return target
 	}
 
-	static setNewKey(parentObj, keyToCreate, value){
-		parentObj[keyToCreate] = null // Placeholder value, just to add this key to Object.keys(parentArr)
-		ReactiveObj.createReactiveProperty(parentObj, value, keyToCreate)
+	getMeta(key, target){
+		c(`[getMeta] Getting meta for $key`, key)
+		let namespace = '_reactiveVmNamespace_' // Need this to stop clashing with pre-existing properties like Array.length or .push()
+		let keyWithinMetas = namespace + key
+		if (!key) throw Error('[ReactiveProxy] Key needed for method .getMeta(key)')
+		if (!this.metas[keyWithinMetas]){
+			// Consumer is trying to get a value of a property which doesn't (or rather, shouldn't) already exist, because 
+			// none of the traps that should have been fired when someone added a value to this property's key have created 
+			// a KeyMeta for this key
+			c('[getMeta] No KeyMeta found for key, creating meta for $key', key)
+			this.metas[keyWithinMetas] = new KeyMeta(key)
+			if (typeof target !== 'undefined' && target[key]){
+				c(`[getMeta] Adding the initial value of $key we found:`, key)
+				this.metas[keyWithinMetas].set(target[key])
+			}			
+		}
+		c(`[getmeta] returning`, this.metas[keyWithinMetas])
+		return this.metas[keyWithinMetas]
 	}
 
-	// Array-like wrapper for set, for using on Arrays
-	static pushNewIndex(parentArr, value){ 
-		let keysAsNumbers = Object.keys(parentArr).map(key => Number(key))
-		let plainPropKey = Math.max(...keysAsNumbers) + 1 // Increment on the highest existing index (accounting for sparse arrays)
-		ReactiveObj.setNewKey(parentArr, plainPropKey, value)
+	onGetKeyValue(target, key){
+		let targetVal = target[key] // Remember, this access could have gone through a proxy before returning to us
+		let keyMeta = this.getMeta(key, target)
+
+		// TEMP dev only
+		c('[onGetKeyValue] getOwnPropertyDescriptor, getOwnPropertyNames, getOwnPropertySymbols', Object.getOwnPropertyDescriptor(target, key), Object.getOwnPropertyNames(target), Object.getOwnPropertySymbols(target))
+
+		c(`[onGetKeyValue] key, targetVal, target`, key, targetVal, target)
+		if (key in target && !target.hasOwnProperty(key)){
+			// This is an inherited property, so we need to be cautious about our ability to track it
+			cw(`[ReactiveProxy] Inherited or inbuilt property "${key}" was accessed; the ReactiveProxy may not be able to track & notify changes if a property (such as Array.prototype.length) is changed without going through this proxy.`)
+			if (key in Object.prototype || key in Array.prototype){
+				cw(`[ReactiveProxy] "${key}" is a shared name with an Object/Array inbuilt property`)
+				// This key shares a name with a property / method of these inbuilt objects
+			}
+		}
+
+		// TEMP dev only
+		if (!isEqual(target[key], keyMeta.value) && typeof targetVal !== 'function'){
+			cw(`%c [ReactiveProxy] Property "${key}" was changed without updating its KeyMeta (or notifying its dependants)`, 'background-color: hsla(0,100%, 75%, 1); color: hsla(0,0%,0%,1);')
+		}
+
+		keyMeta.subscribeCurrentWatcher(this.watchersToAssign)
+		c(`[onGetKeyValue] asking for $key, got:`, key, target[key])
+		return target[key]
+	}
+
+	onSetKeyValue(target, key, value, keyMeta, descriptor){		
+		if (value !== target[key]){ // Prevent unnecessary update runs
+			c('value different, setting:')
+			if (Object.isExtensible(value)){
+				c('[onSetKeyValue] new value is an extensible object! shimming it with a new ReactiveProxy before we set its value:')
+				value = new ReactiveProxy(value) // We want to recurse to the bottom of the tree before starting to set values
+			}
+
+			keyMeta.set(value)
+			c(`setting meta: previous: ${keyMeta.previousValue}, current: ${keyMeta.value}`)
+			c(`[onSetKeyValue] descriptor provided: `, descriptor)
+			let descriptorToAssign = Object.assign({ 
+				value,
+				writable: true,
+				enumerable: true,
+				configurable: true
+			}, descriptor)
+			c('[onSetKeyValue] descriptor to define on prop:', descriptorToAssign)
+			Object.defineProperty(target, key, descriptorToAssign) // Touch the actual internal property
+			c('[onSetKeyValue] new target prop attributes:', Object.getOwnPropertyDescriptor(target, key))
+		}
+	}
+
+	onDeleteKey(target, key, keyMeta){
+		delete target[key]
+		keyMeta.set(undefined)
 	}
 }
+
+
 
 /*
 	dependentProcess(): a function which returns a value. This function can *depend on* the properties of a reactive object, and so
@@ -119,10 +257,9 @@ class Watcher {
 	constructor(dependentProcess, callback, watcherStack){
 		this.dependentProcess = dependentProcess
 		this.callback = callback
-		this.watcherStack = this.watcherStack !== 'undefined' ? this.watcherStack : ReactiveObj.$globalWatcherStack
 
 		// Static properties
-		Watcher.stack = Watcher.stack || []
+		Watcher.stack = Watcher.stack || new Stack()
 		this.watcherStack = watcherStack || Watcher.stack // Static
 
 		this.dependentOutput = null
@@ -145,7 +282,7 @@ class Watcher {
 
 
 /*
-	Wrapper around ReactiveObj to use as a "viewmodel"
+	Wrapper around ReactiveProxy which binds it to a DOM element, in order to use the ReactiveProxy as a "viewmodel"
 
 	TODO: This basically acts as a factory rather than a normal class
 	instance, because the constructor returns a non-instance object (the user
@@ -173,9 +310,9 @@ class ReactiveVm {
 			throw Error('[ReactiveVm] needs an active HTMLElement object or a selector string which identifies to a unique HTMLElement as its `el` property.')
 		}
 
-		this.watcherStack = []
+		this.watcherStack = new Stack()
 
-		this._vm = ReactiveObj(data, this.watcherStack)
+		this._vm = ReactiveProxy(data, this.watcherStack)
 
 		// Attach methods with '$' prefix to root of reactive vm object
 		methods.forEach((fn, key)=>{
@@ -194,4 +331,4 @@ class ReactiveVm {
 	}
 }
 
-export { ReactiveVm, ReactiveObj, Watcher } 
+export { ReactiveVm, ReactiveProxy, Watcher } 

@@ -1,14 +1,24 @@
+import { config } from './config.js'
+
 // Convenience shorthands
-let d = document
-let w = window
-let c = console.debug
-let cl = console.log
-let ci = console.info
-let cw = console.warn
-let ce = console.error
+export let d = document
+export let w = window
+
+export let c = console.debug
+export let cl = console.log
+export let ci = console.info
+export let cw = console.warn
+export let ce = console.error
+
+const makeInfoAtLevel = (level) => (...consoleArgs) => { if (config.verbose >= level) console.info(...consoleArgs) }
+export let info1 = makeInfoAtLevel(1)
+export let info2 = makeInfoAtLevel(2)
+export let info3 = makeInfoAtLevel(3)
+export let info4 = makeInfoAtLevel(4)
+export let info5 = makeInfoAtLevel(5)
 
 // Collect the different values of the same property from different instances of an object into an array
-let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNameProp)=>{
+export let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNameProp)=>{
 	let collection = []
 
 	for (let instance of instanceList){
@@ -25,19 +35,8 @@ let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNamePro
 }
 
 // Clean lodash methods off the global scope
-let cleanGlobalKeys = obj => {
+export let cleanGlobalKeys = obj => {
 	for (let key of Object.keys(obj)){ 
 		if (typeof window[key] === 'function') delete window[key] 
 	} 
-}
-
-export { 
-	d,
-	c,
-	cl,
-	ci,
-	cw,
-	ce,
-	cleanGlobalKeys,
-	collectPropertyAcrossInstancesDeep
 }

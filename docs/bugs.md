@@ -2,10 +2,14 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
+- [breaking] why is a child ReactiveProxy's meta list (.metas) getting a blank KeyMeta in there with a Symbol key?
+
 - [breaking] we store entire sessions in-memory rather than streaming them to files
 	- this rules out long-term logging until fixed
 
 - [test, mac, nativeping, breaking] after running for long enough on native ping, we stop getting "new" pings (newer than the active log file's) for some reason -- check if this is still happening
+
+- [dev] hitting a webpack compilation error in JS stops the js-watch process from continually re-running
 
 - .exit() is not available as a method of subprocesses, even though it's definitely a process and is runnign with a PID?? 
 
@@ -24,5 +28,3 @@
 
 - [test, fragility] make sure we don't try to write to a file while already writing to a file
 	- asyncify the write calls
-
-- [dev] hitting a webpack compilation error in JS stops the js-watch process from continually re-running
