@@ -19,6 +19,6 @@ let htmlElAttrName = config.appDomPrefix.slice(0, config.appDomPrefix.length - 1
 let htmlEl = document.documentElement
 if (htmlEl.dataset[htmlElAttrName]) config.env = htmlEl.dataset[htmlElAttrName]
 
-if (config.verbose >= 2) console.debug('[config] Release environment: ', config.env)
+if (config.verbose >= 2) console.info('[config] Release environment: ', config.env)
 
 export { config, envs }

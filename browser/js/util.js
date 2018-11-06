@@ -17,6 +17,32 @@ export let info3 = makeInfoAtLevel(3)
 export let info4 = makeInfoAtLevel(4)
 export let info5 = makeInfoAtLevel(5)
 
+const styleDebug = (css, ...consoleArgs) => {
+	consoleArgs[0] = '%c' + consoleArgs[0]
+	consoleArgs.splice(1, 0, css)
+	return console.debug(...consoleArgs)
+}
+const styleInfo = (css, ...consoleArgs) => {
+	consoleArgs[0] = '%c' + consoleArgs[0]
+	consoleArgs.splice(1, 0, css)
+	return console.info(...consoleArgs)
+}
+
+export let cred = (...consoleArgs) => styleDebug('color: hsla(0,100%,40%,1); font-weight: bold;', ...consoleArgs)
+export let cblu = (...consoleArgs) => styleDebug('color: hsla(120,100%,40%,1); font-weight: bold;', ...consoleArgs)
+export let cgrn = (...consoleArgs) => styleDebug('color: hsla(240,100%,20%,1); font-weight: bold;', ...consoleArgs)
+export let cyel = (...consoleArgs) => styleDebug('color: hsla(60,100%,35%,1); font-weight: bold;', ...consoleArgs)
+export let cblk = (...consoleArgs) => styleDebug('background-color: hsla(0,0%,0%,1); color: hsla(60,0%,100%,1); padding: 0.2em 0.4em; font-weight: bold;' , ...consoleArgs)
+export let cfaint = (...consoleArgs) => styleInfo('color: hsla(0,0%,0%,0.3);', ...consoleArgs)
+
+cred('big message', 'wow whats this')
+cblu('big message', 'wow whats this')
+cgrn('big message', 'wow whats this')
+cyel('big message', 'wow whats this')
+cblk('big message', 'wow whats this')
+cfaint('faint as hell')
+
+
 // Collect the different values of the same property from different instances of an object into an array
 export let collectPropertyAcrossInstancesDeep = (instanceList, keysArr, instanceNameProp)=>{
 	let collection = []

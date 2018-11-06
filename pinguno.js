@@ -4,7 +4,7 @@ const path = require('path')
 const os = require('os')
 
 // 3rd-party dependencies
-const { _ } = require('lodash')
+const { _ } = require('lodash') // cloneDeep, sortBy, last
 const getFolderSize = require('get-folder-size')
 
 // In-house modules

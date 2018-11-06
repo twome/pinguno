@@ -13,7 +13,7 @@ const prompts = require('prompts')
 // In-house modules
 import { Pinguno } from './pinguno.js'
 const { config } = require('./config.js')
-import { MyUtil } from './util.js'
+import { utcIsoStringToDateObj, isoDateToFileSystemName, fileSystemDateStrToIsoDate, hardWrapToCharLength } from './util.js'
 import { PingsLog, RequestError } from './ping-formats.js'
 
 const fsWriteFilePromise = util.promisify(fs.writeFile)
@@ -30,21 +30,21 @@ let readJSONLogIntoSession = (logFileUri)=>{
 		}))
 
 		// Cast JSON strings to class instances
-		fileData.dateLogCreated = MyUtil.utcIsoStringToDateObj(fileData.dateLogCreated)
-		fileData.dateLogLastUpdated = MyUtil.utcIsoStringToDateObj(fileData.dateLogLastUpdated)
-		fileData.sessionStartTime = MyUtil.utcIsoStringToDateObj(fileData.sessionStartTime)
-		fileData.sessionEndTime = MyUtil.utcIsoStringToDateObj(fileData.sessionEndTime)
+		fileData.dateLogCreated = utcIsoStringToDateObj(fileData.dateLogCreated)
+		fileData.dateLogLastUpdated = utcIsoStringToDateObj(fileData.dateLogLastUpdated)
+		fileData.sessionStartTime = utcIsoStringToDateObj(fileData.sessionStartTime)
+		fileData.sessionEndTime = utcIsoStringToDateObj(fileData.sessionEndTime)
 		for (let ping of fileData.combinedPingList){
-			ping.timeResponseReceived = MyUtil.utcIsoStringToDateObj(ping.timeResponseReceived)
+			ping.timeResponseReceived = utcIsoStringToDateObj(ping.timeResponseReceived)
 		}
 		for (let outage of fileData.outages){
-			outage.startDate = MyUtil.utcIsoStringToDateObj(outage.startDate)
-			outage.endDate = MyUtil.utcIsoStringToDateObj(outage.endDate)
+			outage.startDate = utcIsoStringToDateObj(outage.startDate)
+			outage.endDate = utcIsoStringToDateObj(outage.endDate)
 		}
 		for (let target of fileData.targetList){
 			for (let requestError of target.requestErrorList){
-				requestError.timeResponseReceived = MyUtil.utcIsoStringToDateObj(requestError.timeResponseReceived)
-				requestError.timeRequestSent = MyUtil.utcIsoStringToDateObj(requestError.timeRequestSent)
+				requestError.timeResponseReceived = utcIsoStringToDateObj(requestError.timeResponseReceived)
+				requestError.timeRequestSent = utcIsoStringToDateObj(requestError.timeRequestSent)
 			}
 		}
 
@@ -168,7 +168,7 @@ let writeNewSessionLog = (instance)=>{
 	
 	// Turn ISO string into filesystem-compatible string (also strip milliseconds)
 	const fileCreationDate = new Date()
-	const filename = MyUtil.isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
+	const filename = isoDateToFileSystemName(fileCreationDate) + ' ' + instance.opt.logStandardFilename + '.json'
 
 	let onMakeDirectory = (err)=>{
 		if (err){ 
@@ -251,7 +251,7 @@ let formatSessionAsHumanText = (instance, options)=>{
 	ind = indString
 
 	// This will overwrite any file with the same session start time
-	let summaryUri = instance.summariesDir + '/' + MyUtil.isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
+	let summaryUri = instance.summariesDir + '/' + isoDateToFileSystemName(instance.sessionStartTime) + ' pinguno summary.txt'
 
 	let template = `Pinguno internet connectivity log` +
 	`\nSession started: ${DateTime.fromJSDate(instance.sessionStartTime).toISO()}` +
@@ -323,7 +323,7 @@ let formatSessionAsHumanText = (instance, options)=>{
 
 	// Wrap the final output to x characters for display in bad/old/command-line apps
 	if (options.wrapAtCharLength){
-		template = MyUtil.hardWrapToCharLength(template, options.wrapAtCharLength)
+		template = hardWrapToCharLength(template, options.wrapAtCharLength)
 	}
 
 	return { template, summaryUri }
@@ -403,7 +403,7 @@ let compressAllLogsToArchive = (logsDir, archiveDir, logStandardFilename, compre
 		let timesAndContents = []
 		allURIsToCompress.forEach((uri)=>{
 			let timeSortStr = uri.slice(0, uri.indexOf(logStandardFilename)).trim()
-			let sortDate = MyUtil.fileSystemDateStrToIsoDate(timeSortStr).getTime()
+			let sortDate = fileSystemDateStrToIsoDate(timeSortStr).getTime()
 			
 			timesAndContents.push([timeSortStr, sortDate, fsReadFilePromise(path.join(logsDir, uri), 'utf8')])
 		})
