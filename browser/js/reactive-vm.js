@@ -5,7 +5,7 @@ import isEqual from '../node_modules/lodash-es/isEqual.js'
 import template from '../node_modules/lodash-es/template.js'
 
 // In-house 
-import { cg, cge, c, ce, ci, cw, debug2, cred, cblu, cgrn, cyel, cblk, cfaint } from './util.js'
+import { c, ce, ci, cw, debug2, info3 } from './util.js'
 import { Stack } from '../../util-iso.js'
 
 // This is the meta-information for the value of a reactive object's property. It has its own list of Watchers 
@@ -32,7 +32,7 @@ class KeyMeta {
 		if (last(watcherStack)){
 			this.dependants.add(last(watcherStack)) // Add this dependency to the current target watcher
 		} else {
-			cw('[KeyMeta] Accessed property at $key without having any active watchers.', this.key)
+			info3('[KeyMeta] Accessed property at $key without having any active watchers.', this.key)
 		}
 	}
 
@@ -41,7 +41,7 @@ class KeyMeta {
 	}
 
 	notifyDependants(){
-		cgrn(`[KeyMeta] ${this.key} has changed value!`)
+		info3(`[KeyMeta] Property has changed value at key:`, this.key)
 		Object.entries(this.dependants).map((dependant, key) => {
 			// Allow the dependants to tell us when they're done (if they're asynchronous),
 			// so we can choose to perform something
@@ -72,35 +72,22 @@ class ReactiveProxy {
 		simple properties with proxies
 	*/
 	walk(target){
-		cg('walking', target)
 		for (let [key, child] of Object.entries(target)){
-			c(`[walk] walking key, child`, key, child)
 			// Anything that *can* have properties, we want to shim with a proxy so we can track those properties 
 			// with a KeyMeta
 			if (Object.isExtensible(child)){
-				c(`[walk] walking found an extensible child at key, walking that....`, key)
 				// Deep-recurse from the bottom up, overwriting any objects with Proxies
 				target[key] = new ReactiveProxy(child) 
 			}
 		}
 
-		c('[walk] about to makeProxy for target:', target)
-		let topAncestorProxy = this.makeProxy(target)
-		c('[walk] topAncestorProxy:', topAncestorProxy)
-		cge()
-		return topAncestorProxy
+		return this.makeProxy(target)
 	}
 
 	makeProxy(target){
-		cg('makeProxy')
-		c('before adding metas for existing keys')
-		c('target entries:', Object.entries(target))
-		c('prexisting proxy metas:', this.metas)
 		for (let [key, val] of Object.entries(target)){
-			c('[makeProxy] creating new meta for key:', key)
 			this.metas[key] = new KeyMeta(key).set(val)
 		}
-		cge()
 
 		const handler = {
 			get: (target, key, receiver)=>{
@@ -109,7 +96,7 @@ class ReactiveProxy {
 						 `[]` accessor operator
 						`.` accessor operator
 				*/
-				cyel(`TRAP --- getting key:`, key)
+				info3(`TRAP --- get. getting key:`, key)
 				let retrievedValue = this.getKeyValue(target, key)
 				return retrievedValue
 			},
@@ -119,7 +106,7 @@ class ReactiveProxy {
 						`=` operator
 						Array.push()
 				*/
-				cyel(`TRAP --- setting $key to $value:`, key, value)
+				info3(`TRAP --- set. setting $key to $value:`, key, value)
 				this.setKeyValue(target, key, value, this.getMeta(key, target))
 				return true
 			},
@@ -127,9 +114,8 @@ class ReactiveProxy {
 				/*
 					Affects:
 						Object.defineProperty()
-						Array.pop() ?
 				*/
-				cyel('TRAP --- defineProperty. descriptor:', descriptor)
+				info3('TRAP --- defineProperty. descriptor:', descriptor)
 				if ('value' in descriptor){ // Data descriptor
 					this.setKeyValue(target, key, descriptor.value, this.getMeta(key, target), descriptor)
 					return true
@@ -149,7 +135,7 @@ class ReactiveProxy {
 						`delete` operator
 						Array.pop() ?
 				*/
-				cyel('TRAP --- delete')
+				info3('TRAP --- deleteProperty. key:', key)
 				this.deleteKey(target, key, this.getMeta(key, target))
 			},
 			getOwnPropertyDescriptor: (target, key)=>{
@@ -159,24 +145,17 @@ class ReactiveProxy {
 						Object.keys(),
 						anObject.hasOwnProperty(),
 				*/
-				cyel(`TRAP --- getOwnPropertyDescriptor`)
+				info3('TRAP --- getOwnPropertyDescriptor', key)
 				let originalDescriptor = Object.getOwnPropertyDescriptor(target, key)
-				c(originalDescriptor)
 				return originalDescriptor
-				// return Object.assign(originalDescriptor, {
-				// 	enumerable: true,
-				// 	configurable: true
-				// })
 			}
 		}
 
 		target = new Proxy(target, handler) // Write over target with its Proxy
-		c(`[makeProxy] made the actual proxy from target; proxy is:`, target)
 		return target
 	}
 
 	getMeta(key, target){
-		cg('getMeta for key:', key)
 		if (!key) throw Error('[getMeta] Key needed for method .getMeta(key)')
 
 		let metasKey = key
@@ -189,18 +168,14 @@ class ReactiveProxy {
 			// Consumer is trying to get a value of a property which doesn't (or rather, shouldn't) already exist, because 
 			// none of the traps that should have been fired when someone added a value to this property's key have created 
 			// a KeyMeta for this key
-			c('No KeyMeta found for key, creating meta for $key', key)
 			this.addMeta(key, metasKey, target)
 		} else if (! (this.metas[metasKey] instanceof KeyMeta)){
 			throw Error('[getMeta] this.metas already has this property on it, the value of which is *not* a KeyMeta')
 		}
-		c(`returning`, this.metas[metasKey])
-		cge()
 		return this.metas[metasKey]
 	}
 
 	addMeta(key, metasKey, target){
-		cg('addMeta', key)
 		this.metas[metasKey] = new KeyMeta(key)
 
 		if (key in target){
@@ -208,73 +183,51 @@ class ReactiveProxy {
 			if ([Object, Array, Function].some(inbuilt => key in inbuilt.prototype)){
 				// This is a preexisting property, so we need to be cautious about our ability to track it
 				this.metas[metasKey].preExisting = true
-				cw(`"${key}" is a shared name with an Object/Array inbuilt property`)
-				
 			} else if (!target.hasOwnProperty(key)){
 				// This key is only present on the prototype chain
 			}
 		}
 		
 		if (typeof target !== 'undefined' && target[key]){
-			c(`Adding the initial value of $key we found:`, key)
 			this.metas[metasKey].set(target[key])
 		}
-		cge()
 	}
 
 	getKeyValue(target, key){
-		cg('getKeyValue for key', key)
 		let targetVal = target[key] // Remember, this access could have gone through a proxy before returning to us
 		let keyMeta = this.getMeta(key, target)
 
-		// TEMP dev only
-		c('[getKeyValue] getOwnPropertyDescriptor, getOwnPropertyNames, getOwnPropertySymbols', Object.getOwnPropertyDescriptor(target, key), Object.getOwnPropertyNames(target), Object.getOwnPropertySymbols(target))
-		c(`[getKeyValue] key, targetVal, target`, key, targetVal, target)
-		
-		// TEMP dev only
 		if (!isEqual(target[key], keyMeta.value) && typeof targetVal !== 'function'){
-			cw(`[ReactiveProxy] Property "${key}" was changed without updating its KeyMeta (or notifying its dependants)`)
+			info3(`[ReactiveProxy] Target property "${key}" was changed without updating its KeyMeta (or notifying its dependants)`)
 		}
 
 		keyMeta.subscribeCurrentWatcher(this.watchersToAssign)
-		c(`[getKeyValue] asking for $key, got:`, key, target[key])
-		cge()
 		return target[key]
 	}
 
 	setKeyValue(target, key, value, keyMeta, descriptor){
-		cg('setKeyValue $key, $keyMeta, $value', key, keyMeta, value)
 		if (value !== keyMeta.value){ // Prevent unnecessary update runs
 			if (Object.isExtensible(value)){
-				c('new value is an extensible object! shimming it with a new ReactiveProxy before we set its value:')
 				value = new ReactiveProxy(value) // We want to recurse to the bottom of the tree before starting to set values
-				cblk('new value after proxifying:', value)
 			}
 			
 			keyMeta.set(value) // This is the part that actually informs watchers 
-			c('changed keyMeta:', keyMeta)
 
 			if (keyMeta.preExisting){
-				cw(`Tried to set a preexisting property on the target, such as "length". Silently failing.`)
+				info3(`[ReactiveProxy:setKeyValue] Tried to set a preexisting property on the target, such as "length". Silently failing.`)
 				if (keyMeta.value !== target[key]){
-					cw(`keyMeta's value differs from target's; $keyMeta.value, $target[key]`, keyMeta.value, target[key])
+					// keyMeta's value differs from target's
 				}
 			} else {
-				c(`descriptor provided: `, descriptor)
 				let descriptorToAssign = Object.assign({ 
 					value,
 					writable: true,
 					enumerable: true,
 					configurable: true
 				}, descriptor)
-				c('descriptor to define on prop:', descriptorToAssign)
 				Object.defineProperty(target, key, descriptorToAssign) // Touch the actual internal property
-				c('changed target! new target prop attributes:', Object.getOwnPropertyDescriptor(target, key))
 			}
-		} else {
-			c('value wasn\'t changed')
 		}
-		cge()
 	}
 
 	deleteKey(target, key, keyMeta){
@@ -345,7 +298,7 @@ class ReactiveVm {
 			el = foundEls[0]
 			if (foundEls.length >= 2){
 				console.error('[ReactiveVm] Matched elements:', foundEls)
-				throw Error('[ReactiveVm] needs a *unique* selector; you provided a selector that matches >1 page elements.')
+				throw Error('[ReactiveVm] Needs a *unique* selector; you provided a selector that matches >1 page elements.')
 			}
 		}
 		if (el instanceof HTMLElement){

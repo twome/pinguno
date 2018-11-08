@@ -48,30 +48,23 @@ class PingunoGUI {
 			danceStyle: {
 				bpm: 120,
 				rules: 'street',
-				influences: '_STUB'
 			}
 		})
 
-		objA.lightColor = 'green'
-		objA.newProp = 'a primitive, like a string'
-		objA.dancers.push({
-			name: 'Power Muscle',
-			strength: 99
-		})
-		objA.dancers.push('speedoString')
+		// objA.lightColor = 'green'
+		// objA.newProp = 'a primitive, like a string'
+		// objA.dancers.push({
+		// 	name: 'Power Muscle',
+		// 	strength: 99
+		// })
+		// objA.dancers.push('speedoString')
 
-		Object.defineProperty(objA, 'danceFloor', {
-			value: 'glowing disco zone',
-			writable: false,
-			enumerable: false,
-			configurable: true
-		})
-		
-		// w.objA.dancers.push('just a string')
-		// c('w.objA.lightColor', w.objA.lightColor )
-		// c('w.objA.newProp', w.objA.newProp )
-		// c('w.objA.dancers', w.objA.dancers )
-
+		// Object.defineProperty(objA, 'danceFloor', {
+		// 	value: 'glowing disco zone',
+		// 	writable: false,
+		// 	enumerable: false,
+		// 	configurable: true
+		// })
 
 		// console.debug('∆∆∆ making watcher')
 		// w.dancerWatcher = new Watcher(()=>{
