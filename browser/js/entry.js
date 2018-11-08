@@ -34,7 +34,7 @@ class PingunoGUI {
 
 		// TEMP dev inprogress
 		let w = window
-		w.objA = new ReactiveProxy({
+		let objA = new ReactiveProxy({
 			lightColor: 'red',
 			dancers: [
 				{
@@ -52,12 +52,21 @@ class PingunoGUI {
 			}
 		})
 
-		// w.objA.lightColor = 'green'
-		// w.objA.newProp = 'a primitive, like a string'
-		w.objA.dancers.push({
+		objA.lightColor = 'green'
+		objA.newProp = 'a primitive, like a string'
+		objA.dancers.push({
 			name: 'Power Muscle',
 			strength: 99
 		})
+		objA.dancers.push('speedoString')
+
+		Object.defineProperty(objA, 'danceFloor', {
+			value: 'glowing disco zone',
+			writable: false,
+			enumerable: false,
+			configurable: true
+		})
+		
 		// w.objA.dancers.push('just a string')
 		// c('w.objA.lightColor', w.objA.lightColor )
 		// c('w.objA.newProp', w.objA.newProp )
@@ -120,7 +129,8 @@ class PingunoGUI {
 		// 	]
 		// }
 
-		console.debug('Final synchronous objA:', w.objA)
+		console.debug('Final synchronous objA:', objA)
+		w.objA = objA
 		// console.debug('∆∆∆ whats the syncronous objB?:', w.objB)
 
 

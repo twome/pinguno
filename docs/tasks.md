@@ -1,6 +1,7 @@
 # Tasks to do:
 
 - add `pre-push` git hook from this repo to global config
+- remove `KeyMeta.prototype.value` concept, and instead only read/write to the proxy's target (simpler)
 
 ## GUI
 
