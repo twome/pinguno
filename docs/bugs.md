@@ -2,7 +2,7 @@
 
 ## Listing bugs here in lieu of a proper bug tracker format/app, so this is portable to different repo/project systems
 
-- [breaking] why is a child ReactiveProxy's meta list (.metas) getting a blank KeyMeta in there with a Symbol key?
+- [breaking] ReactiveProxy watchers not triggering change-callbacks
 
 - [breaking] we store entire sessions in-memory rather than streaming them to files
 	- this rules out long-term logging until fixed

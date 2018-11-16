@@ -5,7 +5,7 @@ import isEqual from '../node_modules/lodash-es/isEqual.js'
 import template from '../node_modules/lodash-es/template.js'
 
 // In-house 
-import { c, ce, ci, cw, debug2, info3 } from './util.js'
+import { c, ce, ci, cw, info3 } from './util.js'
 import { Stack } from '../../util-iso.js'
 
 // This is the meta-information for the value of a reactive object's property. It has its own list of Watchers 
@@ -215,9 +215,6 @@ class ReactiveProxy {
 
 			if (keyMeta.preExisting){
 				info3(`[ReactiveProxy:setKeyValue] Tried to set a preexisting property on the target, such as "length". Silently failing.`)
-				if (keyMeta.value !== target[key]){
-					// keyMeta's value differs from target's
-				}
 			} else {
 				let descriptorToAssign = Object.assign({ 
 					value,

@@ -2,6 +2,8 @@
 
 - add `pre-push` git hook from this repo to global config
 - remove `KeyMeta.prototype.value` concept, and instead only read/write to the proxy's target (simpler)
+- add tests for reactiveproxy
+- split CLI-&-includable + GUI client-&-server + reactiveproxy into packages
 
 ## GUI
 

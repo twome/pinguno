@@ -238,6 +238,13 @@ let exportBrowserToDistTask = () => {
 		))
 }
 
+// TODO unfinished
+let testTask = ()=>{
+	let stream = gulp.src([
+		p(paths.test, '**')
+	])
+}
+
 let devTask = gulp.series(
 	gulp.parallel(
 		sassTask,
@@ -252,6 +259,7 @@ let devTask = gulp.series(
 )
 
 let browserProdTask = gulp.series(
+	testTask,
 	cleanTask,
 	gulp.parallel(
 		lintBackendProdTask, 
@@ -264,15 +272,7 @@ let browserProdTask = gulp.series(
 )
 
 let buildExesTask = gulp.series(
-	cleanTask,
-	gulp.parallel(
-		lintBackendProdTask, 
-		lintBrowserTask
-	),
-	sassTask,
-	webpackTask,
-	exportBrowserToDistTask,
-	htmlTask,
+	browserProdTask,
 	pkgTask
 )
 
@@ -286,6 +286,7 @@ module.exports['server'] = serverTask
 module.exports['clean'] = cleanTask 
 module.exports['export:browser'] = exportBrowserToDistTask 
 module.exports['html'] = htmlTask 
+module.exports['test'] = testTask
 
 // Watchers
 module.exports['watch:sass'] = sassWatch
