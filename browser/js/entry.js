@@ -8,7 +8,7 @@ import './compatibility.js'
 import { d, w, c, ce, ci, cred, cyel, cblu, cblk, cgrn, info3 } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
 import { registerDOMNodesToCustomEls } from './custom-el-reg.js' 
-import { ReactiveProxy, Watcher } from './reactive-object.js'
+import { ReactiveProxy, Watcher } from '../../reactive-object/reactive-object.js'
 
 // Web Components (custom elements)
 import { Indicator } from './components/indicator.js'

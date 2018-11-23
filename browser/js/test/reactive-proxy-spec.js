@@ -3,7 +3,7 @@ import isEqual from '../../node_modules/lodash-es/isEqual.js'
 
 // In-house
 import { c, ci, cg, cge } from '../util.js'
-import { ReactiveProxy, Watcher } from '../reactive-object.js'
+import { ReactiveProxy, Watcher } from '../../../reactive-object/reactive-object.js'
 
 // Shortcuts
 const a = console.assert

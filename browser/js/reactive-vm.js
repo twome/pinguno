@@ -1,7 +1,7 @@
 // In-house 
 import { c, ce, ci, cw, info3 } from './util.js'
 import { Stack } from '../../util-iso.js'
-import { ReactiveProxy } from './reactive-object.js'
+import { ReactiveProxy } from '../../reactive-object/reactive-object.js'
 
 /*
 	Wrapper around ReactiveProxy which binds it to a DOM element, in order to use the ReactiveProxy as a "viewmodel"
