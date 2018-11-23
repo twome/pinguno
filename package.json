@@ -32,8 +32,11 @@
   "main": "pinguno.js",
   "module": "pinguno.js",
   "bin": {
-    "pinguno-cli": "./cli-esm-adapter.js",
-    "pinguno-server": "./server-esm-adapter.js"
+    "pinguno-cli": "./bin/cli-esm-adapter.js",
+    "pinguno-server": "./bin/server-esm-adapter.js"
+  },
+  "directories": {
+    "doc": "docs"
   },
   "os": [
     "darwin",

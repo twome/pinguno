@@ -24,6 +24,7 @@ let inDev = process.env.NODE_ENV === 'development'
 
 let p = path.join
 let paths = {
+	binaries: p(__dirname, 'bin'),
 	html: {
 		src: p(__dirname, 'browser/public'),
 		dest: p(__dirname, 'browser/dist')
@@ -160,7 +161,7 @@ let moveJsTask = ()=>{
 let serverProcess = null
 let serverTaskProm = (resolve, reject)=>{
 	let nodeCLArgs = [
-		'server-esm-adapter',
+		p(paths.binaries, 'server-esm-adapter'),
 		'--experimental-vm-modules'
 	]
 	if (inDev) nodeCLArgs.push('--inspect=127.0.0.1:1919')

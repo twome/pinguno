@@ -2,8 +2,7 @@
 
 - add `pre-push` git hook from this repo to global config
 - remove `KeyMeta.prototype.value` concept, and instead only read/write to the proxy's target (simpler)
-- add tests for reactiveproxy
-- split CLI-&-includable + GUI client-&-server + reactiveproxy into packages
+- split CLI-&-includable + GUI client-&-server + reactiveproxy into separate packages in a monorepo; use Lerna to use them together
 
 ## GUI
 
@@ -226,7 +225,7 @@
 	- open in popup iframe exactly like a menubar Electron window?
 
 
-## 3rd-party code propositions
+## 3rd-party code PRs
 
 - proper error handling for raw-socket within net-ping (don't drop the ball when passing up own errors)
 - support getting TTL & response size for response pings
@@ -244,6 +243,7 @@
 	- Unfortunately, we pretty much need to expose user-set variables (1) the polling interval and (2) the IP string to the "spawn" command (the dangerous part). 
 -[ ] PRIVACY: Scour all personal/private information added while developing.
 -[ ] PRIVACY: Make sure no sensitive user information will be stored or transmitted without user & dev consent
+-[ ] UX: Replace links to local-file npm packages with links to publicly-downloadable repos 
 -[ ] PERFORMANCE: Concatenate browser code into single compressed files
 -[ ] PERFORMANCE: Production-process `browser/public` into `browser/dist`
 -[ ] CODE QUALITY: Perform code lints with production settings
