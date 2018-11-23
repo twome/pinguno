@@ -61,7 +61,6 @@
     "gulp-sourcemaps": "^2.6.4",
     "gulp-template": "^5.0.0",
     "pkg": "^4.3.4",
-    "tape": "^4.9.1",
     "vinyl-named": "^1.1.0",
     "webpack": "^4.20.2"
   },

@@ -1,12 +1,25 @@
 // 3rd-party
-import isEqual from '../browser/node_modules/lodash-es/isEqual.js'
+import isEqual from '../../node_modules/lodash-es/isEqual.js'
 
 // In-house
-import { c } from '../browser/js/util.js'
-import { ReactiveProxy, ReactiveVm, Watcher } from '../browser/js/reactive-vm.js'
+import { c, ci, cg, cge } from '../util.js'
+import { ReactiveProxy, Watcher } from '../reactive-object.js'
 
 // Shortcuts
 const a = console.assert
+
+let asyncs = [] // Asynchronous tests go in here
+
+let race = (fn, timeLimit)=>{
+	let prom = new Promise((resolve, reject)=>{
+		fn(resolve)
+		setTimeout(()=>{
+			reject(Error(`[race] Provided function didn't complete before time limit.`))
+		}, timeLimit)
+	})
+
+	return prom
+}
 
 // Setup
 
@@ -52,7 +65,7 @@ a(isEqual(objA.danceStyle, {
 
 objA.lightColor = 'green'
 objA.newProp = 'a primitive, like a string'
-objA.dancers.push('speedoString')
+objA.dancers.push('string instead of object')
 Object.defineProperty(objA, 'danceFloor', {
 	value: 'glowing disco zone',
 	writable: false,
@@ -68,7 +81,7 @@ a(objA.newProp === 'a primitive, like a string')
 
 a(objA.dancers.length === 3)
 
-a(objA.dancers[2] === 'speedoString')
+a(objA.dancers[2] === 'string instead of object')
 
 a(isEqual({
 	value: 'glowing disco zone',
@@ -80,28 +93,27 @@ a(isEqual({
 a(objA.danceFloor === 'glowing disco zone')
 
 // Setup
+
 let fired = 0
-let totalHeight = 0
 let dancerWatcher = new Watcher(()=>{
-	return objA.dancers.reduce((combinedHeight, dancer)=>{
-		c('[watcher render] dancer: ', dancer)
-		if (dancer.height){
-			combinedHeight += dancer.height
-		} else {
-			return 0
-		}
-		c(`[watcher render] Combined dancers height so far = ${combinedHeight}`)
-		return combinedHeight
-	}, 0)
-}, (newHeight, oldHeight)=>{
-	c('[watcher callback] oldHeight, newHeight', oldHeight, newHeight)
-	fired = 1
-	totalHeight = newHeight
+	cg('watcher render')
+	console.log(objA.dancers)
+	cge()
+	return new Promise(resolve => {
+		setTimeout(()=>{
+			resolve(objA.dancers[0].name)
+		}, 600)
+	})
+}, (newVal, oldVal)=>{
+	cg('watcher callback - old, new', oldVal, newVal)
+	fired = fired + 1
+	c(fired)
+	cge()
 })
 
 // Test
 
-a(dancerWatcher instanceof Watcher)
+a(dancerWatcher instanceof Watcher, 'dancerWatcher is a watcher')
 
 // Setup 
 
@@ -111,27 +123,18 @@ objA.dancers.push({
 	height: 1
 })
 
-// Test
-
-a(fired === 1)
-
-a(totalHeight === 17, totalHeight)
-
-// Setup
-// New previously-nonexistent properties
-
-let newPropWorked = null
-let bongWatcher = new Watcher(()=>{
-	return objA.bong
-}, (newBong, oldBong)=>{
-	c('[watcher callback] oldBong, newBong', oldBong, newBong)
-	newPropWorked = true
+objA.dancers.push({
+	name: 'Long Folk',
+	strength: 34,
+	height: 188
 })
-objA.bong = 'mighty big bongo'
 
 // Test
 
-a(newPropWorked)
+asyncs.push(race((resolve)=>{
+	a(fired === 1, 'watcher callback fires')
+	resolve(fired)
+}, 1000 ))
 
 // console.debug('∆∆∆ making big dance fella')
 // let objB = new ReactiveProxy(cloneDeep(objA))
@@ -216,4 +219,7 @@ a(newPropWorked)
 // 	}
 // })
 
-console.info('[reactiveProxySpec] Test complete')
+Promise.all(asyncs).then(val => {
+	c('asyncs val:', val)
+	ci('[reactiveProxySpec] Test complete')
+})
