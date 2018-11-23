@@ -150,6 +150,13 @@ let webpackTask = ()=>{
 	return stream
 }
 
+let moveJsTask = ()=>{
+	gulp.src([
+		p(paths.js.src, 'entry.js'),
+		p(paths.js.src, 'live-reload-custom.js')
+	]).pipe(gulp.dest(paths.js.dest))
+}
+
 let serverProcess = null
 let serverTaskProm = (resolve, reject)=>{
 	let nodeCLArgs = [
@@ -249,6 +256,7 @@ let devTask = gulp.series(
 	gulp.parallel(
 		sassTask,
 		webpackTask,
+		// moveJsTask, // Skip over webpack and just move the untouched JS files over
 		serverTask
 	),
 	gulp.parallel(
