@@ -9,6 +9,8 @@
   "license": "MIT",
   "keywords": "ping, uptime, connectivity",
   "dependencies": {
+    "reactive-object": "file:./reactive-object",
+
     "body-parser": "^1.18.3",
     "chokidar": "^2.0.4",
     "del": "^3.0.0",

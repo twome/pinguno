@@ -1,0 +1,15 @@
+{
+	"name": "reactive-object",
+	"version": "0.0.1",
+	"description": "Create a JS object that automatically run functions when any of its properties change. Implemented using inbuilt Proxy. Requires use with 'Watcher' class (also provided).",
+	"homepage": "https://gitlab.com/twome/reactive-object",
+	"bugs": "https://gitlab.com/twome/reactive-object/issues",
+	"license": "MIT",
+	"author": "Tom Kenny <tom@twome.name> (https://twome.name)",
+	"main": "reactive-object.js",
+	"repository": "https://gitlab.com/twome/reactive-object.git",
+	"private": true,
+	"scripts": {
+		"test": "test/test.js"
+	}
+}
