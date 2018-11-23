@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Built-in modules
 const fs = require('fs')
 const util = require('util')

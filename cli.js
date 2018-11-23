@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // side-effects: true
 
 // 3rd-party dependencies
