@@ -11,5 +11,8 @@
 	"private": true,
 	"scripts": {
 		"test": "test/test.js"
+	},
+	"dependencies": {
+		"lodash-es": "^4.17.11"
 	}
 }

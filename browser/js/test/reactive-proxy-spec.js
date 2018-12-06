@@ -1,29 +1,19 @@
 // 3rd-party
 import isEqual from '../../node_modules/lodash-es/isEqual.js'
+import cloneDeep from '../../node_modules/lodash-es/cloneDeep.js'
 
 // In-house
 import { c, ci, cg, cge } from '../util.js'
 import { ReactiveProxy, Watcher } from '../../../reactive-object/reactive-object.js'
 
+import { race, assert } from './test-framework.js'
+
 // Shortcuts
-const a = console.assert
-
 let asyncs = [] // Asynchronous tests go in here
+let a = assert
 
-let race = (fn, timeLimit)=>{
-	let prom = new Promise((resolve, reject)=>{
-		fn(resolve)
-		setTimeout(()=>{
-			reject(Error(`[race] Provided function didn't complete before time limit.`))
-		}, timeLimit)
-	})
-
-	return prom
-}
-
-// Setup
-
-let objA = new ReactiveProxy({
+// Shared setup
+const testSimpleObj = {
 	lightColor: 'red',
 	dancers: [
 		{
@@ -38,103 +28,117 @@ let objA = new ReactiveProxy({
 		bpm: 120,
 		rules: 'street',
 	}
-})
+}
+let testObj = new ReactiveProxy(cloneDeep(testSimpleObj))
 
-// Test
+// Simple access of object and properties
+;(function(){
+	// Setup
+	
+	let objA = cloneDeep(testObj)
 
-a(objA)
+	// Test
 
-a(objA.lightColor === 'red')
+	a(objA, 'Access parent object')
 
-a(isEqual(objA.dancers, [
-	{
-		name: 'leon',
-		height: 7
-	},{
-		name: 'ali',
-		height: 9
-	}
-]))
+	a(objA.lightColor === 'red', 'Access value of property')
 
-a(isEqual(objA.danceStyle, {
-	bpm: 120,
-	rules: 'street',
-}))
+	a(isEqual(objA.dancers, [
+		{
+			name: 'leon',
+			height: 7
+		},{
+			name: 'ali',
+			height: 9
+		}
+	]), 'Consistent structure of property value which is an array')
 
-// Setup
+	a(isEqual(objA.danceStyle, {
+		bpm: 120,
+		rules: 'street',
+	}), 'Consistent structure of property value which is an object')
 
-objA.lightColor = 'green'
-objA.newProp = 'a primitive, like a string'
-objA.dancers.push('string instead of object')
-Object.defineProperty(objA, 'danceFloor', {
-	value: 'glowing disco zone',
-	writable: false,
-	enumerable: false,
-	configurable: true
-})
+})()
 
-// Test
+// Modification of properties
+;(function(){
+	// Setup
 
-a(objA.lightColor === 'green')
+	let objA = cloneDeep(testObj)
 
-a(objA.newProp === 'a primitive, like a string')
-
-a(objA.dancers.length === 3)
-
-a(objA.dancers[2] === 'string instead of object')
-
-a(isEqual({
-	value: 'glowing disco zone',
-	writable: false,
-	enumerable: false,
-	configurable: true
-}, Object.getOwnPropertyDescriptor(objA, 'danceFloor')))
-
-a(objA.danceFloor === 'glowing disco zone')
-
-// Setup
-
-let fired = 0
-let dancerWatcher = new Watcher(()=>{
-	cg('watcher render')
-	console.log(objA.dancers)
-	cge()
-	return new Promise(resolve => {
-		setTimeout(()=>{
-			resolve(objA.dancers[0].name)
-		}, 600)
+	objA.lightColor = 'green' 
+	objA.newProp = 'a primitive, like a string' 
+	objA.dancers.push('string instead of object') 
+	Object.defineProperty(objA, 'danceFloor', { 
+		value: 'glowing disco zone',
+		writable: false,
+		enumerable: false,
+		configurable: true
 	})
-}, (newVal, oldVal)=>{
-	cg('watcher callback - old, new', oldVal, newVal)
-	fired = fired + 1
-	c(fired)
-	cge()
-})
 
-// Test
+	// Test
 
-a(dancerWatcher instanceof Watcher, 'dancerWatcher is a watcher')
+	a(objA.lightColor === 'green', 'Can change existing property values')
 
-// Setup 
+	a(objA.newProp === 'a primitive, like a string', 'Can create and set new properties')
 
-objA.dancers.push({
-	name: 'Power Muscle',
-	strength: 99,
-	height: 1
-})
+	a(objA.dancers.length === 3, 'Can push to properties which are arrays')
 
-objA.dancers.push({
-	name: 'Long Folk',
-	strength: 34,
-	height: 188
-})
+	a(objA.dancers[2] === 'string instead of object', 'Can access properties which are arrays\' indices')
 
-// Test
+	a(isEqual({ 
+		value: 'glowing disco zone',
+		writable: false,
+		enumerable: false,
+		configurable: true
+	}, Object.getOwnPropertyDescriptor(objA, 'danceFloor')), 'Can use defineProperty()')
 
-asyncs.push(race((resolve)=>{
-	a(fired === 1, 'watcher callback fires')
-	resolve(fired)
-}, 1000 ))
+	a(objA.danceFloor === 'glowing disco zone', 'Can use defineProperty()') 
+})()
+
+// Watcher render & callback functions
+;(function(Watcher){
+	// Setup
+
+	let objA = new ReactiveProxy(cloneDeep(testSimpleObj))
+	let fired = 0
+
+	let styleWatcher = new Watcher((oldVal)=>{
+		cg('this is the watcher render. old value: ', oldVal)
+		c('current value of danceStyle:', objA.danceStyle)
+		fired = fired + 1
+		c('number of times render fired:', fired)
+
+		cge()
+		// We could return a simple sync value, or a Promise.
+		// What we return becomes the oldVal for the next render cycle.
+		return new Promise(resolve => { 
+			setTimeout(()=>{ // Simulate async operation
+				console.log('2500ms delay later')
+				resolve(styleWatcher.rules)
+			}, 2500)
+		})
+	})
+
+	// Test
+
+	a(styleWatcher instanceof Watcher, 'styleWatcher is a watcher')
+
+	// Setup 
+
+	objA.danceStyle.inspiration = 'greek'
+
+	// Test
+
+	a(fired === 1, 'watcher render function runs once per change made to one of its dependencies')
+
+	objA.danceStyle.inspiration = 'nambian'
+
+	a(fired === 2, 'watcher runs again for the second change')
+
+})(Watcher)
+
+
 
 // console.debug('∆∆∆ making big dance fella')
 // let objB = new ReactiveProxy(cloneDeep(objA))
@@ -220,6 +224,6 @@ asyncs.push(race((resolve)=>{
 // })
 
 Promise.all(asyncs).then(val => {
-	c('asyncs val:', val)
+	c('value of `asyncs`:', val)
 	ci('[reactiveProxySpec] Test complete')
-})
+}, err => { throw err })

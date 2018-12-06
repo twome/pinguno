@@ -9,8 +9,6 @@
   "license": "MIT",
   "keywords": "ping, uptime, connectivity",
   "dependencies": {
-    "reactive-object": "file:./reactive-object",
-
     "body-parser": "^1.18.3",
     "chokidar": "^2.0.4",
     "del": "^3.0.0",
@@ -21,10 +19,12 @@
     "get-folder-size": "^2.0.0",
     "ip-address": "^5.8.9",
     "lodash": "^4.17.10",
+    "lodash-es": "^4.17.11",
     "luxon": "^1.4.1",
     "net-ping": "^1.2.3",
     "opn": "^5.4.0",
     "prompts": "^1.1.1",
+    "reactive-object": "file:./reactive-object",
     "simple-statistics": "^6.1.0",
     "toxiproxy-node-client": "^2.0.6",
     "util": "^0.11.0",

@@ -1,12 +1,12 @@
 // 3rd-party
-import cloneDeep from '../node_modules/lodash-es/cloneDeep.js'
-import last from '../node_modules/lodash-es/last.js'
-import isEqual from '../node_modules/lodash-es/isEqual.js'
-import template from '../node_modules/lodash-es/template.js'
+import cloneDeep from './node_modules/lodash-es/cloneDeep.js'
+import last from './node_modules/lodash-es/last.js'
+import isEqual from './node_modules/lodash-es/isEqual.js'
+import template from './node_modules/lodash-es/template.js'
 
 // In-house 
-import { c, ce, ci, cw, info3 } from './util.js'
-import { Stack } from '../../util-iso.js'
+import { c, ce, ci, cw, info3, info2 } from '../browser/js/util.js'
+import { Stack } from '../util-iso.js'
 
 // This is the meta-information for the value of a reactive object's property. It has its own list of Watchers 
 // (much like a Publisher) which it notifies whenever its internal value changes.
@@ -41,14 +41,14 @@ class KeyMeta {
 	}
 
 	notifyDependants(){
-		info3(`[KeyMeta] Property has changed value at key:`, this.key)
-		Object.entries(this.dependants).map((dependant, key) => {
+		info2(`[KeyMeta] Property has changed value at key:`, this.key)
+		let renderOutputs = Object.entries(this.dependants).map((dependant, key) => {
 			// Allow the dependants to tell us when they're done (if they're asynchronous),
 			// so we can choose to perform something
 			return Promise.resolve(dependant.update())
 		})
 
-		return Promise.all(this.dependants)
+		return Promise.all(renderOutputs)
 	}
 }
 
@@ -240,21 +240,18 @@ class ReactiveProxy {
 	each time those reactive properties change, this function is run again to "refresh" its output value. This is basically like
 	a "render" function for a template, (and was made for that purpose), but can be used more abstractly.
 
-	callback(newOutput, oldOutput): this is where the consumer gets access to the asynchronous output of dependentProcess(), so 
-	that the updated output can be used where it is needed.
-
 	watcherStack: this is a global-like array of potential watchers that are added to each reactive property's *internal* list of
 	subscribers as that reactive property is running its *getter* function. The watcher stack is filled up emphemerally and then 
-	depleted for each individual reactive property (the relationshi)
+	depleted for each individual reactive property.
 */
 class Watcher {
-	constructor(dependentProcess, callback, watcherStack){
+	constructor(dependentProcess, watcherStack){
 		this.dependentProcess = dependentProcess
-		this.callback = callback
 
 		// Static properties
 		Watcher.stack = Watcher.stack || new Stack()
-		this.watcherStack = watcherStack || Watcher.stack // Static
+
+		this.watcherStack = watcherStack || Watcher.stack 
 
 		this.dependentOutput = null
 		this.update() // Runs the process using initial values
@@ -265,11 +262,17 @@ class Watcher {
 
 		this.watcherStack.push(this) // We add this watcher as the current target for the active Dep instance
 		// Call the dependentProcess, which uses reactive properties to output something (like a component's HTML)
-		this.dependentOutput = Promise.resolve(this.dependentProcess()).then((output)=>{
-			this.dependentOutput = output
-			this.watcherStack.pop() // We've stopped accessing reactive properties, so tell KeyMetas to stop looking for this watcher
-			this.callback(this.dependentOutput, oldOutput)
-		})		
+		this.dependentOutput = this.dependentProcess(oldOutput)
+		c(this.dependentOutput)
+		if (this.dependentOutput instanceof Promise){
+			this.dependentOutput.then(val => {
+				this.dependentOutput = val
+				this.watcherStack.pop()
+			})
+		} else {
+			// We've stopped accessing reactive properties, so tell KeyMetas to stop looking for this watcher
+			this.watcherStack.pop()
+		}
 	}
 }
 
