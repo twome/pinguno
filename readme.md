@@ -125,7 +125,7 @@ For contributing labour to Pinguno directly, please see `docs/contributing.md`.
 
 ## Contributors:
 
-Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from?](https://gist.github.com/twome/1fded3a4534043ab705a0ae2b8ee6ab6)
+Tom Kenny - [[website](https://twome.name)] - [[source-of-labour statement](https://gist.github.com/twome/1fded3a4534043ab705a0ae2b8ee6ab6)]
 
 ## Similar projects:
 

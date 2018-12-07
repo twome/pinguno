@@ -21,8 +21,10 @@ Desktop.ini
 
 # Sublime Text
 ## User-specific editor settings
+.sublime-text-config/
 *.sublime-project
 *.sublime-workspace
+*.sublime-build
 
 # Yarn
 ## Error log
