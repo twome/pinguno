@@ -24,7 +24,6 @@
     "net-ping": "^1.2.3",
     "opn": "^5.4.0",
     "prompts": "^1.1.1",
-    "reactive-object": "file:./reactive-object",
     "simple-statistics": "^6.1.0",
     "toxiproxy-node-client": "^2.0.6",
     "util": "^0.11.0",
