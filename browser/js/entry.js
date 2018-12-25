@@ -2,19 +2,17 @@
 import renderjson from '../node_modules/renderjson/renderjson.js'
 import cloneDeep from '../node_modules/lodash-es/cloneDeep.js'
 
+import Vue from '../node_modules/vue/dist/vue.esm.js'
+
 // In-house
 import { config } from './config.js'
 import './compatibility.js'
 import { d, w, c, ce, ci, cred, cyel, cblu, cblk, cgrn, info3 } from './util.js'
 import { PingunoSession } from './pinguno-session.js'
-import { registerDOMNodesToCustomEls } from './custom-el-reg.js' 
-import { ReactiveProxy, Watcher } from '../../reactive-object/reactive-object.js'
 
 // Web Components (custom elements)
 import { Indicator } from './components/indicator.js'
 import { MoreOptionsBtn } from './components/more-options-btn.js'
-
-import './test/reactive-proxy-spec.js'
 
 class PingunoGUI {
 	constructor({...options} = {
@@ -33,7 +31,12 @@ class PingunoGUI {
 		this.liveSessionJSONPollTick = null
 		this.renderVmTick = null
 
-		this.vm = {}
+		this.vm = new Vue({
+			el: '#vue-app',
+			data: {
+				testProp: 'just a string'				
+			}
+		})
 	}
 
 

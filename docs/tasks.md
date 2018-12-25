@@ -249,7 +249,7 @@
 -[ ] PERFORMANCE: Concatenate browser code into single compressed files
 -[ ] PERFORMANCE: Production-process `browser/public` into `browser/dist`
 -[ ] CODE QUALITY: Perform code lints with production settings
--[ ] CODE QUALITY: Remove all TEMP / console.debug / dev comments etc. TODOs are fine if it makes sense and reveal intent.
+-[ ] CODE QUALITY: Remove all TEMP / console.debug / dev comments etc. TODOs are fine if it makes sense and reveal intent. Check for shorthands, too: c, cg, cred etc
 -[ ] CODE QUALITY: Make sure all "global" npm binaries are installed as package.json dev-dependencies so that `npm run` can use their local `/node_modules/.bin` symlinks.
 -[ ] CODE QUALITY: Remove all unnecessary dependencies to reduce install time / size.
 -[ ] CODE QUALITY: Check that single-line, single statement 'if' statements are not wrapped in block curlies
