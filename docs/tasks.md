@@ -97,6 +97,14 @@
 	- `-Q` to adjust ToS, Type of Service (adjust for higher network precendence, more reliability etc)
 	- `-t` set the IP ttl
 
+- print session stats on exit
+	- total running time
+	- memory usage when exiting
+	- total size of logs created
+	- where logs were written to
+	- network stats
+		- number of pings sent/recieved
+
 
 ## Misc
 
