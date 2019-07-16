@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // Built-in modules
-const fs = require('fs')
 const util = require('util')
 const os = require('os')
 const path = require('path')
@@ -11,7 +10,6 @@ const axios = require('axios')
 const opn = require('opn')
 const { DateTime } = require('luxon')
 const bodyParser = require('body-parser')
-const chokidar = require('chokidar')
 
 // In-house modules
 import { config } from './config.js'
@@ -24,8 +22,6 @@ import {
 	makeLiveReloadMiddleware,
 	liveReloadServerStart
 } from './live-reload-custom-server.js'
-
-const fsReadFilePromise = util.promisify(fs.readFile)
 
 // Convenience / shorthands
 let inDev = process.env.NODE_ENV === 'development'

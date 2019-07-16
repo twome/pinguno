@@ -17,13 +17,13 @@ class EngineNative {
 	static sanitizeSpawnInput(intervalNumber, ipString){
 		let returner = {}
 
-		let pin = intervalNumber // User-set polling interval for `ping` command, in milliseconds
+		let pollMs = intervalNumber // User-set polling interval for `ping` command, in milliseconds
 		let ips = ipString // User-set IP (as a string)
 
-		let intervalOk = pin && (pin === Number(pin)) && (typeof pin === 'number')
+		let intervalOk = pollMs && (pollMs === Number(pollMs)) && (typeof pollMs === 'number')
 		if (intervalOk){
 			// Make double-sure that pin is a number by casting it, then make sure it's not negative or decimal
-			returner.intervalNumber = Math.abs(Math.floor(Number(pin)))
+			returner.intervalNumber = Math.abs(Math.floor(Number(pollMs)))
 		} else {
 			throw Error('DANGER: this.opt.pingIntervalMs, which is used in node\'s command-line call \'spawn\', is not a number')
 		}

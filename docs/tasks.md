@@ -1,4 +1,6 @@
-# Tasks to do:
+# Planned development taks:
+
+## Miscellaneous
 
 - add `pre-push` git hook from this repo to global config
 - remove `KeyMeta.prototype.value` concept, and instead only read/write to the proxy's target (simpler)
@@ -114,6 +116,8 @@
 	- should we json-stringify each 'chunk'? i guess that might be inefficient but easiest to parse
 		- csv line-by-line for each ping response, with special lines for beginnings and deliberate ends of sessions?
 	- workaround: simply start a new session whenever mem usage gets too high; starting new session automatically calls a compress-all-logs if log-archive too big (could this be parallel & ignore present session? wait of course it could)
+
+- homebrew cask release. one-line install baybee!
 
 - use quasi-random port. have an order of default ports to test for availability first, then give up and try random ones
 	- there *has* to be a community module for this, right?
@@ -267,3 +271,4 @@
 ### Before 1.0.0:
 - test suite
 - stable server API
+- clearly-defined log structure (both as text-stream and JSON formats)
