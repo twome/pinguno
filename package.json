@@ -22,7 +22,7 @@
     "simple-statistics": "^6.1.0",
     "toxiproxy-node-client": "^2.0.6",
     "util": "^0.11.0",
-    "yarn": "^1.17.3"
+    "yarn": "^1.22.0"
   },
   "main": "pinguno.js",
   "bin": {
