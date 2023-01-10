@@ -16,7 +16,7 @@
     "get-folder-size": "^2.0.0",
     "ip-address": "^5.8.9",
     "lodash": "^4.17.13",
-    "luxon": "^1.4.1",
+    "luxon": "^1.28.1",
     "net-ping": "^1.2.3",
     "prompts": "^1.1.1",
     "simple-statistics": "^6.1.0",
