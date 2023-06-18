@@ -145,6 +145,6 @@ Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from
 ## License: MIT
 
 **Non-legally-binding plain English**:
-> You can use Pinguno for anything (including commercial uses), as long as you don't remove Pinguno's MIT license from whatever copies you make of Pinguno (to preserve the original copyright/crediting and ensure copies don't have a different license assigned to them). You get no warranty, nor can you hold Pinguno's authors liable for anything Pinguno does. It's free, so if someone's charging you money for basically the same thing you're probably getting ripped off!
+> You can use Pinguno for anything (including commercial uses), as long as you don't remove Pinguno's MIT license from whatever copies you make of Pinguno (this ensures copies can't get a more restrictive license). You can't hold Pinguno's authors liable for anything Pinguno does.
 
 See 'LICENSE' file for full legally-binding details.
