@@ -133,18 +133,14 @@ Tom Kenny - [website](https://twome.name). [Where did Pinguno's labour come from
 
 ### Similar projects:
 
-#### Free / open source:
+#### Free & open source:
 
 - [watchmen](https://github.com/iloire/watchmen) by Iván Loire & contributors: Web GUI, multiple server support, mature project, developer-focused. Pinguno has slightly different goals: to be a very simple and low-maintenance tray/menubar app for non-technical users to get information/transparency about their personal/physical internet connection (not their server fleet) over long periods of time. If you're looking for more professional DevOps monitoring, watchmen is more feature-rich.
 - [node-monitor](https://github.com/qawemlilo/node-monitor#readme) and [node-ping](https://github.com/qawemlilo/node-ping) by Qawelesizwe Mlilo: CLI, website monitoring, event-focused. These are focused more on automatically alerting website maintainers when connection status changes.
 
-#### Paid / closed source:
+#### Paid & closed source:
 
 - [Net Uptime Monitor](https://netuptimemonitor.com/) by Becker Software LLC. $10 USD for permanent license, as of 2018-10-04. Windows-only, GUI, focused on non-technical users. Similar in design goals to Pinguno.
 
-## License: MIT
-
-**Non-legally-binding plain English**:
-> You can use Pinguno for anything (including commercial uses), as long as you don't remove Pinguno's MIT license from whatever copies you make of Pinguno (this ensures copies can't get a more restrictive license). You can't hold Pinguno's authors liable for anything Pinguno does.
-
-See 'LICENSE' file for full legally-binding details.
+## License
+Pinguno has no software license. Don't read or write software licenses. They should be abolished.
